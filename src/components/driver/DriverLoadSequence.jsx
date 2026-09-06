@@ -1,23 +1,19 @@
-const STEPS = [
-  { n: 1, type: "factory_arrived", label: "Llegué a fábrica" },
-  { n: 2, type: "load_started", label: "Inicié carga" },
-  { n: 3, type: "load_completed", label: "Carga lista" },
-  { n: 4, type: "factory_departed", label: "Salí de fábrica" },
-];
+import { cargaFactoryView } from "../../utils/logistica/cargaFactoryStep.js";
+import { projectDriverTripFeed } from "../../utils/logistica/driverTripFeed.js";
 
 export default function DriverLoadSequence({
-  phase,
+  timeline,
   plan,
   stops,
+  trip,
   sendEvent,
   onAfterDepart,
 }) {
-  const current = STEPS[Math.min(phase, 3)];
-  const info = plan.info || {};
-  const dest = stops[stops.length - 1];
-  const qty = stops.reduce((n, s) => n + Number(s.qty || s.cantidad || 0), 0);
+  const view = cargaFactoryView(timeline);
+  const feed = projectDriverTripFeed({ trip, plan, stops });
+  const dest = feed.dest || "—";
 
-  if (phase >= 4) {
+  if (view.complete) {
     return (
       <div className="drv-scroll">
         <h1 className="drv-h1">Entregas</h1>
@@ -51,42 +47,41 @@ export default function DriverLoadSequence({
 
   return (
     <div className="drv-scroll">
+      {feed.remito ? <p className="drv-kicker">{feed.remito} / {feed.origin} → {feed.dest}</p> : null}
       <h1 className="drv-h1">Carga en fábrica</h1>
-      <p className="drv-sub">Seguí los pasos en orden</p>
+      <p className="drv-sub">Seguí los pasos en orden.</p>
       <div className="drv-card">
-        <strong>Secuencia de carga</strong>
-        {STEPS.map((st) => {
-          const done = phase >= st.n;
-          const now = phase + 1 === st.n;
-          return (
-            <div className="drv-step" key={st.type}>
-              <div className={`drv-dot ${done ? "drv-dot--done" : now ? "drv-dot--now" : "drv-dot--wait"}`}>
-                {done ? "✓" : st.n}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div>{st.label}</div>
-                <div className="drv-muted">
-                  {done ? "Completado" : now ? "En progreso" : "Pendiente"}
-                </div>
-              </div>
+        <div className="drv-row" style={{ justifyContent: "space-between" }}>
+          <strong>Secuencia de carga</strong>
+          <span className="drv-muted">{view.counter}</span>
+        </div>
+        {view.steps.map((st) => (
+          <div className="drv-step" key={st.type}>
+            <div className={`drv-dot ${st.done ? "drv-dot--done" : st.current ? "drv-dot--now" : "drv-dot--wait"}`}>
+              {st.done ? "✓" : st.n}
             </div>
-          );
-        })}
+            <div style={{ flex: 1 }}>
+              <div>{st.label}</div>
+              <div className="drv-muted">{st.status}</div>
+            </div>
+          </div>
+        ))}
       </div>
       <div className="drv-card">
         <strong>Resumen de carga</strong>
         <p>
-          Tipo: {info.producto || "Paneles BMC"} · Destino: {dest?.cliente || dest?.direccion || "—"}
+          {plan.info?.producto || "Paneles BMC"}
+          {feed.qty > 0 ? ` · ${feed.qty} unidades` : ""}
         </p>
-        {qty > 0 && <p className="drv-muted">Cantidad {qty}</p>}
+        <p className="drv-muted">Destino final · {dest}</p>
       </div>
       <p className="drv-muted">Seguridad primero · Usá EPP en fábrica.</p>
       <button
         type="button"
         className="drv-cta drv-cta--orange"
-        onClick={() => sendEvent(current.type)}
+        onClick={() => sendEvent(view.eventType)}
       >
-        {current.label}
+        {view.cta}
       </button>
     </div>
   );

@@ -4,15 +4,19 @@
 **Tokens:** `src/styles/bmc-driver.css` (`--drv-*`)  
 **Not** Liquid Glass (operator `/logistica`) and **not** Applied AI (Hub). Chofer works outdoors / at night.
 
-Visual specs (source of truth for layout):
+Visual specs (source of truth for layout) — **SVG kit 2026-09-06**, not the old JPG pack:
 
 | # | File | Screen |
 |---|------|--------|
-| 1 | `evidence/screens/01-login.jpg` | Login |
-| 2 | `evidence/screens/02-profile.jpg` | Perfil |
-| 3 | `evidence/screens/03-trip-phases-carga.jpg` | Secuencia de carga |
-| 4 | `evidence/screens/04-trips-admin-home.png` | Home / administración de viajes |
-| 5 | `evidence/screens/05-trip-done.png` | Viaje completado |
+| 1 | `evidence/svg-kit-2026-09-06/login.svg` | Login |
+| 2 | `evidence/svg-kit-2026-09-06/home.svg` | Home / viaje en curso |
+| 3 | `evidence/svg-kit-2026-09-06/load.svg` | Carga en fábrica |
+| 4 | `evidence/svg-kit-2026-09-06/done.svg` | Viaje completado |
+| 5 | `evidence/svg-kit-2026-09-06/profile.svg` | Perfil |
+
+JPG files under `evidence/screens/` are archival. Do not treat them as layout SoT.
+
+**Route feed:** origin, dest, stops, qty, remito, next step come from the assigned trip `plan_snapshot` produced by `/logistica` confirm (`joinRepartoToTrip`). Driver never invents stops. Montevideo→Pando in the SVG kit is **demo sample content** only.
 
 ---
 
@@ -24,7 +28,7 @@ Visual specs (source of truth for layout):
 | `--drv-card` | `#122033` | Cards |
 | `--drv-text` | `#f4f7fb` | Primary text |
 | `--drv-mute` | `#8b9bb0` | Labels |
-| `--drv-orange` | `#f15a24` | Primary CTA (Ingresar, Iniciar carga, FAB) |
+| `--drv-orange` | `#f15a24` | Primary CTA (Ingresar, current factory step) |
 | `--drv-navy` | `#1e3a8a` | Secondary (offline login) |
 | `--drv-green` | `#22c55e` | Done / success |
 | `--drv-blue` | `#2563eb` | In-progress step / remitos |
@@ -52,9 +56,9 @@ Phone compact **390×844**. CTA in bottom 40%. Hit ≥ 48px. `100dvh` + `env(saf
 
 ### 2.2 Profile — `/conductor/perfil`
 
-Hero: avatar, name, “Chofer - BMC Uruguay”, conductor id, license chip, Editar perfil.  
-Cards: datos, preferencias (tema, texto), notificaciones, offline+sync, Cerrar sesión.  
-Tab bar: Viajes · Historial · Mapa · Documentos · **Perfil**.
+Hero: avatar, name, “Chofer - BMC Uruguay”, conductor id. Outdoor Night (not a light profile).  
+Cards: datos, preferencias (tema Outdoor/Night activo), offline+sync, Cerrar sesión.  
+Tab bar: **Inicio · Carga · Listo · Perfil** (Perfil selected).
 
 **v1 wiring:** name/phone from `bmc-driver-profile-v1` + trip snapshot. Cerrar sesión clears token. Offline badge = pending outbox count. Mapa/Documentos/Historial = same trip views or “próximamente” — do not invent a second document store.
 
@@ -70,18 +74,20 @@ Title **Carga en fábrica**. Ordered steps mapped 1:1 to events:
 | Salí de fábrica | `factory_departed` |
 
 Current step = blue “En progreso”; done = green; pending = mute.  
+Header counter is **N de 4** where N is the in-progress step (not “always 1”).  
 Resumen de carga from `plan_snapshot` (tipo, qty, destino, peso/m³ if present).  
-**Ver carga en 3D** → optional deep-link `/logistica` is **operator**; v1 hide or open read-only note.  
+**Carga 3D** is deferred (“Próximamente”); do not deep-link the chofer into operator `/logistica`.  
 Orange CTA = action for the **current** step (not a parallel UUID field).  
-After `factory_departed`, UI switches to delivery stops (`stop_arrived` / `delivery_completed`) then **listo**.
+After `factory_departed`, UI switches to delivery stops (`stop_arrived` / `delivery_completed`) then **listo**.  
+Tab bar: Inicio · **Carga** · Listo · Perfil.
 
 ### 2.4 Trips admin (home) — `/conductor` with session
 
 Greeting **Hola {name}**. Offline banner if `navigator.onLine === false` or outbox > 0.  
-Card **Viaje en curso**: origin → destination from first pickup + last delivery (UY, not BA–Córdoba placeholder). Progress from event count. Stats: salida, carga, ETA if snapshot has them.  
-Acciones rápidas: Mis rutas (home), Carga 3D (deferred), Remitos (photo evidence), Mapa (OSM of last ping).  
+Card **Viaje en curso**: origin → destination from `projectDriverTripFeed` (pickup / last delivery on `plan_snapshot`). UY stops from REP, not BA–Córdoba.  
+Acciones rápidas: Mis rutas (carga), Remitos (photo evidence). Carga 3D and Mapa = muted **Próximamente**. No `+` FAB.  
 Actividad reciente = `timeline` events.  
-Bottom: Inicio · Rutas · **+ Registrar** (evidence) · Remitos. `+` is photo POD, not a new trip (operator assigns).
+Bottom tab bar: **Inicio** · Carga · Listo · Perfil. Operator assigns trips; Driver never mints a route.
 
 **API today:** one trip per driver session. List of historical trips = TARGET (same table, extra query). v1: current trip + timeline as activity.
 
@@ -90,22 +96,23 @@ Bottom: Inicio · Rutas · **+ Registrar** (evidence) · Remitos. `+` is photo P
 Shown when `delivery_completed` for all delivery stops **or** trip `closed`.  
 Stats: paradas, km (haversine from snapshot geos if any), remitos (`evidence_committed` count), incidencias.  
 Resumen de paradas with times from events.  
-CTA primary **Ver remitos** (evidence list). Secondary **Nueva ruta** → home (does **not** create a trip).
+CTA primary **Ver remitos** (evidence / home). Secondary **Nueva ruta** → home (does **not** create a trip). Split those two; do not combine “Ver remitos / inicio”.  
+Same tab bar as other session screens, **Listo** selected.
 
-Peak–end: this is the last screen of the job; keep it calm and green.
+Peak–end: this is the last screen of the job; keep it calm and green. No fake iOS chrome in the PWA (Figma device frames are OK).
 
 ---
 
 ## 3. Navigation map
 
 ```
-Login ──?t= / Ingresar──► Home (admin)
-                              ├─ Carga (phases)
-                              ├─ Listo (done)
+Login ──?t= / Ingresar──► Home (Inicio)
+                              ├─ Carga
+                              ├─ Listo   (same tab bar)
                               └─ Perfil
 ```
 
-No `BmcModuleNav`. No Google `AuthHeader`. Safe-area tab bar.
+One tab bar: Inicio / Carga / Listo / Perfil. No `BmcModuleNav`. No Google `AuthHeader`. Safe-area tab bar. No fake iPhone status bar in the shipped PWA.
 
 ---
 
@@ -122,3 +129,5 @@ Spanish (UY). Destinations come from REP stops (`cliente`, `direccion`), never m
 - Changing global PWA `start_url` away from `/calculadora`.
 - Username/password against identity JWT (that is Hub, not chofer).
 - Auto-send customer WhatsApp.
+- Treating the old JPG pack as layout SoT.
+- Hardcoding production cities (Montevideo/Pando) when a live trip exists.
