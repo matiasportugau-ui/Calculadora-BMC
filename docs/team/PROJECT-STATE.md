@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-06 (feat — Driver PWA binds logística feed + Outdoor Night Figma)
+**Última actualización:** 2026-09-06 (fix — trip close ignores pickup/levante stops)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-06 (fix — trip/reparto close ignores pickup stops):** `projectRepartoFromDriverEvent` required `delivery_completed` for every stop id, including `kind:levante|pickup`. Plans from `joinRepartoToTrip` with a factory levante never reached `cerrado` after all deliveries. Close now uses delivery-only ids (`tripCloseProjection.js`). Driver Carga Entregas UI + `done` also skip pickups. Test `tripCloseProjection`.
 
 **2026-09-06 (feat — BMC Driver consumes `/logistica` route feed):** `/conductor` binds `GET /api/driver/trips` + `plan_snapshot` (`driverTripFeed.js`). Carga CTA = current factory event (`cargaFactoryStep.js`, N de 4). Tabs Inicio/Carga/Listo/Perfil. SVG kit visual SoT; TARGET D7. Figma file `iGZDe5LeC2ZDOdjbB3uH9q` nodes 21:12–21:24 Outdoor Night 390×844. Tests `cargaFactoryStep` + extended `logisticaE2e`. Branch `feat/logistica-driver-figma-loop`. Torre T5–T8 still TARGET.
 
