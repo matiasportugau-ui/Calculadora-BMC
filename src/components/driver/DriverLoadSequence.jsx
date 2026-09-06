@@ -5,11 +5,12 @@ export default function DriverLoadSequence({
   timeline,
   plan,
   stops,
+  trip,
   sendEvent,
   onAfterDepart,
 }) {
   const view = cargaFactoryView(timeline);
-  const feed = projectDriverTripFeed({ plan, stops });
+  const feed = projectDriverTripFeed({ trip, plan, stops });
   const dest = feed.dest || "—";
 
   if (view.complete) {

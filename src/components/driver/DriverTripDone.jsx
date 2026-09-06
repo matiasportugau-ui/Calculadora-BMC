@@ -1,10 +1,12 @@
+import { useRef } from "react";
 import { projectDriverTripFeed } from "../../utils/logistica/driverTripFeed.js";
 
-export default function DriverTripDone({ stops, timeline, plan, onHome, onRemitos }) {
+export default function DriverTripDone({ stops, timeline, plan, trip, onHome, onEvidence }) {
   const evidence = (timeline || []).filter((e) => e.event_type === "evidence_committed").length;
   const incidents = (timeline || []).filter((e) => e.event_type === "incident_reported").length;
   const km = Number(plan.trip_km || plan.info?.km || 0);
-  const feed = projectDriverTripFeed({ plan, stops });
+  const remitosRef = useRef(null);
+  const feed = projectDriverTripFeed({ trip, plan, stops });
 
   return (
     <div className="drv-scroll">
@@ -49,9 +51,23 @@ export default function DriverTripDone({ stops, timeline, plan, onHome, onRemito
         ))}
         {!stops.length && <p className="drv-muted">Sin paradas en el viaje asignado.</p>}
       </div>
-      <button type="button" className="drv-cta drv-cta--blue" onClick={onRemitos || onHome}>
+      <button type="button" className="drv-cta drv-cta--blue" onClick={() => remitosRef.current?.click()}>
         Ver remitos
       </button>
+      <input
+        ref={remitosRef}
+        className="drv-file-hidden"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f && onEvidence) onEvidence(f);
+          e.target.value = "";
+        }}
+      />
       <button type="button" className="drv-cta drv-cta--ghost" onClick={onHome}>
         Nueva ruta
       </button>

@@ -22,9 +22,9 @@ Source CSS has gradient atmosphere rather than a warehouse image; no photo asset
 has been fabricated. All trip details, names, times and totals are demo data.
 
 STATUS
-Direct Figma construction was blocked by the account's Starter MCP call limit.
-The original Figma file contains incomplete foundations, not the finished screens.
-These SVGs and the browser preview are the completed review deliverables.
+Visual SoT for layout is this SVG kit plus the official Outdoor Night frames
+on Figma file iGZDe5LeC2ZDOdjbB3uH9q (nodes 21:12 login, 21:15 home, 21:18 carga,
+21:21 listo, 21:24 perfil). Live PWA data still comes from /logistica plan_snapshot.
 
-Figma file: https://www.figma.com/design/V68EvDm9G1x6TMECH8Z0CG
+Figma file: https://www.figma.com/design/iGZDe5LeC2ZDOdjbB3uH9q
 Source: https://github.com/matiasportugau-ui/Calculadora-BMC/tree/main/src/components/driver

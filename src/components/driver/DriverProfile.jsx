@@ -51,7 +51,7 @@ export default function DriverProfile({ profile, pendingCount, online, onSave, o
         </div>
         <span className="drv-chip-ok">Activo</span>
       </div>
-      <div className="drv-banner drv-banner--ok">
+      <div className={`drv-banner${online && !pendingCount ? " drv-banner--ok" : ""}`}>
         {online ? "En línea" : "Offline"}
         {pendingCount ? ` · ${pendingCount} pendiente(s)` : " · Sin pendientes"}
       </div>

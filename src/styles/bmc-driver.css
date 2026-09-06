@@ -200,6 +200,13 @@
   font-size: 11px;
   cursor: pointer;
 }
+.drv-file-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
 .drv-quick--soon {
   color: var(--drv-mute);
   cursor: not-allowed;

@@ -58,11 +58,15 @@ export function projectDriverTripFeed(input = {}) {
       : [];
   const deliveries = list.filter((s) => !isPickupStop(s));
   const pickups = list.filter(isPickupStop);
+  const pickupId = list.find((s) => s?.pickupPointId)?.pickupPointId || snapshot.info?.pickupPointId;
+  const customPickup =
+    String(list[0]?.pickupLabel || list[0]?.pickup_label || snapshot.info?.pickupName || "").trim();
   const origin =
     String(snapshot.info?.pickup_label || "").trim() ||
     (pickups[0] ? stopLabel(pickups[0]) : "") ||
-    pickupPointLabel(list[0]?.pickupPointId) ||
-    (list[0] ? stopLabel(list[0]) : "");
+    pickupPointLabel(pickupId) ||
+    customPickup ||
+    (pickupId ? String(pickupId) : list[0] ? stopLabel(list[0]) : "");
   const destStop = deliveries[deliveries.length - 1] || list[list.length - 1];
   const dest = destStop ? stopLabel(destStop) : "";
   const remito = String(snapshot.reparto_no || trip.reparto_no || "").trim();

@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { projectDriverTripFeed } from "../../utils/logistica/driverTripFeed.js";
 
 export default function DriverHome({
@@ -13,6 +14,7 @@ export default function DriverHome({
   onGoCarga,
   onEvidence,
 }) {
+  const remitosRef = useRef(null);
   const name = profile.name || plan.info?.chofer_name || "chofer";
   const feed = projectDriverTripFeed({ trip, plan, stops });
   const from = feed.origin || (feed.demo ? "" : "—");
@@ -60,28 +62,38 @@ export default function DriverHome({
             </p>
           </>
         )}
-        <button type="button" className="drv-cta drv-cta--orange" onClick={onGoCarga}>
-          Continuar viaje
-        </button>
+        {feed.demo ? (
+          <button type="button" className="drv-cta drv-cta--orange" disabled>
+            Sin viaje asignado
+          </button>
+        ) : (
+          <button type="button" className="drv-cta drv-cta--orange" onClick={onGoCarga}>
+            Continuar viaje
+          </button>
+        )}
       </div>
       <h2 style={{ fontSize: 15, margin: "8px 0" }}>Acciones rápidas</h2>
       <div className="drv-quick">
-        <button type="button" onClick={onGoCarga}>
+        <button type="button" onClick={onGoCarga} disabled={feed.demo}>
           Mis rutas
         </button>
-        <label style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <button type="button" onClick={() => remitosRef.current?.click()}>
           Remitos
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onEvidence(f);
-            }}
-          />
-        </label>
+        </button>
+        <input
+          ref={remitosRef}
+          className="drv-file-hidden"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onEvidence(f);
+            e.target.value = "";
+          }}
+        />
         <button type="button" disabled className="drv-quick--soon" title="Próximamente">
           Carga 3D
           <span>Próximamente</span>

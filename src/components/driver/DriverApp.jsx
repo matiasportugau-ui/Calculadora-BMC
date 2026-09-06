@@ -74,6 +74,7 @@ export default function DriverApp() {
               timeline={sess.timeline}
               plan={sess.plan}
               stops={sess.stops}
+              trip={sess.trip}
               sendEvent={sess.sendEvent}
               onAfterDepart={() => navigate("/conductor/listo")}
             />
@@ -86,8 +87,9 @@ export default function DriverApp() {
               stops={sess.stops}
               timeline={sess.timeline}
               plan={sess.plan}
+              trip={sess.trip}
               onHome={() => navigate("/conductor")}
-              onRemitos={() => navigate("/conductor")}
+              onEvidence={evidence}
             />
           }
         />
