@@ -104,6 +104,7 @@ import {
   createWizardUi,
   shouldEnableWizard,
   applyDefaultPickupToStops,
+  stampPickupLabels,
 } from "../utils/logistica/wizardState.js";
 import { suggestRoute } from "../utils/logistica/routeSuggest.js";
 import EnvioWizardShell from "./logistica/wizard/EnvioWizardShell.jsx";
@@ -3162,6 +3163,7 @@ export default function BmcLogisticaApp() {
       freePositions,
       loadWarnings,
       info,
+      places: catalogPlaces,
     });
     if (activeReparto.local || !enviosAuthToken()) {
       setActiveReparto((r) => (r ? { ...r, revision: (r.revision || 1) + 1, status: "en_coordinacion" } : r));
@@ -3216,6 +3218,7 @@ export default function BmcLogisticaApp() {
       freePositions,
       loadWarnings,
       info,
+      places: catalogPlaces,
     });
     if (activeReparto.local || !enviosAuthToken()) {
       setActiveReparto((r) =>
@@ -3774,7 +3777,9 @@ export default function BmcLogisticaApp() {
               if (w.activeStep === "carga") setView("form");
               // when completing levantes single mode, apply default pickup
               if (w.done?.levantes && w.singlePickup !== false && w.defaultPickupPointId) {
-                setStops((prev) => applyDefaultPickupToStops(prev, w.defaultPickupPointId));
+                setStops((prev) =>
+                  applyDefaultPickupToStops(prev, w.defaultPickupPointId, catalogPlaces),
+                );
               }
               setWizardUi(w);
             }}
@@ -3920,7 +3925,14 @@ export default function BmcLogisticaApp() {
                   places={catalogPlaces}
                   onWizardPatch={(patch) => setWizardUi((p) => createWizardUi({ ...p, ...patch, routeStale: true }))}
                   onStopPickup={(sid, pid) => {
-                    setStops((p) => p.map((s) => (s.id === sid ? { ...s, pickupPointId: pid } : s)));
+                    const label = String(getPlaceById(catalogPlaces, pid)?.label || "").trim();
+                    setStops((p) =>
+                      p.map((s) =>
+                        s.id === sid
+                          ? { ...s, pickupPointId: pid, ...(label ? { pickupLabel: label } : {}) }
+                          : s,
+                      ),
+                    );
                     setWizardUi((p) => createWizardUi({ ...p, routeStale: true }));
                   }}
                   newLabel={newPickupLabel}
@@ -3965,8 +3977,12 @@ export default function BmcLogisticaApp() {
                     saveCatalogToStorage(placesForRoute);
                     let stopsForRoute =
                       wizardUi.singlePickup !== false
-                        ? applyDefaultPickupToStops(stops, wizardUi.defaultPickupPointId)
-                        : stops;
+                        ? applyDefaultPickupToStops(
+                            stops,
+                            wizardUi.defaultPickupPointId,
+                            placesForRoute,
+                          )
+                        : stampPickupLabels(stops, placesForRoute);
 
                     // Parse coords from mapLink/mapUrl into stop.geo when possible
                     stopsForRoute = stopsForRoute.map((s) => {

@@ -5,6 +5,8 @@
  */
 import assert from "node:assert/strict";
 import { projectDriverTripFeed } from "../src/utils/logistica/driverTripFeed.js";
+import { applyDefaultPickupToStops } from "../src/utils/logistica/wizardState.js";
+import { buildRepartoPayload } from "../src/utils/logistica/repartoStatus.js";
 
 console.log("driverTripFeed");
 
@@ -73,6 +75,63 @@ console.log("driverTripFeed");
   assert.equal(empty.demo, true);
   assert.equal(empty.origin, "");
   console.log("  ✓ no trip → demo feed");
+}
+
+{
+  // Real confirm path: applyDefaultPickup stamps label → join → driver feed
+  const places = [{ id: "pickup-custom-pepe", label: "Galpón Pepe" }];
+  const stops = applyDefaultPickupToStops(
+    [
+      {
+        cliente: "Obra",
+        direccion: "Pando",
+        orderId: "BMC-1",
+        paneles: [{ cantidad: 8 }],
+      },
+    ],
+    "pickup-custom-pepe",
+    places,
+  );
+  assert.equal(stops[0].pickupLabel, "Galpón Pepe");
+  const payload = buildRepartoPayload({ stops, info: { chofer_phone: "099111222" }, places });
+  assert.equal(payload.stops[0].pickupLabel, "Galpón Pepe");
+  assert.equal(payload.info.pickup_label, "Galpón Pepe");
+  const feed = projectDriverTripFeed({
+    trip: {
+      trip_id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      plan_snapshot: {
+        reparto_no: "ENV-3",
+        stops: payload.stops,
+        info: payload.info,
+      },
+    },
+  });
+  assert.equal(feed.origin, "Galpón Pepe");
+  assert.equal(feed.dest, "Pando");
+  assert.equal(feed.qty, 8);
+  assert.notEqual(feed.origin, "pickup-custom-pepe");
+  console.log("  ✓ custom levante confirm stamps label → driver origin not opaque id");
+}
+
+{
+  // paneles[] + legacy qty must not double-count
+  const feed = projectDriverTripFeed({
+    trip: {
+      trip_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      plan_snapshot: {
+        stops: [
+          {
+            pickupPointId: "pickup-kingspan-bromyros",
+            direccion: "Las Piedras",
+            paneles: [{ cantidad: 10 }],
+            qty: 10,
+          },
+        ],
+      },
+    },
+  });
+  assert.equal(feed.qty, 10);
+  console.log("  ✓ qty prefers paneles[] (no double-count with legacy qty)");
 }
 
 console.log("driverTripFeed OK");
