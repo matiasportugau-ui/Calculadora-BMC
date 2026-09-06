@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { shouldWatchGps } from "../../utils/logistica/torreLiveView.js";
+import { eventTypes, factoryPhase } from "../../utils/logistica/cargaFactoryStep.js";
+
+export { eventTypes, factoryPhase };
 
 const TOKEN_KEY = "transportista_driver_token";
 const PROFILE_KEY = "bmc-driver-profile-v1";
@@ -60,19 +63,6 @@ export function readProfile() {
 
 export function writeProfile(next) {
   localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
-}
-
-export function eventTypes(timeline) {
-  return new Set((timeline || []).map((e) => e.event_type));
-}
-
-export function factoryPhase(timeline) {
-  const t = eventTypes(timeline);
-  if (t.has("factory_departed")) return 4;
-  if (t.has("load_completed")) return 3;
-  if (t.has("load_started")) return 2;
-  if (t.has("factory_arrived")) return 1;
-  return 0;
 }
 
 const FACTORY_EVENTS = ["factory_arrived", "load_started", "load_completed", "factory_departed"];

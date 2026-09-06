@@ -30,6 +30,8 @@ import { shouldWatchGps } from "../src/utils/logistica/torreLiveView.js";
 import { applyTowerAction } from "../src/utils/logistica/torreAgent.js";
 import { driverInstallUrl, driverRouteUrl, isDriverRouteUrl } from "../src/utils/logistica/driverQr.js";
 import { sanitizeSnapshot } from "../src/utils/logistica/customerTrackView.js";
+import { projectDriverTripFeed } from "../src/utils/logistica/driverTripFeed.js";
+import { cargaFactoryView } from "../src/utils/logistica/cargaFactoryStep.js";
 
 console.log("logisticaE2e (no Playwright)");
 
@@ -116,9 +118,19 @@ assert.ok(token && token.length >= 16);
   const listed = await listTripsForDriverAuth(pool, authz);
   assert.equal(listed.ok, true);
   assert.equal(listed.trips[0].trip_id, join.trip_id);
+  const feed = projectDriverTripFeed({ trip: listed.trips[0] });
+  assert.equal(feed.demo, false);
+  assert.equal(feed.remito, "ENV-260828-001");
+  assert.equal(feed.dest, "Las Piedras");
+  assert.equal(feed.origin, "Kingspan (Bromyros)");
+  assert.equal(feed.qty, 16);
+  assert.equal(feed.stopCount, 1);
   assert.equal(isAllowedDriverEventType("location_ping"), true);
   assert.equal(isAllowedDriverEventType("factory_arrived"), true);
+  const carga = cargaFactoryView([]);
+  assert.equal(carga.eventType, "factory_arrived");
   console.log("  ✓ driver session lists assigned trip (GET /api/driver/trips path)");
+  console.log("  ✓ listed trip feed origin/dest/qty/remito from join snapshot");
 }
 
 {
@@ -146,7 +158,30 @@ assert.ok(token && token.length >= 16);
   assert.ok(!JSON.stringify(live).includes(token));
   assert.equal(shouldWatchGps(live.trips[0]), true);
   assert.equal(shouldWatchGps({ status: "closed" }), false);
+  assert.equal(isAllowedDriverEventType("factory_arrived"), true);
+  await pool.query(
+    `insert into trip_events (trip_id, stop_id, event_type, actor_type, actor_id, idempotency_key, at_server, payload)
+     values ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [
+      join.trip_id,
+      null,
+      "factory_arrived",
+      "driver",
+      null,
+      "e2e-factory-arrived-1",
+      new Date(now - 10_000).toISOString(),
+      JSON.stringify({ source: "e2e" }),
+    ],
+  );
+  const liveAfterFactory = await loadTorreLive(pool, { now });
+  assert.equal(liveAfterFactory.ok, true);
+  assert.equal(liveAfterFactory.trips.length, 1);
+  assert.equal(String(liveAfterFactory.trips[0].trip_id), String(join.trip_id));
+  const afterFactory = cargaFactoryView([{ event_type: "factory_arrived" }]);
+  assert.equal(afterFactory.counter, "2 de 4");
+  assert.equal(afterFactory.eventType, "load_started");
   console.log("  ✓ torre live online after ping; GPS off when closed");
+  console.log("  ✓ factory_arrived still listed on Torre live; carga CTA = load_started");
 }
 
 {

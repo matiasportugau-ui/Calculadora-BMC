@@ -9,7 +9,7 @@ export default function DriverLogin({ onLogin, status, offlineHint }) {
       <div className="drv-mark">
         <div className="hex">BMC</div>
         <h1 className="drv-h1">BMC Driver</h1>
-        <p className="drv-sub">Iniciá sesión para continuar</p>
+        <p className="drv-sub">Tu ruta. Cada paso, bajo control.</p>
       </div>
       <div className="drv-card">
         <label className="drv-label">Email o celular</label>
@@ -18,7 +18,7 @@ export default function DriverLogin({ onLogin, status, offlineHint }) {
           autoComplete="username"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="juan@bmc.uy o 099…"
+          placeholder="Tu email o celular"
         />
         <label className="drv-label">Contraseña</label>
         <input
@@ -50,9 +50,7 @@ export default function DriverLogin({ onLogin, status, offlineHint }) {
         {offlineHint ? <p className="drv-muted">{offlineHint}</p> : null}
       </div>
       <p className="drv-muted" style={{ textAlign: "center", marginTop: 16 }}>
-        BMC Driver · Logística inteligente
-        <br />
-        bmcuruguay.com.uy
+        BMC URUGUAY · CONDUCTOR
       </p>
     </div>
   );

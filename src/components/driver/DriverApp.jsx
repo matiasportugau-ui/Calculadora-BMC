@@ -71,7 +71,7 @@ export default function DriverApp() {
           path="carga"
           element={
             <DriverLoadSequence
-              phase={sess.phase}
+              timeline={sess.timeline}
               plan={sess.plan}
               stops={sess.stops}
               sendEvent={sess.sendEvent}
@@ -87,6 +87,7 @@ export default function DriverApp() {
               timeline={sess.timeline}
               plan={sess.plan}
               onHome={() => navigate("/conductor")}
+              onRemitos={() => navigate("/conductor")}
             />
           }
         />

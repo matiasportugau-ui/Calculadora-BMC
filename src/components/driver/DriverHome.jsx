@@ -1,3 +1,5 @@
+import { projectDriverTripFeed } from "../../utils/logistica/driverTripFeed.js";
+
 export default function DriverHome({
   profile,
   trip,
@@ -12,17 +14,19 @@ export default function DriverHome({
   onEvidence,
 }) {
   const name = profile.name || plan.info?.chofer_name || "chofer";
-  const first = stops[0];
-  const last = stops[stops.length - 1];
-  const from = first?.direccion || first?.cliente || plan.info?.pickup_label || "Carga";
-  const to = last?.direccion || last?.cliente || "Entrega";
+  const feed = projectDriverTripFeed({ trip, plan, stops });
+  const from = feed.origin || (feed.demo ? "" : "—");
+  const to = feed.dest || (feed.demo ? "" : "—");
   const recent = [...(timeline || [])].reverse().slice(0, 6);
 
   return (
     <div className="drv-scroll">
-      <h1 className="drv-h1">Hola {name}</h1>
-      <p className="drv-sub">Listo para un nuevo viaje</p>
-      {(!online || pendingCount > 0) && (
+      <p className="drv-kicker">BMC DRIVER</p>
+      <h1 className="drv-h1">Hola, {name}</h1>
+      <p className="drv-sub">Tu viaje de hoy, en un solo lugar.</p>
+      {online && pendingCount === 0 ? (
+        <div className="drv-banner drv-banner--ok">En línea · Todo sincronizado</div>
+      ) : (
         <div className="drv-banner">
           Modo sin conexión
           <div>
@@ -40,16 +44,22 @@ export default function DriverHome({
       {status ? <p className="drv-danger">{status}</p> : null}
       <div className="drv-card">
         <div className="drv-row" style={{ justifyContent: "space-between" }}>
-          <strong>Viaje en curso</strong>
+          <strong>VIAJE EN CURSO</strong>
           <span style={{ color: "#f15a24", fontSize: 12 }}>{trip?.status || "—"}</span>
         </div>
-        <p style={{ margin: "10px 0 4px" }}>
-          <span className="drv-muted">De</span> {from}
-        </p>
-        <p style={{ margin: "0 0 10px" }}>
-          <span className="drv-muted">A</span> {to}
-        </p>
-        <p className="drv-muted">{stops.length} parada(s) · {plan.reparto_no || trip?.trip_id?.slice(0, 8)}</p>
+        {feed.demo ? (
+          <p className="drv-muted">Sin viaje asignado. El operador confirma la ruta en Logística.</p>
+        ) : (
+          <>
+            <p style={{ margin: "10px 0 4px", fontSize: 22, fontWeight: 700 }}>
+              {from} → {to}
+            </p>
+            <p className="drv-muted">
+              {feed.remito || trip?.trip_id?.slice(0, 8)} · {feed.stopCount} parada(s)
+              {feed.qty > 0 ? ` · ${feed.qty} paneles` : ""}
+            </p>
+          </>
+        )}
         <button type="button" className="drv-cta drv-cta--orange" onClick={onGoCarga}>
           Continuar viaje
         </button>
@@ -58,9 +68,6 @@ export default function DriverHome({
       <div className="drv-quick">
         <button type="button" onClick={onGoCarga}>
           Mis rutas
-        </button>
-        <button type="button" disabled>
-          Carga 3D
         </button>
         <label style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
           Remitos
@@ -75,8 +82,13 @@ export default function DriverHome({
             }}
           />
         </label>
-        <button type="button" disabled>
+        <button type="button" disabled className="drv-quick--soon" title="Próximamente">
+          Carga 3D
+          <span>Próximamente</span>
+        </button>
+        <button type="button" disabled className="drv-quick--soon" title="Próximamente">
           Mapa
+          <span>Próximamente</span>
         </button>
       </div>
       <h2 style={{ fontSize: 15, margin: "16px 0 8px" }}>Actividad reciente</h2>
