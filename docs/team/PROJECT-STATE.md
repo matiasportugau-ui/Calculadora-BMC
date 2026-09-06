@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-31 (docs — Panelin install sequence increment)
+**Última actualización:** 2026-09-06 (test — brain rank, Sheets auth cache, driver trip own, voice shape)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-06 (test — brain rank, Sheets auth cache, driver trip own, voice shape):** Pins `rankLessons` / local `{lessons}` hydrate, GoogleAuth same-scope cache + reject-retry, `driverAuthOwnsTrip` magic-link vs chofer IDOR, and storefront `shapeToolResult` catalog/PDF compaction. Wired `brainKBRank` / `googleAuthCache` / `voiceShapeStorefront` at end of `test:agent`; `driverAuthOwnsTrip` at end of `test:core`. No production change.
 
 **2026-09-04 (feat — Panelin Front live: STT+TTS, sell loop, Admin log, quote→cart):** Public shop agent default is **pipeline** (browser STT + `/chat` + optional TTS), not Grok S2S. Shared IAlfred↔Panelin lessons via public-safe `storefrontBrain.js`. Sell loop offers ficha/cart/PDF (not insist-only). Tap chips (`present_choices`). PDF also maps BOM to Shopify cart lines. Every `/chat` writes Admin 2.0 col J (`origen=VW`). Gemini fallback if Grok dry. Sheets identify accepts inline SA JSON. Shop widget already loads Cloud Run `widget.js` — this ships the API revision. Tests: `storefrontVoicePack`, `storefrontBrain`, `storefrontChoices`, `storefrontQuoteCart`, `publicVoiceAdmin`, `googleSheetsAuth`.
 
