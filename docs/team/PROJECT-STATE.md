@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-09-06 (fix — custom levante label reaches Driver feed):** After #1209, `/conductor` showed opaque `pickup-*` ids as origin when the operator used a user-created levante (catalog label lived only in localStorage; confirm never stamped `pickupLabel` / `info.pickup_label`). Stamp labels on apply/confirm/`prepareJoinContext`; prefer `paneles[]` for qty (no double-count with legacy `qty`). Tests: `wizardState`, `driverTripFeed`, `repartoTripBridge`.
+
 **2026-09-06 (feat — BMC Driver consumes `/logistica` route feed):** `/conductor` binds `GET /api/driver/trips` + `plan_snapshot` (`driverTripFeed.js`). Carga CTA = current factory event (`cargaFactoryStep.js`, N de 4). Tabs Inicio/Carga/Listo/Perfil. SVG kit visual SoT; TARGET D7. Figma file `iGZDe5LeC2ZDOdjbB3uH9q` nodes 21:12–21:24 Outdoor Night 390×844. Tests `cargaFactoryStep` + extended `logisticaE2e`. Branch `feat/logistica-driver-figma-loop`. Torre T5–T8 still TARGET.
 
 **2026-09-04 (feat — Panelin Front live: STT+TTS, sell loop, Admin log, quote→cart):** Public shop agent default is **pipeline** (browser STT + `/chat` + optional TTS), not Grok S2S. Shared IAlfred↔Panelin lessons via public-safe `storefrontBrain.js`. Sell loop offers ficha/cart/PDF (not insist-only). Tap chips (`present_choices`). PDF also maps BOM to Shopify cart lines. Every `/chat` writes Admin 2.0 col J (`origen=VW`). Gemini fallback if Grok dry. Sheets identify accepts inline SA JSON. Shop widget already loads Cloud Run `widget.js` — this ships the API revision. Tests: `storefrontVoicePack`, `storefrontBrain`, `storefrontChoices`, `storefrontQuoteCart`, `publicVoiceAdmin`, `googleSheetsAuth`.

@@ -14,6 +14,7 @@ import {
   stepSummary,
   shouldEnableWizard,
   applyDefaultPickupToStops,
+  stampPickupLabels,
   createWizardUi,
   adjacentStep,
   levanteIncompleteMessage,
@@ -121,6 +122,27 @@ console.log("wizardState");
   // Single-mode must overwrite stale per-stop pickups (wrong warehouse otherwise).
   assert.equal(next[1].pickupPointId, "def");
   ok("applyDefaultPickupToStops overwrites");
+}
+
+{
+  const places = [{ id: "pickup-custom-pepe", label: "Galpón Pepe" }];
+  const next = applyDefaultPickupToStops(
+    [{ id: "1", cliente: "Obra", direccion: "Pando" }],
+    "pickup-custom-pepe",
+    places,
+  );
+  assert.equal(next[0].pickupPointId, "pickup-custom-pepe");
+  assert.equal(next[0].pickupLabel, "Galpón Pepe");
+  ok("applyDefaultPickupToStops stamps pickupLabel from catalog");
+}
+
+{
+  const stamped = stampPickupLabels(
+    [{ id: "1", pickupPointId: "pickup-custom-pepe", direccion: "Pando" }],
+    [{ id: "pickup-custom-pepe", label: "Galpón Pepe" }],
+  );
+  assert.equal(stamped[0].pickupLabel, "Galpón Pepe");
+  ok("stampPickupLabels fills missing label from places");
 }
 
 {

@@ -25,7 +25,9 @@ function qtyFromStops(stops) {
   return (stops || []).reduce((n, s) => {
     const panels = Array.isArray(s?.paneles) ? s.paneles : [];
     const fromPanels = panels.reduce((m, p) => m + Number(p?.cantidad || p?.qty || 0), 0);
-    return n + fromPanels + Number(s?.qty || s?.cantidad || 0);
+    // Prefer paneles[] when present — avoid double-count if legacy qty mirrors the same panels.
+    if (panels.length > 0) return n + fromPanels;
+    return n + Number(s?.qty || s?.cantidad || 0);
   }, 0);
 }
 
@@ -61,12 +63,14 @@ export function projectDriverTripFeed(input = {}) {
   const pickupId = list.find((s) => s?.pickupPointId)?.pickupPointId || snapshot.info?.pickupPointId;
   const customPickup =
     String(list[0]?.pickupLabel || list[0]?.pickup_label || snapshot.info?.pickupName || "").trim();
+  // Never fall back to delivery stopLabel as origin (steals dest city).
+  // Opaque pickupPointId is last resort until confirm stamps pickupLabel.
   const origin =
     String(snapshot.info?.pickup_label || "").trim() ||
     (pickups[0] ? stopLabel(pickups[0]) : "") ||
     pickupPointLabel(pickupId) ||
     customPickup ||
-    (pickupId ? String(pickupId) : list[0] ? stopLabel(list[0]) : "");
+    (pickupId ? String(pickupId) : "");
   const destStop = deliveries[deliveries.length - 1] || list[list.length - 1];
   const dest = destStop ? stopLabel(destStop) : "";
   const remito = String(snapshot.reparto_no || trip.reparto_no || "").trim();

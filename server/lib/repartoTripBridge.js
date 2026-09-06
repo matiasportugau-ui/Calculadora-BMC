@@ -2,6 +2,7 @@ import { generateOpaqueToken, sha256Hex } from "./driverToken.js";
 import { conductorPublicUrl } from "../../src/utils/conductorUrl.js";
 import { driverIdFromPhone, ensureStopUuid, isPickupStop } from "./driverId.js";
 import { mintTrackToken, trackingPublicUrl, sanitizeSnapshot, ensureCustomerTrackTable } from "./customerTrack.js";
+import { mergeCatalogPlaces, getPlaceById } from "../../src/utils/logistica/pickupCatalog.js";
 
 export function digitsPhone(raw) {
   const d = String(raw || "").replace(/\D/g, "");
@@ -12,11 +13,42 @@ export function shouldInsertDriverOutbox(notifyDriver, phone) {
   return Boolean(notifyDriver && digitsPhone(phone));
 }
 
+function resolveJoinPickupLabel(stops, info) {
+  const fromInfo = String(info?.pickup_label || info?.pickupName || "").trim();
+  if (fromInfo) return fromInfo;
+  for (const s of stops || []) {
+    const fromStop = String(s?.pickupLabel || s?.pickup_label || "").trim();
+    if (fromStop) return fromStop;
+  }
+  const pickupId =
+    String(stops?.find((s) => s?.pickupPointId)?.pickupPointId || info?.pickupPointId || "").trim();
+  if (!pickupId) return "";
+  return String(getPlaceById(mergeCatalogPlaces([]), pickupId)?.label || "").trim();
+}
+
 /** Pure slice of join — used by tests and joinRepartoToTrip. */
 export function prepareJoinContext(reparto, payload = {}) {
   const stopsIn = Array.isArray(payload?.stops) ? payload.stops : [];
-  const stops = stopsIn.map((s, i) => ({ ...s, id: ensureStopUuid(s, i) }));
-  const info = payload?.info && typeof payload.info === "object" ? payload.info : {};
+  const seedCatalog = mergeCatalogPlaces([]);
+  const stops = stopsIn.map((s, i) => {
+    const next = { ...s, id: ensureStopUuid(s, i) };
+    const id = String(next.pickupPointId || "").trim();
+    if (id && !String(next.pickupLabel || next.pickup_label || "").trim()) {
+      const seedLabel = String(getPlaceById(seedCatalog, id)?.label || "").trim();
+      if (seedLabel) next.pickupLabel = seedLabel;
+    }
+    return next;
+  });
+  const infoIn = payload?.info && typeof payload.info === "object" ? payload.info : {};
+  const pickup_label = resolveJoinPickupLabel(stops, infoIn);
+  const pickupPointId = String(
+    stops.find((s) => s?.pickupPointId)?.pickupPointId || infoIn.pickupPointId || "",
+  ).trim();
+  const info = {
+    ...infoIn,
+    ...(pickup_label ? { pickup_label } : {}),
+    ...(pickupPointId ? { pickupPointId } : {}),
+  };
   const phone = digitsPhone(info.chofer_phone || info.telefono_chofer || reparto.assigned_phone_e164);
   const driverId = driverIdFromPhone(phone || `reparto:${reparto.id}`);
   const plan = {

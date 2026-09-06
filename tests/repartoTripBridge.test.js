@@ -34,6 +34,48 @@ console.log("repartoTripBridge");
 }
 
 {
+  const ctx = prepareJoinContext(
+    { id: "rep-custom", reparto_no: "ENV-CUSTOM-1" },
+    {
+      stops: [
+        {
+          cliente: "Obra",
+          orderId: "BMC-C",
+          direccion: "Pando",
+          pickupPointId: "pickup-custom-pepe",
+          pickupLabel: "Galpón Pepe",
+        },
+      ],
+      info: { chofer_phone: "099111222" },
+    },
+  );
+  assert.equal(ctx.plan.stops[0].pickupLabel, "Galpón Pepe");
+  assert.equal(ctx.plan.info.pickup_label, "Galpón Pepe");
+  assert.equal(ctx.plan.info.pickupPointId, "pickup-custom-pepe");
+  console.log("  ✓ prepareJoinContext persists custom pickupLabel into info.pickup_label");
+}
+
+{
+  const ctx = prepareJoinContext(
+    { id: "rep-seed", reparto_no: "ENV-SEED-1" },
+    {
+      stops: [
+        {
+          cliente: "Silva",
+          orderId: "BMC-S",
+          direccion: "Las Piedras",
+          pickupPointId: "pickup-kingspan-bromyros",
+        },
+      ],
+      info: { chofer_phone: "099111222" },
+    },
+  );
+  assert.equal(ctx.plan.stops[0].pickupLabel, "Kingspan (Bromyros)");
+  assert.equal(ctx.plan.info.pickup_label, "Kingspan (Bromyros)");
+  console.log("  ✓ prepareJoinContext stamps seed pickupLabel when missing on stop");
+}
+
+{
   const stamped = withStopUuids([{ cliente: "A" }]);
   assert.ok(isUuid(stamped[0].id));
   const keep = withStopUuids([{ id: "11111111-1111-4111-8111-111111111111", cliente: "B" }]);

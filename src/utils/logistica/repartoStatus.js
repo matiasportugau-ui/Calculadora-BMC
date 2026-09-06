@@ -3,6 +3,7 @@
  * Separado de stopStatusFsm (carga física) y de chips Ventas.
  */
 import { withStopUuids } from "./stopUuid.js";
+import { stampPickupLabels } from "./wizardState.js";
 
 /** @typedef {'draft'|'en_coordinacion'|'coordinado'|'en_curso'|'cerrado'|'cancelado'} RepartoStatus */
 
@@ -120,13 +121,31 @@ export function repartoStatusTone(status) {
 
 /**
  * Build a minimal reparto payload snapshot from logistics app state.
+ * When `places` is passed, stamps human pickupLabel onto stops and info.pickup_label
+ * so Driver / customer track do not receive opaque place ids as origin.
  * @param {object} state
  */
 export function buildRepartoPayload(state = {}) {
+  const places = Array.isArray(state.places) ? state.places : [];
+  let stops = withStopUuids(Array.isArray(state.stops) ? state.stops : []);
+  if (places.length) {
+    stops = stampPickupLabels(stops, places);
+  }
+  const info = state.info && typeof state.info === "object" ? { ...state.info } : {};
+  const labelFromStop = String(
+    stops.find((s) => String(s?.pickupLabel || "").trim())?.pickupLabel || "",
+  ).trim();
+  if (labelFromStop && !String(info.pickup_label || "").trim()) {
+    info.pickup_label = labelFromStop;
+  }
+  const pickupId = String(
+    stops.find((s) => s?.pickupPointId)?.pickupPointId || info.pickupPointId || "",
+  ).trim();
+  if (pickupId && !info.pickupPointId) info.pickupPointId = pickupId;
   return {
     schema: "bmc-reparto-payload-v1",
     schemaVersion: 1,
-    stops: withStopUuids(Array.isArray(state.stops) ? state.stops : []),
+    stops,
     truckL: state.truckL ?? null,
     distributionMode: state.distributionMode ?? "balanced",
     cargoLayoutMode: state.cargoLayoutMode ?? "auto",
@@ -134,7 +153,7 @@ export function buildRepartoPayload(state = {}) {
     rowOverrides: state.rowOverrides && typeof state.rowOverrides === "object" ? state.rowOverrides : {},
     freePositions: state.freePositions && typeof state.freePositions === "object" ? state.freePositions : {},
     loadWarnings: Array.isArray(state.loadWarnings) ? state.loadWarnings : [],
-    info: state.info && typeof state.info === "object" ? state.info : {},
+    info,
     savedAt: new Date().toISOString(),
   };
 }

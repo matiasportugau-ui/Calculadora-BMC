@@ -325,15 +325,43 @@ export function shouldEnableWizard({ uiWizard, force } = {}) {
 }
 
 /**
+ * Stamp pickupLabel onto stops that already have pickupPointId (confirm/join path).
+ * Custom levantes live only in the operator catalog — without this, Driver shows opaque ids.
+ * @param {object[]} stops
+ * @param {object[]} [places]
+ */
+export function stampPickupLabels(stops, places = []) {
+  if (!Array.isArray(stops)) return [];
+  const byId = new Map();
+  for (const p of places || []) {
+    const id = String(p?.id || "").trim();
+    const label = String(p?.label || "").trim();
+    if (id && label) byId.set(id, label);
+  }
+  return stops.map((s) => {
+    const id = String(s?.pickupPointId || "").trim();
+    if (!id) return s;
+    const existing = String(s?.pickupLabel || s?.pickup_label || "").trim();
+    if (existing) return { ...s, pickupLabel: existing };
+    const label = byId.get(id) || "";
+    return label ? { ...s, pickupLabel: label } : s;
+  });
+}
+
+/**
  * Apply default pickup id to all stops (single mode).
  * Always overwrites: switching default / multi→single must not leave stale per-stop pickups
  * that would send the trip to the wrong levante while the UI shows one default.
+ * When `places` is provided, also stamps pickupLabel so plan_snapshot carries a human origin.
  */
-export function applyDefaultPickupToStops(stops, defaultPickupPointId) {
+export function applyDefaultPickupToStops(stops, defaultPickupPointId, places = []) {
   const id = String(defaultPickupPointId || "").trim();
   if (!id || !Array.isArray(stops)) return stops || [];
+  const label =
+    String((places || []).find((p) => p && String(p.id || "").trim() === id)?.label || "").trim();
   return stops.map((s) => ({
     ...s,
     pickupPointId: id,
+    ...(label ? { pickupLabel: label } : {}),
   }));
 }
