@@ -7,6 +7,7 @@ import { generateOpaqueToken, sha256Hex } from "../lib/driverToken.js";
 import { resolveDriverAuth, listTripsForDriverAuth, driverAuthOwnsTrip } from "../lib/driverAuth.js";
 import { isAllowedDriverEventType, hasEvidenceForStop } from "../lib/transportistaFsm.js";
 import { createGcsV4UploadUrl, writeLocalDevEvidence } from "../lib/transportistaEvidence.js";
+import { allDeliveryStopsCompleted, deliveryStopIdsForClose } from "../lib/tripCloseProjection.js";
 import { conductorPublicUrl } from "../../src/utils/conductorUrl.js";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -733,10 +734,11 @@ async function projectRepartoFromDriverEvent(pool, tripId, type) {
         where trip_id = $1::uuid and event_type = 'delivery_completed'`,
       [tripId],
     );
-    const stops = rows[0]?.plan_snapshot?.stops;
-    const needed = Array.isArray(stops) ? stops.filter((s) => s && s.id).map((s) => String(s.id)) : [];
-    const got = new Set(ev.rows.map((r) => String(r.stop_id || "")));
-    const all = needed.length > 0 && needed.every((id) => got.has(id));
+    const needed = deliveryStopIdsForClose(rows[0]?.plan_snapshot);
+    const all = allDeliveryStopsCompleted(
+      needed,
+      ev.rows.map((r) => r.stop_id),
+    );
     if (all) {
       await pool.query(
         `update repartos set status = 'cerrado', updated_at = now()

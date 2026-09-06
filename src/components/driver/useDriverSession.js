@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { shouldWatchGps } from "../../utils/logistica/torreLiveView.js";
 import { eventTypes, factoryPhase } from "../../utils/logistica/cargaFactoryStep.js";
+import { isPickupStop } from "../../utils/logistica/driverTripFeed.js";
 
 export { eventTypes, factoryPhase };
 
@@ -319,12 +320,18 @@ export default function useDriverSession() {
   const stops = Array.isArray(plan.stops) ? plan.stops : [];
   const phase = factoryPhase(timeline);
   const types = eventTypes(timeline);
+  const deliveryStops = stops.filter((s) => s?.id && !isPickupStop(s));
+  const deliveredIds = new Set(
+    (timeline || [])
+      .filter((e) => e.event_type === "delivery_completed" && e.stop_id)
+      .map((e) => String(e.stop_id)),
+  );
+  const allDeliveriesDone =
+    deliveryStops.length > 0 && deliveryStops.every((s) => deliveredIds.has(String(s.id)));
   const done =
-    types.has("delivery_completed") ||
     trip?.status === "closed" ||
-    (stops.length > 0 &&
-      stops.every(() => types.has("delivery_completed")) &&
-      phase >= 4);
+    (allDeliveriesDone && phase >= 4) ||
+    (deliveryStops.length === 0 && types.has("delivery_completed") && phase >= 4);
 
   return {
     token,

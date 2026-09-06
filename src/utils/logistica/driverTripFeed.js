@@ -5,7 +5,8 @@
  */
 import { SEED_PICKUPS } from "./pickupCatalog.js";
 
-function isPickupStop(stop) {
+/** Same semantics as server/lib/driverId.js isPickupStop — factory/levante never need delivery_completed. */
+export function isPickupStop(stop) {
   const k = `${stop?.kind || ""} ${stop?.tipo || ""} ${stop?.role || ""}`.toLowerCase();
   return /\b(pickup|levante|planta|fabrica|fábrica|deposito|depósito)\b/.test(k);
 }

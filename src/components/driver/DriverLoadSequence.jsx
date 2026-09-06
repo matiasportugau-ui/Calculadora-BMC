@@ -1,5 +1,5 @@
 import { cargaFactoryView } from "../../utils/logistica/cargaFactoryStep.js";
-import { projectDriverTripFeed } from "../../utils/logistica/driverTripFeed.js";
+import { isPickupStop, projectDriverTripFeed } from "../../utils/logistica/driverTripFeed.js";
 
 export default function DriverLoadSequence({
   timeline,
@@ -12,13 +12,14 @@ export default function DriverLoadSequence({
   const view = cargaFactoryView(timeline);
   const feed = projectDriverTripFeed({ trip, plan, stops });
   const dest = feed.dest || "—";
+  const deliveryStops = (stops || []).filter((s) => !isPickupStop(s));
 
   if (view.complete) {
     return (
       <div className="drv-scroll">
         <h1 className="drv-h1">Entregas</h1>
         <p className="drv-sub">Marcá llegada y entrega en cada parada</p>
-        {stops.map((s) => (
+        {deliveryStops.map((s) => (
           <div className="drv-card" key={s.id}>
             <strong>{s.cliente || "Parada"}</strong>
             <p className="drv-muted">{s.direccion || s.orderId || ""}</p>

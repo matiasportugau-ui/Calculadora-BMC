@@ -94,6 +94,8 @@ function routeBlock(src, pathLiteral) {
   assert.ok(carga.includes("cargaFactoryView"));
   assert.ok(carga.includes("view.counter"));
   assert.ok(carga.includes("projectDriverTripFeed({ trip, plan, stops })"));
+  assert.ok(carga.includes("deliveryStops"));
+  assert.ok(carga.includes("isPickupStop"));
   const done = readFileSync(join(root, "src/components/driver/DriverTripDone.jsx"), "utf8");
   assert.ok(done.includes("Ver remitos"));
   assert.ok(!done.includes("Ver remitos / inicio"));
@@ -110,6 +112,8 @@ function routeBlock(src, pathLiteral) {
   const routes = readFileSync(join(root, "server/routes/transportista.js"), "utf8");
   assert.ok(routes.includes("listTripsForDriverAuth"));
   assert.ok(routes.includes("resolveDriverAuth"));
+  assert.ok(routes.includes("deliveryStopIdsForClose"));
+  assert.ok(routes.includes("allDeliveryStopsCompleted"));
   console.log("  ✓ five chofer screens exist");
   console.log("  ✓ PWA login hits /api/torre/chofer/login then lists /api/driver/trips");
 }
