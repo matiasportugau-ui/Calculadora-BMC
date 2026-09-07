@@ -13,6 +13,7 @@ const sessions = new Map();
 let pool = null;
 let schemaReady = false;
 let schemaPromise = null;
+let forceMemory = false;
 
 export const STOREFRONT_LIVE_HANDOFF =
   "Un agente de ventas de BMC se suma a la conversación.";
@@ -266,7 +267,7 @@ export async function shopperLiveState(id) {
 
 export async function listLiveSessions() {
   const cutoff = Date.now() - LIVE_MAX_AGE_MS;
-  const db = getPool();
+  const db = forceMemory ? null : getPool();
   if (db) {
     try {
       await ensureSchema(db);
@@ -275,21 +276,25 @@ export async function listLiveSessions() {
                 extract(epoch from last_seen_at) * 1000 AS last_seen_at,
                 extract(epoch from created_at) * 1000 AS created_at
            FROM public.storefront_live_sessions
-          WHERE last_seen_at > now() - interval '2 minutes'
+          WHERE status <> 'ended'
+            AND last_seen_at > now() - ($1::int * interval '1 millisecond')
           ORDER BY last_seen_at DESC LIMIT 40`,
+        [LIVE_MAX_AGE_MS],
       );
       if (rows.length) {
-        return rows.map((r) => ({
-          id: r.id,
-          conversationId: r.conversation_id,
-          cliente: r.cliente,
-          pageUrl: r.page_url,
-          adminRow: r.admin_row,
-          status: r.status,
-          lastSeenAt: Number(r.last_seen_at),
-          createdAt: Number(r.created_at),
-          live: Number(r.last_seen_at) >= cutoff && r.status !== "ended",
-        }));
+        return rows
+          .map((r) => ({
+            id: r.id,
+            conversationId: r.conversation_id,
+            cliente: r.cliente,
+            pageUrl: r.page_url,
+            adminRow: r.admin_row,
+            status: r.status,
+            lastSeenAt: Number(r.last_seen_at),
+            createdAt: Number(r.created_at),
+            live: Number(r.last_seen_at) >= cutoff && r.status !== "ended",
+          }))
+          .filter((r) => r.live);
       }
     } catch { /* memory */ }
   }
@@ -367,6 +372,12 @@ export async function injectLiveMessage(id, text) {
 }
 
 export const __testLive__ = {
-  reset() { sessions.clear(); },
+  reset() {
+    sessions.clear();
+    forceMemory = false;
+  },
   get: memGet,
+  useMemory() {
+    forceMemory = true;
+  },
 };

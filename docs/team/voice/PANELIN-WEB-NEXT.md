@@ -2,23 +2,23 @@
 
 SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 
-**Última:** 2026-09-04 (SHIP to live — Matias OK)  
-**Branch:** `feat/storefront-voice-modes-demo`  
+**Última:** 2026-09-07 (`/status-eval` + P0 C1–C4 on `feat/panelin-front-status-eval`)  
 **Local:** http://127.0.0.1:3001/storefront-voice/  
-**Shop:** shipping Cloud Run `panelin-calc`; theme script already points at prod `widget.js`.
+**Shop:** Cloud Run still pre-C1–C4 until ship. Widget 80 735 B, pipeline, silence **10 s**.  
+**Score:** 68/100 — `docs/team/reports/STATUS-EVAL-panelin-front-2026-09-07.md`
 
 ## Estado
 
-Each shop chat is a row in Admin 2.0 (`WOLFB_ADMIN_SHEET_ID` = planilla 1Ie0KCpg… gid 0, tab `Admin.`, origen `VW`). Identify creates the row; every `/chat` turn + `/log` writes the transcript to col J.
+Orb live. 37 VW (26 identify-only). This branch: Hub 45 s live filter; `/action` shop tools 400 `shop_tool_client_only`; `/chat` no longer returns `bubble:false`; `action.type` logs keep working.
 
 ## Próximo prompt
 
 ```
-chatear en http://127.0.0.1:3001/storefront-voice/ y abrir la planilla Admin 2.0: fila VW nueva + col J con el chat
+ship feat/panelin-front-status-eval a Cloud Run (sí / ship). Después HITL: filas VW vacías + gate identify.
 ```
 
 ## No hacer ahora
 
-- Pegar el pipeline a la tienda.
-- Mezclar Driver QR / keywords / logística.
-- `git stash pop` del wip mixed 2026-09-04 encima de esta branch.
+- Theme APPLY.
+- Mover el gate nombre+teléfono sin HITL.
+- Mezclar Driver / logística / keywords.

@@ -65,9 +65,11 @@ export function skipStorefrontSessionLimit(req, appEnv = config.appEnv) {
 }
 
 /** Log payload for /action 200 and 4xx. */
-export function storefrontActionLogPayload(type, httpStatus) {
+export function storefrontActionLogPayload(type, httpStatus, extra = {}) {
   const actionType = String(type || "");
-  return { "action.type": actionType, actionType, status: Number(httpStatus) || 0 };
+  const payload = { "action.type": actionType, actionType, status: Number(httpStatus) || 0 };
+  if (extra && typeof extra === "object" && extra.code) payload.code = String(extra.code);
+  return payload;
 }
 
 export function shouldAttemptAdminColJ(adminRow) {
@@ -442,6 +444,17 @@ export default function createPublicVoiceRouter() {
     }
     const type = String(action.type || action.name || "");
     const payload = action.payload && typeof action.payload === "object" ? action.payload : {};
+    if (isStorefrontShopTool(type)) {
+      req.log?.info?.(
+        storefrontActionLogPayload(type, 400, { code: "shop_tool_client_only" }),
+        "storefront action",
+      );
+      return res.status(400).json({
+        ok: false,
+        code: "shop_tool_client_only",
+        error: "Esta acción corre en el navegador de la tienda.",
+      });
+    }
     if (!isPublicStorefrontTool(type)) {
       req.log?.info?.(storefrontActionLogPayload(type, 400), "storefront action");
       return res.status(400).json({ ok: false, error: `Tool no permitida: ${type || "(vacío)"}` });
@@ -630,9 +643,7 @@ export default function createPublicVoiceRouter() {
         message: err?.message || "chat failed",
         status,
       });
-      if (markStorefrontCreditsDead(err)) {
-        return res.status(403).json(storefrontCreditsDenyBody());
-      }
+      markStorefrontCreditsDead(err);
       const safe = shopperSafeChatError(err);
       return res.status(safe.status >= 400 && safe.status < 600 ? safe.status : 500).json({
         ok: false,
