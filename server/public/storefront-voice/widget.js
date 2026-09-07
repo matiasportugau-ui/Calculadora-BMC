@@ -2106,6 +2106,8 @@
       clearTimeout(nudge.holdTimer);
       nudge.holdTimer = null;
     }
+    // closePanel marks live ended + stops pings; reopen must revive Hub presence.
+    if (state.identified && !state.agentMode) startLiveLoop();
   }
 
   root.querySelector(".bmc-panel").addEventListener("click", (e) => {

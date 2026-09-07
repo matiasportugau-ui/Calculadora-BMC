@@ -216,8 +216,14 @@ export async function pingLiveSession(input = {}) {
   if (input.pageUrl) s.pageUrl = String(input.pageUrl).slice(0, 300);
   const row = Number(input.adminRow);
   if (Number.isFinite(row) && row >= 2) s.adminRow = row;
+  // Closing the orb sets ended; a later ping (panel reopen) must revive or Hub
+  // never lists the shopper again (listLiveSessions excludes status=ended).
   if (input.status === "ended") s.status = "ended";
-  else if (s.status !== "takeover" && s.status !== "ended") s.status = "live";
+  else if (s.status === "takeover") {
+    /* keep operator takeover */
+  } else {
+    s.status = "live";
+  }
   s.lastSeenAt = Date.now();
   memPut(s);
 
@@ -247,6 +253,11 @@ export async function addLiveTurn({ sessionId, role, text }) {
   }
   s.turns.push({ role: r, text: t, ts: Date.now() });
   if (s.turns.length > 120) s.turns = s.turns.slice(-80);
+  // Safety net: shopper may keep chatting after closePanel marked ended without
+  // a fresh ping — still surface them on the Hub live list.
+  if (s.status === "ended" && (r === "user" || r === "assistant")) {
+    s.status = "live";
+  }
   s.lastSeenAt = Date.now();
   memPut(s);
   await persistTurn(id, r, t);
