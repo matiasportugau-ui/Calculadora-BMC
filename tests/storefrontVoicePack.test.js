@@ -246,6 +246,10 @@ assert.ok(widget.includes("function openPanel"), "panel open");
 {
   const openFn = widget.match(/function openPanel\(\) \{[\s\S]*?\n  \}/);
   assert.ok(openFn && !openFn[0].includes("startCall"), "text-first: open does not mint voice");
+  assert.ok(
+    openFn && openFn[0].includes("startLiveLoop"),
+    "reopen must restart Hub presence after closePanel ended the session",
+  );
 }
 assert.ok(widget.includes('return "pipeline"'), "default mic is STT+TTS not S2S");
 assert.ok(widget.includes("startCall()"), "realtime opt-in still has S2S mint");

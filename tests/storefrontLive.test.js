@@ -48,6 +48,28 @@ assert.ok(
 );
 aged.lastSeenAt = prevSeen;
 
+// closePanel → ping(ended); shopper keeps chatting → Hub must list again (#1216).
+await pingLiveSession({ id: "live-test-1", status: "ended" });
+const listedEnded = await listLiveSessions();
+assert.ok(
+  !listedEnded.some((s) => s.id === "live-test-1"),
+  "Hub hides ended sessions",
+);
+await addLiveTurn({ sessionId: "live-test-1", role: "user", text: "Sigo acá, quiero PDF" });
+const listedRevivedTurn = await listLiveSessions();
+assert.ok(
+  listedRevivedTurn.some((s) => s.id === "live-test-1" && s.status === "live"),
+  "user/assistant turn after end revives for Hub",
+);
+
+await pingLiveSession({ id: "live-test-1", status: "ended" });
+await pingLiveSession({ id: "live-test-1", cliente: "Ana" });
+const listedRevivedPing = await listLiveSessions();
+assert.ok(
+  listedRevivedPing.some((s) => s.id === "live-test-1" && s.status === "live"),
+  "presence ping without ended revives session",
+);
+
 const taken = await takeoverLiveSession("live-test-1");
 assert.equal(taken.status, "takeover");
 
