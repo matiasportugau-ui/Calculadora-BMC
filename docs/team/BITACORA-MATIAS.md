@@ -422,4 +422,18 @@ gate:local:   pendiente correr al final de la sesión
 
 ---
 
+## 2026-09-07 N — Panelin Front sales peek + Cloud Run ship
+
+**Contexto:** Matias pidió el agente más agresivo en la tienda (asomarse al scrollear, ofrecer chat/aproximación) y después `ship it`. Live todavía servía el chip `¿Necesitás ayuda?`.
+
+**Acciones:** Peek en `widget.js` (tuck → asoma chip, max 3, dismiss session). Mismo orb, no tapa WhatsApp. Identify gate intacto. Incluye C1–C4 (Hub 45s, shop-tool 400, `/chat` keeps orb) ya en la rama.
+
+**Verificación:** `node tests/storefrontVoicePack.test.js`; Playwright 390/768/1280 local (chip 60px, 0 overlap WA). Prod: widget.js Cloud Run debe contener `function asoma` + `¿Te armo una aproximación?` tras `deploy-calc-api`.
+
+**Próximo paso:** HITL filas VW vacías + gate identify. No theme APPLY.
+
+**Refs:** `server/public/storefront-voice/widget.js` · `docs/team/reports/STATUS-EVAL-panelin-front-LOGS-2026-09-07.md`
+
+---
+
 

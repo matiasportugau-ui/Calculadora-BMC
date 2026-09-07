@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-07 (fix — Panelin Front Hub TTL + shop-tool 400 + chat keeps orb)
+**Última actualización:** 2026-09-07 (feat — Panelin Front sales peek + Hub TTL ship)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-07 (feat — Panelin Front: orb asoma on scroll, offers aproximación):** Closed orb tucks then slides out with a rotating chip (`¿Te armo una aproximación?` / ficha-carrito-PDF / lista web sin flete). Max 3 asomas / tab; chip × → `bmc_panelin_nudge=off`. Same orb, does not cover WhatsApp. Identify gate unchanged. Also ships Hub live 45s, `/action` 400 `shop_tool_client_only`, `/chat` keeps orb. Tests `storefrontVoicePack`. Branch `feat/panelin-front-status-eval`. Live only after `deploy-calc-api`.
 
 **2026-09-07 (fix — Panelin Front: Hub live 45s, shop-tool 400, chat keeps orb):** `/hub/panelin-web` lists only sessions seen in `LIVE_MAX_AGE_MS` (45s). `POST /action` rejects browser `shop_*` with HTTP 400 `shop_tool_client_only`. Pipeline `/chat` no longer returns `bubble:false` when xAI voice credits are dead (mint `/session` still 403). Runtime scorecard 68/100 (`STATUS-EVAL-panelin-front-2026-09-07.md`). Skill `/status-eval`. Tests `storefrontLive` + `publicVoiceAdmin` + `storefrontVoiceCredits`. Branch `feat/panelin-front-status-eval`. Identify-gate policy still HITL.
 

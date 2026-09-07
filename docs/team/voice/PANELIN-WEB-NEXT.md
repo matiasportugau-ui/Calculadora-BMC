@@ -2,19 +2,19 @@
 
 SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 
-**Última:** 2026-09-07 (`/status-eval` + P0 C1–C4 on `feat/panelin-front-status-eval`)  
+**Última:** 2026-09-07 (shipping peek + C1–C4 to Cloud Run)  
 **Local:** http://127.0.0.1:3001/storefront-voice/  
-**Shop:** Cloud Run still pre-C1–C4 until ship. Widget 80 735 B, pipeline, silence **10 s**.  
-**Score:** 68/100 — `docs/team/reports/STATUS-EVAL-panelin-front-2026-09-07.md`
+**Shop:** widget Cloud Run updates after `deploy-calc-api` on this merge. Silence **10 s**.  
+**Score:** runtime **68/100** — logs: `docs/team/reports/STATUS-EVAL-panelin-front-LOGS-2026-09-07.md`
 
 ## Estado
 
-Orb live. 37 VW (26 identify-only). This branch: Hub 45 s live filter; `/action` shop tools 400 `shop_tool_client_only`; `/chat` no longer returns `bubble:false`; `action.type` logs keep working.
+Shipping `feat/panelin-front-status-eval`: Hub 45 s; `/action` 400 `shop_tool_client_only`; `/chat` keeps orb; closed orb **asoma** on scroll with aproximación chip.
 
 ## Próximo prompt
 
 ```
-ship feat/panelin-front-status-eval a Cloud Run (sí / ship). Después HITL: filas VW vacías + gate identify.
+Tras deploy-calc-api verde: hard-refresh bmcuruguay.com.uy — chip «¿Te armo una aproximación?» al scrollear. Después HITL: filas VW vacías + gate identify.
 ```
 
 ## No hacer ahora
