@@ -254,7 +254,7 @@ Voice sessions capped (`maxSessionMs` 8 min). Text `max_tokens` 700, 6 tool roun
 
 ### 4.3 UX
 
-- Closed orb: looping `panelin-lista-loop.mp4` (same as calculator), ~76px, label **¿Necesitás ayuda?**
+- Closed orb: looping `panelin-lista-loop.mp4` (same as calculator), ~76px. Tucked at rest; **asoma** on scroll-pause (max 3 / tab) with a chip offering aproximación / advice. Same orb — not a second icon under WhatsApp. Tap opens chat; ignore tucks again. Aria still **¿Necesitás ayuda? Abrir Panelin**.
 - Open panel: calculator empty-state (avatar, chips, composer). No DEV / model / sidebar / Fijar.
 - Identity copy is Panelin-voice, not a cold form.
 - Presupuesto card: PDF icon + title `Presupuesto {code}` + “Tocá para abrir el PDF”.

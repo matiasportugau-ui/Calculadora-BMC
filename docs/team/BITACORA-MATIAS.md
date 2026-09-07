@@ -408,4 +408,32 @@ gate:local:   pendiente correr al final de la sesión
 
 ---
 
+## 2026-09-07 N — Panelin Front status-eval + P0 reliability
+
+**Contexto:** `/status-eval` 68/100. 37 VW (26 vacías). Hub 33 live ghosts. `/chat` 403 credits ocultaba el orbe. Shop tools en `/action` HTTP 200 opaco.
+
+**Acciones:** Hub list 45s; `shop_tool_client_only` 400; `/chat` no `bubble:false`; skill `~/.grok/skills/status-eval`; scorecard `STATUS-EVAL-panelin-front-2026-09-07.md`. Branch `feat/panelin-front-status-eval`.
+
+**Verificación:** `node tests/storefrontLive.test.js` + `publicVoiceAdmin` + `storefrontVoiceCredits` + `storefrontVoicePack`. Prod verify after merge + `deploy-calc-api`.
+
+**Próximo paso:** Merge PR → Cloud Run. HITL: 26 VW vacías + gate identify.
+
+**Refs:** `1146a79e` · `docs/team/reports/STATUS-EVAL-panelin-front-2026-09-07.md`
+
+---
+
+## 2026-09-07 N — Panelin Front sales peek + Cloud Run ship
+
+**Contexto:** Matias pidió el agente más agresivo en la tienda (asomarse al scrollear, ofrecer chat/aproximación) y después `ship it`. Live todavía servía el chip `¿Necesitás ayuda?`.
+
+**Acciones:** Peek en `widget.js` (tuck → asoma chip, max 3, dismiss session). Mismo orb, no tapa WhatsApp. Identify gate intacto. Incluye C1–C4 (Hub 45s, shop-tool 400, `/chat` keeps orb) ya en la rama.
+
+**Verificación:** `node tests/storefrontVoicePack.test.js`; Playwright 390/768/1280 local (chip 60px, 0 overlap WA). Prod: widget.js Cloud Run debe contener `function asoma` + `¿Te armo una aproximación?` tras `deploy-calc-api`.
+
+**Próximo paso:** HITL filas VW vacías + gate identify. No theme APPLY.
+
+**Refs:** `server/public/storefront-voice/widget.js` · `docs/team/reports/STATUS-EVAL-panelin-front-LOGS-2026-09-07.md`
+
+---
+
 

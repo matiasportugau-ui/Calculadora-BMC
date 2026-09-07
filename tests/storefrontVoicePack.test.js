@@ -203,6 +203,13 @@ assert.ok(widget.includes("panelin.png"), "Panelin poster");
 assert.ok(widget.includes("panelin-lista-loop.mp4"), "calculator Panelin loop");
 assert.ok(widget.includes("<video"), "orb is video");
 assert.ok(widget.includes("¿Necesitás ayuda?"), "help label on bubble");
+assert.ok(widget.includes("¿Te armo una aproximación?"), "sales peek chip");
+assert.ok(widget.includes("Te asesoro acá — ficha, carrito o PDF"), "advice chip");
+assert.ok(widget.includes("Lista web, sin flete. ¿Hablamos?"), "approx quote chip");
+assert.ok(widget.includes("bmc_panelin_nudge"), "nudge session flag");
+assert.ok(widget.includes("function asoma()"), "scroll asoma");
+assert.ok(widget.includes("nudge-off"), "dismiss docks orb");
+assert.ok(widget.includes("Te asesoro acá: ficha, carrito o una aproximación lista web."), "empty-state sells advice + approx");
 assert.ok(
   fs.existsSync(path.join(ROOT, "server/public/storefront-voice/panelin.png")),
   "avatar poster",

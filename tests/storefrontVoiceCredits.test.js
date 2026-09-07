@@ -83,6 +83,12 @@ assert.match(publicVoice, /storefrontVoiceStatus/, "status uses credits cache");
 assert.match(publicVoice, /storefrontBrainStatus/, "status reports public-safe shared brain");
 assert.match(publicVoice, /markStorefrontCreditsDead/, "mint maps credits → cache");
 assert.match(publicVoice, /code: "credits"|storefrontCreditsDenyBody/, "widget can hide on 403 credits");
+const chatHandler = publicVoice.split('router.post("/chat"')[1] || "";
+assert.ok(
+  !chatHandler.includes("storefrontCreditsDenyBody"),
+  "pipeline /chat must not return bubble:false when voice credits are dead",
+);
+assert.match(publicVoice, /router\.post\("\/session"/, "voice mint still uses credits deny");
 
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.match(widget, /\/api\/public\/voice\/status/, "probe before mount");

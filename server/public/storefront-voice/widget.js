@@ -479,9 +479,13 @@
 #bmc-paneli-voice{all:initial;display:block;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Helvetica,Arial,sans-serif;position:fixed;z-index:2147483000;right:92px;bottom:calc(18px + env(safe-area-inset-bottom,0px));color:#1d1d1f}
 @media(max-width:640px){#bmc-paneli-voice{right:16px;left:16px;bottom:calc(88px + env(safe-area-inset-bottom,0px))}}
 #bmc-paneli-voice *{box-sizing:border-box}
-#bmc-paneli-voice .bmc-launch{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto}
-#bmc-paneli-voice .bmc-ask{max-width:11.5em;background:rgba(15,23,42,.92);color:#fff;font-size:13px;font-weight:600;line-height:1.25;padding:8px 12px;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.22);cursor:pointer}
-#bmc-paneli-voice.open .bmc-ask{display:none}
+#bmc-paneli-voice .bmc-launch{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;transform:translateX(12px);transition:transform .45s ease}
+@media(max-width:640px){#bmc-paneli-voice .bmc-launch{transform:translateY(10px)}}
+#bmc-paneli-voice.nudge .bmc-launch,#bmc-paneli-voice.open .bmc-launch,#bmc-paneli-voice.nudge-off .bmc-launch{transform:none}
+#bmc-paneli-voice .bmc-ask{display:flex;align-items:center;gap:4px;max-width:14.5em;min-height:44px;background:rgba(15,23,42,.92);color:#fff;font-size:13px;font-weight:600;line-height:1.25;padding:8px 6px 8px 12px;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.22);cursor:pointer;opacity:0;pointer-events:none;transform:translateX(8px);transition:opacity .35s ease,transform .35s ease}
+#bmc-paneli-voice.nudge .bmc-ask{opacity:1;pointer-events:auto;transform:none}
+#bmc-paneli-voice.open .bmc-ask,#bmc-paneli-voice.nudge-off .bmc-ask,#bmc-paneli-voice.nudge-done .bmc-ask{display:none}
+#bmc-paneli-voice .bmc-ask-x{width:44px;height:44px;flex:none;border:0;background:transparent;color:#fff;font-size:20px;line-height:1;cursor:pointer;border-radius:10px}
 #bmc-paneli-voice.open .bmc-launch{visibility:hidden;pointer-events:none}
 #bmc-paneli-voice .bmc-orb{width:76px;height:76px;padding:0;border:2px solid #fff;border-radius:50%;background:#1a3a5c;cursor:pointer;display:grid;place-items:center;overflow:hidden;box-shadow:0 10px 28px rgba(20,19,17,.28);position:relative;flex:none;animation:bmc-orb-breathe 3.6s ease-in-out infinite}
 #bmc-paneli-voice .bmc-orb:focus-visible{outline:2px solid #0071e3;outline-offset:3px}
@@ -545,7 +549,7 @@
 #bmc-paneli-voice[data-voice-mode="text"] .bmc-mic{display:none}
 #bmc-paneli-voice .bmc-mode-chip{margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.02em;color:#6e6e73}
 #bmc-paneli-voice:not(.local-eval) .bmc-mode-chip{display:none}
-@media(prefers-reduced-motion:reduce){#bmc-paneli-voice .bmc-orb{box-shadow:0 10px 28px rgba(20,19,17,.35)!important;animation:none}}
+@media(prefers-reduced-motion:reduce){#bmc-paneli-voice .bmc-orb{box-shadow:0 10px 28px rgba(20,19,17,.35)!important;animation:none}#bmc-paneli-voice .bmc-launch{transform:none!important;transition:none}#bmc-paneli-voice .bmc-ask{transition:none}}
 `;
 
   const root = document.createElement("div");
@@ -558,7 +562,7 @@
         <video class="bmc-hero-face" src="${API}/storefront-voice/panelin-lista-loop.mp4" poster="${API}/storefront-voice/panelin.png" autoplay muted loop playsinline></video>
         <p class="bmc-title">¡Hola! Soy Panelin</p>
         <p class="bmc-mode-chip" id="bmc-mode-chip" hidden></p>
-        <p class="bmc-sub">Cuando quieras, hablamos.</p>
+        <p class="bmc-sub">Te asesoro acá: ficha, carrito o una aproximación lista web.</p>
         <form class="bmc-id" id="bmc-id">
           <p class="bmc-id-ask">¡Qué bueno que estés acá! Para ayudarte de verdad y dejarle tu consulta al equipo BMC, ¿me decís tu nombre y un celular? ¡Con eso ya podemos chatear!</p>
           <input id="bmc-name" type="text" name="name" autocomplete="name" maxlength="80" required placeholder="Tu nombre" />
@@ -591,7 +595,10 @@
       <p class="bmc-err" id="bmc-err" hidden></p>
     </div>
     <div class="bmc-launch">
-      <span class="bmc-ask">¿Necesitás ayuda?</span>
+      <span class="bmc-ask" id="bmc-ask" role="button" tabindex="0">
+        <span class="bmc-ask-text">¿Te armo una aproximación?</span>
+        <button type="button" class="bmc-ask-x" id="bmc-ask-x" aria-label="No mostrar más">×</button>
+      </span>
       <button type="button" class="bmc-orb" id="bmc-orb" aria-label="¿Necesitás ayuda? Abrir Panelin" data-state="idle">
         <span class="bmc-badge" id="bmc-badge">0</span>
         <video class="bmc-face" src="${API}/storefront-voice/panelin-lista-loop.mp4" poster="${API}/storefront-voice/panelin.png" autoplay muted loop playsinline></video>
@@ -606,6 +613,7 @@
   }
 
   function hideBubble() {
+    try { stopNudge(); } catch { /* ignore */ }
     try { teardown(); } catch { /* ignore */ }
     if (root.parentNode) root.parentNode.removeChild(root);
   }
@@ -619,6 +627,8 @@
 
   const orb = root.querySelector("#bmc-orb");
   const ask = root.querySelector(".bmc-ask");
+  const askText = root.querySelector(".bmc-ask-text");
+  const askX = root.querySelector("#bmc-ask-x");
   const go = root.querySelector("#bmc-go");
   const stopBtn = root.querySelector("#bmc-stop");
   const waBtn = root.querySelector("#bmc-wa");
@@ -2009,8 +2019,93 @@
     }
   }
 
+  const NUDGE_KEY = "bmc_panelin_nudge";
+  const NUDGE_LINES = [
+    "¿Te armo una aproximación?",
+    "Te asesoro acá — ficha, carrito o PDF",
+    "Lista web, sin flete. ¿Hablamos?",
+  ];
+  const nudge = {
+    shown: 0,
+    pauseTimer: null,
+    holdTimer: null,
+    loadTimer: null,
+    scrolled: 0,
+  };
+
+  function nudgeDisabled() {
+    try { return sessionStorage.getItem(NUDGE_KEY) === "off"; } catch { return false; }
+  }
+
+  function setAskLine() {
+    if (!askText) return;
+    askText.textContent = NUDGE_LINES[nudge.shown % NUDGE_LINES.length];
+  }
+
+  function canNudge() {
+    if (nudgeDisabled()) return false;
+    if (root.classList.contains("open")) return false;
+    if (root.classList.contains("nudge-off")) return false;
+    if (root.classList.contains("nudge-done")) return false;
+    if (!root.parentNode) return false;
+    return nudge.shown < 3;
+  }
+
+  function asoma() {
+    if (!canNudge()) return;
+    setAskLine();
+    root.classList.add("nudge");
+    nudge.shown += 1;
+    if (nudge.holdTimer) clearTimeout(nudge.holdTimer);
+    nudge.holdTimer = setTimeout(() => {
+      root.classList.remove("nudge");
+      if (nudge.shown >= 3) root.classList.add("nudge-done");
+    }, 8000);
+  }
+
+  function stopNudge() {
+    if (nudge.pauseTimer) clearTimeout(nudge.pauseTimer);
+    if (nudge.holdTimer) clearTimeout(nudge.holdTimer);
+    if (nudge.loadTimer) clearTimeout(nudge.loadTimer);
+    nudge.pauseTimer = nudge.holdTimer = nudge.loadTimer = null;
+    window.removeEventListener("scroll", onNudgeScroll);
+    root.classList.remove("nudge");
+  }
+
+  function dismissNudge() {
+    try { sessionStorage.setItem(NUDGE_KEY, "off"); } catch { /* ignore */ }
+    stopNudge();
+    root.classList.add("nudge-off");
+    root.classList.remove("nudge-done");
+  }
+
+  function onNudgeScroll() {
+    nudge.scrolled += 1;
+    if (!canNudge()) return;
+    if (nudge.pauseTimer) clearTimeout(nudge.pauseTimer);
+    const y = window.scrollY || document.documentElement.scrollTop || 0;
+    if (y < 180 && nudge.scrolled < 8) return;
+    nudge.pauseTimer = setTimeout(() => asoma(), 400);
+  }
+
+  function startNudge() {
+    if (nudgeDisabled()) {
+      root.classList.add("nudge-off");
+      return;
+    }
+    window.addEventListener("scroll", onNudgeScroll, { passive: true });
+    nudge.loadTimer = setTimeout(() => {
+      if (nudge.shown === 0) asoma();
+    }, 4000);
+  }
+
   function openPanel() {
     root.classList.add("open");
+    root.classList.remove("nudge");
+    if (nudge.holdTimer) {
+      clearTimeout(nudge.holdTimer);
+      nudge.holdTimer = null;
+    }
   }
 
   root.querySelector(".bmc-panel").addEventListener("click", (e) => {
@@ -2038,9 +2133,22 @@
     if (root.classList.contains("open")) closePanel();
     else openPanel();
   });
-  ask.addEventListener("click", () => {
+  ask.addEventListener("click", (e) => {
+    if (e.target === askX || (askX && askX.contains(e.target))) return;
     if (!root.classList.contains("open")) openPanel();
   });
+  ask.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    if (!root.classList.contains("open")) openPanel();
+  });
+  if (askX) {
+    askX.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dismissNudge();
+    });
+  }
   closeBtn.addEventListener("click", (e) => {
     e.preventDefault();
     closePanel();
@@ -2182,6 +2290,7 @@
     } catch { /* fail open */ }
     attachBubble();
     restoreSession();
+    startNudge();
     try { window.speechSynthesis && window.speechSynthesis.getVoices(); } catch { /* ignore */ }
   })();
 })();

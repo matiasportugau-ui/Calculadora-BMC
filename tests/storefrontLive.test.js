@@ -12,6 +12,7 @@ import {
 } from "../server/lib/voice/storefrontLive.js";
 
 __testLive__.reset();
+__testLive__.useMemory();
 
 assert.equal(hashStorefrontPhone("099123456").length, 16);
 assert.equal(hashStorefrontPhone("099123456"), hashStorefrontPhone("099123456"));
@@ -36,6 +37,16 @@ await addLiveTurn({ sessionId: "live-test-1", role: "assistant", text: "¿Qué m
 
 const listed = await listLiveSessions();
 assert.ok(listed.some((s) => s.id === "live-test-1" && s.cliente === "Ana"));
+
+const aged = __testLive__.get("live-test-1");
+const prevSeen = aged.lastSeenAt;
+aged.lastSeenAt = Date.now() - 60_000;
+const listedStale = await listLiveSessions();
+assert.ok(
+  !listedStale.some((s) => s.id === "live-test-1"),
+  "Hub hides sessions older than LIVE_MAX_AGE_MS",
+);
+aged.lastSeenAt = prevSeen;
 
 const taken = await takeoverLiveSession("live-test-1");
 assert.equal(taken.status, "takeover");
