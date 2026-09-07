@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-06 (feat — Driver PWA binds logística feed + Outdoor Night Figma)
+**Última actualización:** 2026-09-07 (fix — Panelin Front Hub TTL + shop-tool 400 + chat keeps orb)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-07 (fix — Panelin Front: Hub live 45s, shop-tool 400, chat keeps orb):** `/hub/panelin-web` lists only sessions seen in `LIVE_MAX_AGE_MS` (45s). `POST /action` rejects browser `shop_*` with HTTP 400 `shop_tool_client_only`. Pipeline `/chat` no longer returns `bubble:false` when xAI voice credits are dead (mint `/session` still 403). Runtime scorecard 68/100 (`STATUS-EVAL-panelin-front-2026-09-07.md`). Skill `/status-eval`. Tests `storefrontLive` + `publicVoiceAdmin` + `storefrontVoiceCredits`. Branch `feat/panelin-front-status-eval`. Identify-gate policy still HITL.
 
 **2026-09-06 (feat — BMC Driver consumes `/logistica` route feed):** `/conductor` binds `GET /api/driver/trips` + `plan_snapshot` (`driverTripFeed.js`). Carga CTA = current factory event (`cargaFactoryStep.js`, N de 4). Tabs Inicio/Carga/Listo/Perfil. SVG kit visual SoT; TARGET D7. Figma file `iGZDe5LeC2ZDOdjbB3uH9q` nodes 21:12–21:24 Outdoor Night 390×844. Tests `cargaFactoryStep` + extended `logisticaE2e`. Branch `feat/logistica-driver-figma-loop`. Torre T5–T8 still TARGET.
 

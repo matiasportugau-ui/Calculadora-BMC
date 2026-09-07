@@ -408,4 +408,18 @@ gate:local:   pendiente correr al final de la sesión
 
 ---
 
+## 2026-09-07 N — Panelin Front status-eval + P0 reliability
+
+**Contexto:** `/status-eval` 68/100. 37 VW (26 vacías). Hub 33 live ghosts. `/chat` 403 credits ocultaba el orbe. Shop tools en `/action` HTTP 200 opaco.
+
+**Acciones:** Hub list 45s; `shop_tool_client_only` 400; `/chat` no `bubble:false`; skill `~/.grok/skills/status-eval`; scorecard `STATUS-EVAL-panelin-front-2026-09-07.md`. Branch `feat/panelin-front-status-eval`.
+
+**Verificación:** `node tests/storefrontLive.test.js` + `publicVoiceAdmin` + `storefrontVoiceCredits` + `storefrontVoicePack`. Prod verify after merge + `deploy-calc-api`.
+
+**Próximo paso:** Merge PR → Cloud Run. HITL: 26 VW vacías + gate identify.
+
+**Refs:** `1146a79e` · `docs/team/reports/STATUS-EVAL-panelin-front-2026-09-07.md`
+
+---
+
 
