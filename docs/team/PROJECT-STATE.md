@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-07 (feat — Panelin Front sales peek + Hub TTL ship)
+**Última actualización:** 2026-09-07 (fix — storefront live takeover cross-instance)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-07 (fix — storefront live takeover survives Cloud Run instance miss):** Hub operator and shopper hit different instances; handoff/injects lived only in process memory and shopper pings could persist `status=live` over `takeover`. Hydrate + durable `pending_injects`, SQL guard against takeover→live, atomic claim on `/live/state`. Tests `storefrontLive` cold-mem scenario.
 
 **2026-09-07 (feat — Panelin Front: orb asoma on scroll, offers aproximación):** Closed orb tucks then slides out with a rotating chip (`¿Te armo una aproximación?` / ficha-carrito-PDF / lista web sin flete). Max 3 asomas / tab; chip × → `bmc_panelin_nudge=off`. Same orb, does not cover WhatsApp. Identify gate unchanged. Also ships Hub live 45s, `/action` 400 `shop_tool_client_only`, `/chat` keeps orb. Tests `storefrontVoicePack`. Branch `feat/panelin-front-status-eval`. Live only after `deploy-calc-api`.
 
