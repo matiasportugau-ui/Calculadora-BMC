@@ -77,6 +77,22 @@ export function shouldAttemptAdminColJ(adminRow) {
   return Number.isFinite(n) && n >= 2;
 }
 
+/**
+ * Bind identify Admin row onto capture_lead tool args.
+ * Model schema does not include adminRow; without this, /chat always creates a
+ * second Admin 2.0 row via wa_lead_to_admin while col J keeps writing the identify row.
+ * Also strips model-hallucinated adminRow when the request has no trusted row.
+ */
+export function bindCaptureLeadAdminRow(args, adminRow) {
+  const payload = args && typeof args === "object" ? { ...args } : {};
+  if (shouldAttemptAdminColJ(adminRow)) {
+    payload.adminRow = Number(adminRow);
+  } else {
+    delete payload.adminRow;
+  }
+  return payload;
+}
+
 /** Rolling chat text for Admin 2.0 col J (tab Admin. of WOLFB_ADMIN_SHEET_ID). */
 export function formatStorefrontAdminTranscript({
   cliente = "",
@@ -461,10 +477,9 @@ export default function createPublicVoiceRouter() {
     }
     const pageUrl = sanitizePageUrl(req.body?.pageUrl);
     const leadMeta = req.body?.lead && typeof req.body.lead === "object" ? req.body.lead : {};
-    if (type === "capture_lead" && Number(leadMeta.adminRow) >= 2) {
-      payload.adminRow = Number(leadMeta.adminRow);
-    }
-    const result = await runPublicStorefrontTool(type, payload, pageUrl, req.log);
+    const bound =
+      type === "capture_lead" ? bindCaptureLeadAdminRow(payload, leadMeta.adminRow) : payload;
+    const result = await runPublicStorefrontTool(type, bound, pageUrl, req.log);
     req.log?.info?.(storefrontActionLogPayload(type, 200), "storefront action");
     return res.json({ ok: true, kind: "tool", result });
   });
@@ -592,16 +607,21 @@ export default function createPublicVoiceRouter() {
       userText: shopperTextForBrain(req.body || {}),
     });
     try {
+      const chatAdminRow = Number(req.body?.adminRow);
       const out = await runStorefrontTextTurn({
         message: req.body?.message,
         history: req.body?.history,
         pageUrl,
         toolResults: req.body?.tool_results,
         pack,
-        runServerTool: (name, args) => runPublicStorefrontTool(name, args || {}, pageUrl, req.log),
+        runServerTool: (name, args) => {
+          const toolArgs =
+            name === "capture_lead" ? bindCaptureLeadAdminRow(args, chatAdminRow) : args || {};
+          return runPublicStorefrontTool(name, toolArgs, pageUrl, req.log);
+        },
       });
       recordVoiceEvent({ kind: "storefront_chat", surface: "storefront", detail: "text" });
-      const adminRow = Number(req.body?.adminRow);
+      const adminRow = chatAdminRow;
       const telefono = normalizeStorefrontPhone(req.body?.telefono);
       const cliente = String(req.body?.cliente || shopperName || "").trim();
       const transcript = formatStorefrontAdminTranscript({

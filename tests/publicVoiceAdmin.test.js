@@ -14,6 +14,7 @@ import {
   storefrontSessionMax,
   skipStorefrontSessionLimit,
   shouldAttemptAdminColJ,
+  bindCaptureLeadAdminRow,
   formatStorefrontAdminTranscript,
 } from "../server/routes/publicVoice.js";
 
@@ -100,6 +101,27 @@ assert.equal(shouldAttemptAdminColJ(31), true);
 assert.equal(shouldAttemptAdminColJ(1), false);
 assert.equal(shouldAttemptAdminColJ("MAN-1"), false);
 
+{
+  const bound = bindCaptureLeadAdminRow(
+    { cliente: "Ana", telefono: "099111222", consulta: "techo", consent: true },
+    42,
+  );
+  assert.equal(bound.adminRow, 42, "identify row must be stamped onto capture_lead");
+  assert.equal(bound.cliente, "Ana");
+}
+{
+  const bound = bindCaptureLeadAdminRow(
+    { cliente: "Ana", adminRow: 99, consulta: "x", consent: true },
+    42,
+  );
+  assert.equal(bound.adminRow, 42, "trusted request row wins over model-hallucinated adminRow");
+}
+{
+  const bound = bindCaptureLeadAdminRow({ cliente: "Ana", adminRow: 99, consent: true }, null);
+  assert.equal(bound.adminRow, undefined, "strip untrusted adminRow when shopper has no identify row");
+  assert.equal(Object.hasOwn(bound, "adminRow"), false);
+}
+
 const transcript = formatStorefrontAdminTranscript({
   cliente: "Ana",
   telefono: "59899123456",
@@ -113,6 +135,12 @@ assert.match(transcript, /Vos: IsoDec 100/);
 assert.match(transcript, /Te armo la aproximación/);
 assert.match(actionSrc, /persistStorefrontAdminTranscript/, "every /chat writes Admin col J");
 assert.match(actionSrc, /formatStorefrontAdminTranscript/, "chat transcript for the sheet");
+assert.match(
+  actionSrc,
+  /name === "capture_lead" \? bindCaptureLeadAdminRow/,
+  "/chat must bind identify adminRow onto capture_lead (else split Admin rows)",
+);
+assert.match(actionSrc, /bindCaptureLeadAdminRow\(payload, leadMeta\.adminRow\)/, "/action binds lead.adminRow");
 
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.match(widget, /adminRow: state\.adminRow/, "widget sends adminRow on /chat");
