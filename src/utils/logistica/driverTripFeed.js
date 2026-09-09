@@ -5,6 +5,17 @@
  */
 import { SEED_PICKUPS } from "./pickupCatalog.js";
 
+/**
+ * Driver UIs historically open trips[0]. Prefer an open assignment when the
+ * inbox still contains a more recently updated closed trip.
+ * @param {object[]|null|undefined} trips
+ */
+export function pickDriverActiveTrip(trips) {
+  const list = Array.isArray(trips) ? trips : [];
+  const open = list.find((t) => t && t.status !== "closed" && t.closed_at == null);
+  return open || list[0] || null;
+}
+
 function isPickupStop(stop) {
   const k = `${stop?.kind || ""} ${stop?.tipo || ""} ${stop?.role || ""}`.toLowerCase();
   return /\b(pickup|levante|planta|fabrica|fábrica|deposito|depósito)\b/.test(k);

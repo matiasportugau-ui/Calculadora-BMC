@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { shouldWatchGps } from "../../utils/logistica/torreLiveView.js";
 import { eventTypes, factoryPhase } from "../../utils/logistica/cargaFactoryStep.js";
+import { pickDriverActiveTrip } from "../../utils/logistica/driverTripFeed.js";
 
 export { eventTypes, factoryPhase };
 
@@ -108,7 +109,7 @@ export default function useDriverSession() {
       const res = await fetch("/api/driver/trips", { headers: authHeader });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error");
-      const t0 = data.trips?.[0];
+      const t0 = pickDriverActiveTrip(data.trips);
       if (!t0) {
         setTrip(null);
         setTimeline([]);
