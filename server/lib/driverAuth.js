@@ -65,10 +65,14 @@ export async function listTripsForDriverAuth(pool, auth) {
     const { rows } = await pool.query(`select * from trips where trip_id = $1::uuid`, [auth.trip_id]);
     return { ok: true, trips: rows };
   }
+  // BMC Driver /conductor always opens trips[0]. Prefer open work over a
+  // recently-closed trip that would otherwise win on updated_at alone.
   const { rows } = await pool.query(
     `select * from trips
       where assigned_driver_id = $1::uuid
-      order by updated_at desc`,
+      order by
+        case when status = 'closed' or closed_at is not null then 1 else 0 end asc,
+        updated_at desc nulls last`,
     [auth.chofer_id],
   );
   return { ok: true, trips: rows };

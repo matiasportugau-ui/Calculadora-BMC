@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { pickDriverActiveTrip } from "../utils/logistica/driverTripFeed.js";
 
 const API_BASE = "";
 
@@ -81,7 +82,7 @@ export default function DriverTransportistaApp() {
       const res = await fetch(`${API_BASE}/api/driver/trips`, { headers: authHeader });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Error");
-      const t0 = data.trips?.[0];
+      const t0 = pickDriverActiveTrip(data.trips);
       if (!t0) {
         setTrip(null);
         setTimeline([]);

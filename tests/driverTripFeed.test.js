@@ -4,10 +4,20 @@
  * Run: node tests/driverTripFeed.test.js
  */
 import assert from "node:assert/strict";
-import { projectDriverTripFeed } from "../src/utils/logistica/driverTripFeed.js";
+import { pickDriverActiveTrip, projectDriverTripFeed } from "../src/utils/logistica/driverTripFeed.js";
 
 console.log("driverTripFeed");
 
+{
+  const pick = pickDriverActiveTrip([
+    { trip_id: "closed", status: "closed", closed_at: "2026-09-09T12:00:00.000Z", updated_at: "2026-09-09T12:00:00.000Z" },
+    { trip_id: "open", status: "assigned", closed_at: null, updated_at: "2026-09-09T10:00:00.000Z" },
+  ]);
+  assert.equal(pick.trip_id, "open");
+  assert.equal(pickDriverActiveTrip([{ trip_id: "only-closed", status: "closed" }]).trip_id, "only-closed");
+  assert.equal(pickDriverActiveTrip([]), null);
+  console.log("  ✓ pickDriverActiveTrip prefers open over closed");
+}
 {
   const feed = projectDriverTripFeed({
     trip: {

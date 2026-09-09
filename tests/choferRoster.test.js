@@ -63,6 +63,47 @@ await ensureTransportistaSchema(pool);
   assert.equal(listed.trips[0].trip_id, tripId);
   console.log("  ✓ assign confirmed trip → chofer inbox");
   console.log("  ✓ loginChofer bearer lists assigned trip on /api/driver/trips path");
+
+  // Closed trip refreshed more recently than an older open assignment must not
+  // win trips[0] — Driver UI only opens the first row.
+  const openId = "33333333-3333-4333-8333-333333333333";
+  const closedId = "44444444-4444-4444-8444-444444444444";
+  const choferId = reg.chofer.chofer_id;
+  // Prior REP-1 assignment is also closed (newer stamp) so only openId remains active.
+  await pool.query(
+    `insert into trips (trip_id, status, plan_snapshot, closed_at, updated_at, assigned_driver_id)
+     values ($1, $2, $3, $4, $5, $6)`,
+    [openId, "assigned", { reparto_no: "REP-OPEN" }, null, "2026-09-09T10:00:00.000Z", choferId],
+  );
+  await pool.query(
+    `insert into trips (trip_id, status, plan_snapshot, closed_at, updated_at, assigned_driver_id)
+     values ($1, $2, $3, $4, $5, $6)`,
+    [
+      closedId,
+      "closed",
+      { reparto_no: "REP-CLOSED" },
+      "2026-09-09T12:00:00.000Z",
+      "2026-09-09T12:00:00.000Z",
+      choferId,
+    ],
+  );
+  // Simulate completing the first assigned trip after openId was already on the books.
+  const prior = (await pool.query(`select * from trips where trip_id = $1`, [tripId])).rows[0];
+  prior.status = "closed";
+  prior.closed_at = "2026-09-09T13:00:00.000Z";
+  prior.updated_at = "2026-09-09T13:00:00.000Z";
+  const ranked = await listTripsForDriverAuth(pool, authz);
+  assert.equal(ranked.ok, true);
+  assert.equal(ranked.trips[0].trip_id, openId);
+  assert.equal(ranked.trips[0].status, "assigned");
+  assert.ok(ranked.trips.every((t, i) => i === 0 || t.status === "closed" || t.trip_id !== openId));
+  const closedFirstIdx = ranked.trips.findIndex((t) => t.trip_id === closedId);
+  const priorClosedIdx = ranked.trips.findIndex((t) => t.trip_id === tripId);
+  assert.ok(closedFirstIdx > 0);
+  assert.ok(priorClosedIdx > 0);
+  const inboxRanked = await listChoferInbox(pool, choferId);
+  assert.equal(inboxRanked.trips[0].trip_id, openId);
+  console.log("  ✓ open assigned trip ranks above more recently updated closed trip");
 }
 
 {

@@ -201,7 +201,16 @@ export function createTransportistaMemoryPool() {
           };
         }
         if (t === "trips" && /assigned_driver_id/i.test(raw) && !/closed_at is null/i.test(raw)) {
-          return { rows: list.filter((r) => String(r.assigned_driver_id) === String(params[0])) };
+          const filtered = list.filter((r) => String(r.assigned_driver_id) === String(params[0]));
+          if (/order by/i.test(raw)) {
+            filtered.sort((a, b) => {
+              const aClosed = a.status === "closed" || a.closed_at != null ? 1 : 0;
+              const bClosed = b.status === "closed" || b.closed_at != null ? 1 : 0;
+              if (aClosed !== bClosed) return aClosed - bClosed;
+              return String(b.updated_at || "").localeCompare(String(a.updated_at || ""));
+            });
+          }
+          return { rows: filtered };
         }
         if (t === "trips" && /trip_id = \$/i.test(raw) && params[0]) {
           return { rows: list.filter((r) => String(r.trip_id) === String(params[0])) };

@@ -131,7 +131,9 @@ export async function listChoferInbox(pool, choferId) {
     `select trip_id, status, plan_snapshot, assigned_driver_id, assigned_phone_e164, closed_at, updated_at
        from trips
       where assigned_driver_id = $1::uuid
-      order by updated_at desc`,
+      order by
+        case when status = 'closed' or closed_at is not null then 1 else 0 end asc,
+        updated_at desc nulls last`,
     [choferId],
   );
   return { ok: true, trips: rows };
