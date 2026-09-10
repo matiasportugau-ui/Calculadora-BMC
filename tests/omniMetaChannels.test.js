@@ -36,6 +36,8 @@ assert.equal(fb[0].idempotency_key, "fb:msg:fb_mid_1");
 assert.equal(fb[0].contact_hint.psid, "PSID_1");
 
 let persistCalls = 0;
+const noopNotify = async () => ({ skipped: "test" });
+
 const off = handleMetaMessagingWebhook({
   channel: "ig",
   enabled: false,
@@ -44,6 +46,7 @@ const off = handleMetaMessagingWebhook({
   signatureHeader: "bad",
   config: {},
   persist: async () => { persistCalls += 1; },
+  notifyOwner: noopNotify,
 });
 assert.equal(off.status, 200);
 assert.equal(off.body.skipped, "flag_off");
@@ -58,6 +61,7 @@ const bad = handleMetaMessagingWebhook({
   signatureHeader: "sha256=bad",
   config: {},
   persist: async () => { throw new Error("must not persist"); },
+  notifyOwner: noopNotify,
 });
 assert.equal(bad.status, 401);
 assert.equal(bad.body.error, "invalid webhook signature");
@@ -73,6 +77,7 @@ const good = handleMetaMessagingWebhook({
   signatureHeader: sig,
   config: { databaseUrl: "postgres://unused" },
   persist: async (event) => { persisted.push(event); return { ok: true }; },
+  notifyOwner: noopNotify,
 });
 assert.equal(good.status, 200);
 assert.equal(good.body.events, 1);

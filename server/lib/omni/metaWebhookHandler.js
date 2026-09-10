@@ -2,6 +2,7 @@ import { verifyWhatsAppSignature } from "../whatsappSignature.js";
 import { normalizeAndPersist } from "./normalizer.js";
 import { igWebhookToOmniEvents } from "./adapters/igWebhook.js";
 import { messengerWebhookToOmniEvents } from "./adapters/messengerWebhook.js";
+import { enqueueNotifyOwner } from "../meta/notify.js";
 
 export function verifyMetaWebhookSubscribe(req, verifyToken) {
   const mode = req?.query?.["hub.mode"];
@@ -50,12 +51,24 @@ export function handleMetaMessagingWebhook(args) {
 
   const events = adapterFor(channel)(body);
   const persist = args.persist || normalizeAndPersist;
+  const notify = args.notifyOwner || enqueueNotifyOwner;
   const processing = Promise.all(
     events.map((event) =>
-      persist(event, { databaseUrl: config.databaseUrl, logger }).catch((err) => {
-        logger?.warn?.({ err: err?.message, idempotency_key: event.idempotency_key }, "Meta omni persist failed");
-        return null;
-      }),
+      persist(event, { databaseUrl: config.databaseUrl, logger })
+        .then(async (result) => {
+          if (result && result.duplicate !== true) {
+            try {
+              await notify({ event, persistResult: result, config, logger });
+            } catch (err) {
+              logger?.warn?.({ err: err?.message, channel }, "Meta owner notify enqueue failed");
+            }
+          }
+          return result;
+        })
+        .catch((err) => {
+          logger?.warn?.({ err: err?.message, idempotency_key: event.idempotency_key }, "Meta omni persist failed");
+          return null;
+        }),
     ),
   );
   return { status: 200, body: { ok: true, events: events.length }, processing };
