@@ -1,0 +1,45 @@
+CARPETA DE CONOCIMIENTO — AGENTE DE WHATSAPP BMC URUGUAY
+==========================================================
+
+Esta carpeta contiene todo el conocimiento que el Agente de IA nativo de
+WhatsApp Business (Meta) necesita para responder consultas de clientes de
+BMC Uruguay / Panelin y calificar leads para el equipo comercial.
+
+ROL DEL AGENTE: responde consultas generales de producto y proceso, y
+junta los datos del proyecto del cliente (tipo de obra, m² aproximados,
+ubicación, plazo, contacto) para que el equipo comercial cotice
+manualmente. NO da precios, NO calcula cantidades de material, NO cotiza.
+
+CÓMO USAR ESTA CARPETA
+-----------------------
+1. Compartila con el conector de Drive del Agente de IA de WhatsApp
+   Business, o subí cada archivo manualmente en Herramientas > Agente de
+   IA > Documentos.
+2. El archivo "01" (Personalidad e Instrucciones) es el que define cómo
+   se comporta el agente — pegalo también en el campo de configuración
+   de personalidad/instrucciones si la app lo permite.
+3. Los archivos "02" a "08" son contenido de conocimiento (empresa,
+   catálogo, preguntas frecuentes, mantenimiento, proceso constructivo,
+   cómo manejar objeciones, y cómo calificar y derivar un lead).
+4. Revisá las respuestas del agente la primera semana y corregí
+   cualquiera que dé un precio, un plazo exacto, o un cálculo de
+   material — son los errores más importantes a evitar.
+
+CONTENIDO DE LA CARPETA
+------------------------
+01 - Personalidad e Instrucciones del Agente
+02 - Quienes Somos - BMC Uruguay
+03 - Catalogo de Productos
+04 - Preguntas Frecuentes
+05 - Especificaciones Tecnicas y Mantenimiento
+06 - Proceso Constructivo
+07 - Como Responder Objeciones Sin Cotizar
+08 - Calificacion de Leads y Derivacion a Humano
+
+Ningún archivo de esta carpeta incluye precios exactos ni SKUs — el
+agente que la usa no cotiza, solo informa y deriva al equipo comercial.
+
+Origen y trazabilidad completa de este contenido (para uso interno del
+equipo técnico, no hace falta subirlo a WhatsApp):
+docs/whatsapp-native-agent/10-SOURCING-MAP.md en el repositorio
+Calculadora-BMC.
