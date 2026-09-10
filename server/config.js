@@ -168,6 +168,8 @@ export const config = {
   fbPageToken: process.env.FB_PAGE_TOKEN || "",
   igAppSecret: process.env.IG_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
   fbAppSecret: process.env.FB_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
+  // Owner personal WhatsApp (E.164 digits) for Meta inbox notify — NOT the Cloud API sender.
+  ownerWhatsapp: String(process.env.OWNER_WHATSAPP || "").trim(),
   // Shopify (questions/quotes flow – Mercado Libre replacement)
   shopifyClientId: process.env.SHOPIFY_CLIENT_ID || "",
   shopifyClientSecret: process.env.SHOPIFY_CLIENT_SECRET || "",
