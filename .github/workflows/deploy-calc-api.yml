@@ -198,6 +198,9 @@ jobs:
             OMNI_WA_CRM_SYNC_DELAY_MS=${{ vars.OMNI_WA_CRM_SYNC_DELAY_MS }}
             OMNI_WA_READS=${{ vars.OMNI_WA_READS }}
             OMNI_AI_DAILY_BUDGET_USD=${{ vars.OMNI_AI_DAILY_BUDGET_USD }}
+            OMNI_IG_ENABLED=${{ vars.OMNI_IG_ENABLED }}
+            OMNI_FB_ENABLED=${{ vars.OMNI_FB_ENABLED }}
+            OWNER_WHATSAPP=${{ vars.OWNER_WHATSAPP }}
             GMAIL_INGEST_ADDRESSES=${{ vars.GMAIL_INGEST_ADDRESSES }}
             DRIVE_QUOTE_FOLDER_ID=${{ vars.DRIVE_QUOTE_FOLDER_ID }}
             PEA_ENABLED=${{ vars.PEA_ENABLED }}

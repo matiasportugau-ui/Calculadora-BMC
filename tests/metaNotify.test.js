@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
+import { config } from "../server/config.js";
 import { handleMetaMessagingWebhook } from "../server/lib/omni/metaWebhookHandler.js";
 import {
   channelLabel,
   createNotifyQueue,
+  enqueueNotifyOwner,
   formatOwnerDigest,
   formatOwnerNotification,
   kindLabel,
@@ -13,6 +15,11 @@ import {
 
 resetNotifyQueueForTests();
 resetNotifySeqForTests();
+
+// Regression (#1229): notify reads config.ownerWhatsapp ← OWNER_WHATSAPP.
+// Without this key on appConfig, live enqueue always skips even when env is set.
+assert.equal(Object.prototype.hasOwnProperty.call(config, "ownerWhatsapp"), true);
+assert.equal(typeof config.ownerWhatsapp, "string");
 
 const igEvent = {
   channel: "ig",
@@ -224,6 +231,32 @@ assert.match(digest, /FB DM #2/);
   });
   await off.processing;
   assert.equal(offNotified.length, 0);
+}
+
+// enqueueNotifyOwner must honor config.ownerWhatsapp (appConfig key from OWNER_WHATSAPP)
+{
+  resetNotifyQueueForTests();
+  const sent = [];
+  const rEmpty = await enqueueNotifyOwner({
+    event: igEvent,
+    config: { ownerWhatsapp: "", whatsappAccessToken: "t", whatsappPhoneNumberId: "p" },
+    send: async (text) => sent.push(text),
+  });
+  assert.equal(rEmpty.skipped, "owner_whatsapp_empty");
+  assert.equal(sent.length, 0);
+
+  resetNotifyQueueForTests();
+  const rOk = await enqueueNotifyOwner({
+    event: igEvent,
+    config: { ownerWhatsapp: "59899111222", whatsappAccessToken: "t", whatsappPhoneNumberId: "p" },
+    send: async (text) => sent.push(text),
+    now: () => 50_000,
+    setTimeoutFn: () => 0,
+    clearTimeoutFn: () => {},
+  });
+  assert.equal(rOk.sent, "immediate");
+  assert.equal(sent.length, 1);
+  assert.match(sent[0], /IG DM/);
 }
 
 resetNotifyQueueForTests();
