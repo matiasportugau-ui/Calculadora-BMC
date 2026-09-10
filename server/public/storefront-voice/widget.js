@@ -392,14 +392,9 @@
     return best.v;
   }
 
-  function cartQtyFromLine(line, shopPrice) {
-    let q = Math.max(1, Math.round(Number(line.quantity) || 1));
-    const pu = Number(line.pu_usd) || 0;
-    const sp = Number(shopPrice) || 0;
-    const cant = Number(line.cant) || q;
-    if (pu > 0 && sp > pu * 4) {
-      q = Math.max(1, Math.round((cant * pu) / sp));
-    }
+  /** Trust BOM quantity — do not rescale by lista pu vs shop price (under-orders hardware). */
+  function cartQtyFromLine(line, _shopPrice) {
+    const q = Math.max(1, Math.round(Number(line.quantity) || 1));
     return Math.min(500, q);
   }
 
