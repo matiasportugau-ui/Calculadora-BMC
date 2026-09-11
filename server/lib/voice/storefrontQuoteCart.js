@@ -32,8 +32,9 @@ const DESC_HANDLES = [
   [/cumbrera.*isodec/i, "cumbrera-isodec"],
   [/babeta.*adosar/i, "babeta-isodec-adosar"],
   [/babeta.*empotrar/i, "babeta-de-empotrar-isodec"],
-  [/canal[oó]n.*isodec/i, "canalon-isodec-kit-completo"],
+  // Soporte must beat the generic canalón kit regex (substring "canalón … isodec").
   [/soporte.*canal[oó]n.*isodec/i, "soporte-de-canalon-isodec"],
+  [/canal[oó]n.*isodec/i, "canalon-isodec-kit-completo"],
   [/gotero frontal.*isoroof/i, "gotero-frontal-simple-isoroof"],
   [/gotero lateral de c[aá]mara.*isoroof/i, "gotero-lateral-de-camara-isoroof"],
   [/gotero lateral.*isoroof/i, "gotero-lateral-isoroof"],
@@ -54,12 +55,34 @@ function mmFromSkuOrLabel(sku, label) {
   return m ? m[1] : "";
 }
 
-function colorFromQuote(input = {}) {
-  const raw = String(input.techo?.color || input.pared?.color || input.camara?.color || "Blanco");
-  const c = raw.trim();
+function normalizeShopColor(raw) {
+  const c = String(raw || "").trim();
+  if (!c) return "";
   if (/gris/i.test(c)) return "Gris";
   if (/rojo|terracota/i.test(c)) return /terracota/i.test(c) ? "Terracota" : "Rojo";
   return "Blanco";
+}
+
+/**
+ * Resolve Shopify color hint per BOM line.
+ * Techo/pared/cámara can differ (techo_fachada); never let techo color paint pared panels.
+ */
+function colorForItem(item, input = {}) {
+  const fam = familyFromSku(item?.sku);
+  let raw = "";
+  if (/^ISOPANEL|^ISOWALL/.test(fam)) raw = input.pared?.color;
+  else if (/^ISODEC|^ISOROOF/.test(fam)) raw = input.techo?.color;
+  if (!raw) raw = input.techo?.color || input.pared?.color || input.camara?.color || "Blanco";
+  return normalizeShopColor(raw) || "Blanco";
+}
+
+function espesorHintForItem(item, input = {}) {
+  const fam = familyFromSku(item?.sku);
+  let raw = "";
+  if (/^ISOPANEL|^ISOWALL/.test(fam)) raw = input.pared?.espesor;
+  else if (/^ISODEC|^ISOROOF/.test(fam)) raw = input.techo?.espesor;
+  if (!raw) raw = input.techo?.espesor || input.pared?.espesor || input.camara?.espesor || "";
+  return String(raw).replace(/\D/g, "");
 }
 
 function handleForItem(item) {
@@ -90,10 +113,6 @@ function quantityForItem(item) {
  */
 export function bomToCartLines(bom, quoteInput = {}) {
   const groups = Array.isArray(bom) ? bom : [];
-  const color = colorFromQuote(quoteInput);
-  const espesorHint = String(
-    quoteInput.techo?.espesor || quoteInput.pared?.espesor || quoteInput.camara?.espesor || "",
-  ).replace(/\D/g, "");
   const out = [];
   const seen = new Set();
   for (const g of groups) {
@@ -102,7 +121,8 @@ export function bomToCartLines(bom, quoteInput = {}) {
       if (!handle) continue;
       const sku = String(item.sku || "");
       const descripcion = String(item.descripcion || item.label || sku);
-      const espesor = mmFromSkuOrLabel(sku, descripcion) || espesorHint;
+      const color = colorForItem(item, quoteInput);
+      const espesor = mmFromSkuOrLabel(sku, descripcion) || espesorHintForItem(item, quoteInput);
       const quantity = Math.min(500, quantityForItem(item));
       const key = `${handle}|${espesor}|${color}|${sku}`;
       if (seen.has(key)) continue;
