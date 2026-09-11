@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-07 (feat — Panelin Front sales peek + Hub TTL ship)
+**Última actualización:** 2026-09-11 (feat — Meta inbox Slack operator notify wiring)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-11 (feat — Meta inbox Slack operator notify wiring):** `deploy-calc-api.yml` ahora pasa `OMNI_IG_ENABLED`/`OMNI_FB_ENABLED`, `META_*` Run 1 vars, `OWNER_WHATSAPP`, y el canal opcional Slack (`SLACK_BOT_TOKEN`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFY_CHANNEL`) sin tocar `--set-secrets`. `server/config.js` y `.env.example` documentan el wiring; `server/lib/meta/notify.js` mantiene el burst/queue de WhatsApp y suma Slack opcional en paralelo, tolerando falla de Slack y permitiendo notify Slack-only cuando `OWNER_WHATSAPP` está vacío. Nuevo helper `server/lib/slack/notify.js`, `scripts/slack-ping.mjs`, y tests `metaNotify` + `slackNotify`. `META_COMMENTS_ENABLED` sigue default `0`; no se shippea `/webhooks/slack`.
 
 **2026-09-07 (feat — Panelin Front: orb asoma on scroll, offers aproximación):** Closed orb tucks then slides out with a rotating chip (`¿Te armo una aproximación?` / ficha-carrito-PDF / lista web sin flete). Max 3 asomas / tab; chip × → `bmc_panelin_nudge=off`. Same orb, does not cover WhatsApp. Identify gate unchanged. Also ships Hub live 45s, `/action` 400 `shop_tool_client_only`, `/chat` keeps orb. Tests `storefrontVoicePack`. Branch `feat/panelin-front-status-eval`. Live only after `deploy-calc-api`.
 
