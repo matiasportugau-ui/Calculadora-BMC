@@ -5,6 +5,7 @@
  * #n is a per-process sequence until Run 3 binds it to a durable audit row.
  */
 import { config as appConfig } from "../../config.js";
+import { sendSlackText } from "../slack/notify.js";
 import { sendWhatsAppText } from "../whatsappOutbound.js";
 
 export const NOTIFY_WINDOW_MS = 60_000;
@@ -74,13 +75,46 @@ export function formatOwnerDigest(items) {
   return `📩 Meta inbox · ${items.length} eventos (60s)\n${lines.join("\n")}`;
 }
 
-function defaultSend(text, cfg) {
-  return sendWhatsAppText({
-    to: cfg.ownerWhatsapp,
-    text,
-    accessToken: cfg.whatsappAccessToken,
-    phoneNumberId: cfg.whatsappPhoneNumberId,
-  });
+export function isSlackConfigured(cfg = {}) {
+  return Boolean(
+    String(cfg.slackWebhookUrl || "").trim() ||
+      (String(cfg.slackBotToken || "").trim() && String(cfg.slackNotifyChannel || "").trim()),
+  );
+}
+
+function defaultSend(text, cfg, { fetchImpl, logger } = {}) {
+  const jobs = [];
+  let primaryIndex = -1;
+
+  if (String(cfg.ownerWhatsapp || "").trim() && cfg.whatsappAccessToken && cfg.whatsappPhoneNumberId) {
+    primaryIndex =
+      jobs.push(
+        sendWhatsAppText({
+          to: cfg.ownerWhatsapp,
+          text,
+          accessToken: cfg.whatsappAccessToken,
+          phoneNumberId: cfg.whatsappPhoneNumberId,
+        }),
+      ) - 1;
+  }
+
+  if (isSlackConfigured(cfg)) {
+    jobs.push(
+      sendSlackText({
+        text,
+        webhookUrl: cfg.slackWebhookUrl,
+        botToken: cfg.slackBotToken,
+        channel: cfg.slackNotifyChannel,
+        fetchImpl,
+      }).catch((err) => {
+        logger?.warn?.({ err: err?.message }, "meta owner notify slack failed");
+        return { skipped: "slack_error", error: err?.message };
+      }),
+    );
+  }
+
+  if (!jobs.length) return Promise.resolve({ skipped: "owner_whatsapp_empty" });
+  return Promise.all(jobs).then((results) => results[primaryIndex] || results[0]);
 }
 
 /**
@@ -90,6 +124,7 @@ function defaultSend(text, cfg) {
  *   now?: () => number,
  *   send?: (text: string) => Promise<unknown>,
  *   getOwnerWhatsapp?: () => string,
+ *   fetchImpl?: typeof fetch,
  *   setTimeoutFn?: typeof setTimeout,
  *   clearTimeoutFn?: typeof clearTimeout,
  *   config?: object,
@@ -101,11 +136,11 @@ export function createNotifyQueue(opts = {}) {
   const burstLimit = opts.burstLimit ?? NOTIFY_BURST_LIMIT;
   const now = opts.now || Date.now;
   const cfg = opts.config || appConfig;
+  const logger = opts.logger;
   const getOwner = opts.getOwnerWhatsapp || (() => cfg.ownerWhatsapp || "");
-  const send = opts.send || ((text) => defaultSend(text, cfg));
+  const send = opts.send || ((text) => defaultSend(text, cfg, { fetchImpl: opts.fetchImpl, logger }));
   const setTimeoutFn = opts.setTimeoutFn || setTimeout;
   const clearTimeoutFn = opts.clearTimeoutFn || clearTimeout;
-  const logger = opts.logger;
 
   let windowStart = 0;
   let sentImmediate = 0;
@@ -140,8 +175,11 @@ export function createNotifyQueue(opts = {}) {
    */
   async function notifyOwner(payload = {}) {
     const owner = String(getOwner() || "").trim();
-    if (!owner) return { skipped: "owner_whatsapp_empty" };
-    if (opts.send == null && (!cfg.whatsappAccessToken || !cfg.whatsappPhoneNumberId)) {
+    const whatsappConfigured =
+      Boolean(owner) && (opts.send != null || Boolean(cfg.whatsappAccessToken && cfg.whatsappPhoneNumberId));
+    const slackConfigured = isSlackConfigured(cfg);
+    if (!whatsappConfigured && !slackConfigured) {
+      if (!owner) return { skipped: "owner_whatsapp_empty" };
       return { skipped: "whatsapp_not_configured" };
     }
 
@@ -203,7 +241,7 @@ export function resetNotifyQueueForTests() {
 export async function enqueueNotifyOwner(payload = {}) {
   try {
     const cfg = payload.config || appConfig;
-    if (!String(cfg.ownerWhatsapp || "").trim()) {
+    if (!String(cfg.ownerWhatsapp || "").trim() && !isSlackConfigured(cfg)) {
       return { skipped: "owner_whatsapp_empty" };
     }
     if (!defaultQueue) {
@@ -212,6 +250,7 @@ export async function enqueueNotifyOwner(payload = {}) {
         logger: payload.logger,
         send: payload.send,
         now: payload.now,
+        fetchImpl: payload.fetchImpl,
         setTimeoutFn: payload.setTimeoutFn,
         clearTimeoutFn: payload.clearTimeoutFn,
       });

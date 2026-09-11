@@ -4,8 +4,10 @@ import { handleMetaMessagingWebhook } from "../server/lib/omni/metaWebhookHandle
 import {
   channelLabel,
   createNotifyQueue,
+  enqueueNotifyOwner,
   formatOwnerDigest,
   formatOwnerNotification,
+  isSlackConfigured,
   kindLabel,
   resetNotifyQueueForTests,
   resetNotifySeqForTests,
@@ -66,6 +68,10 @@ assert.match(digest, /^📩 Meta inbox · 2 eventos \(60s\)/);
 assert.match(digest, /IG DM #1/);
 assert.match(digest, /FB DM #2/);
 
+assert.equal(isSlackConfigured({}), false);
+assert.equal(isSlackConfigured({ slackWebhookUrl: "https://hooks.slack.com/services/T/B/X" }), true);
+assert.equal(isSlackConfigured({ slackBotToken: "xoxb", slackNotifyChannel: "#meta" }), true);
+
 // Disabled when OWNER_WHATSAPP empty
 {
   const sent = [];
@@ -77,6 +83,80 @@ assert.match(digest, /FB DM #2/);
   const r = await q.notifyOwner({ event: igEvent, n: 1 });
   assert.equal(r.skipped, "owner_whatsapp_empty");
   assert.equal(sent.length, 0);
+}
+
+// Slack-only send works even when OWNER_WHATSAPP is empty
+{
+  const calls = [];
+  const q = createNotifyQueue({
+    config: {
+      ownerWhatsapp: "",
+      slackWebhookUrl: "https://hooks.slack.com/services/T000/B000/XXX",
+    },
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      return { ok: true, status: 200, text: async () => "ok" };
+    },
+    now: () => 1_000,
+    setTimeoutFn: () => 0,
+    clearTimeoutFn: () => {},
+  });
+  const r = await q.notifyOwner({ event: igEvent, n: 1 });
+  assert.equal(r.sent, "immediate");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://hooks.slack.com/services/T000/B000/XXX");
+}
+
+// enqueueNotifyOwner also allows Slack-only delivery
+{
+  resetNotifyQueueForTests();
+  const calls = [];
+  const r = await enqueueNotifyOwner({
+    config: {
+      ownerWhatsapp: "",
+      slackWebhookUrl: "https://hooks.slack.com/services/T000/B000/YYY",
+    },
+    event: fbEvent,
+    n: 2,
+    fetchImpl: async (url) => {
+      calls.push(url);
+      return { ok: true, status: 200, text: async () => "ok" };
+    },
+  });
+  assert.equal(r.sent, "immediate");
+  assert.deepEqual(calls, ["https://hooks.slack.com/services/T000/B000/YYY"]);
+}
+
+// Slack failure is isolated and swallowed
+{
+  const warns = [];
+  const q = createNotifyQueue({
+    config: {
+      ownerWhatsapp: "",
+      slackWebhookUrl: "https://hooks.slack.com/services/T000/B000/FAIL",
+    },
+    fetchImpl: async () => ({ ok: false, status: 500, text: async () => "boom" }),
+    logger: { warn: (...args) => warns.push(args) },
+    now: () => 1_000,
+    setTimeoutFn: () => 0,
+    clearTimeoutFn: () => {},
+  });
+  const r = await q.notifyOwner({ event: igEvent, n: 1 });
+  assert.equal(r.sent, "immediate");
+  assert.equal(warns.length, 1);
+}
+
+// Neither WhatsApp nor Slack configured -> same skip as before
+{
+  const q = createNotifyQueue({
+    config: {},
+    fetchImpl: async () => {
+      throw new Error("must not fetch");
+    },
+    now: () => 1_000,
+  });
+  const r = await q.notifyOwner({ event: igEvent, n: 1 });
+  assert.equal(r.skipped, "owner_whatsapp_empty");
 }
 
 // Echo skipped
