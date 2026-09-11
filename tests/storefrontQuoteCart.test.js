@@ -50,6 +50,49 @@ assert.equal(panel.color, "Blanco");
 assert.equal(quotePayloadToCotizarBody({ scenario: "solo_techo" }).escenario, "solo_techo");
 assert.equal(quotePayloadToCotizarBody({ scenario: "solo_techo" }).flete, 0);
 
+// ISOROOF_COLONIAL must NOT prefix-collapse onto IsoRoof 3G (no Shopify colonial handle yet).
+const colonialBom = [
+  {
+    grupo: "PANELES",
+    items: [
+      {
+        descripcion: "ISOROOF COLONIAL 40mm",
+        sku: "ISOROOF_COLONIAL-40",
+        cant: 42,
+        unidad: "m²",
+        pu_usd: 46,
+      },
+      {
+        descripcion: "Cumbrera ISOROOF Colonial 2,2 m",
+        sku: "CUMROOFCOL",
+        cant: 6,
+        unidad: "m",
+        pu_usd: 115,
+      },
+    ],
+  },
+];
+const colonialLines = bomToCartLines(colonialBom, {
+  techo: { familia: "ISOROOF_COLONIAL", espesor: "40", color: "Simil teja / Blanco" },
+});
+assert.equal(colonialLines.length, 0, "colonial panel+cumbrera omitted until Shopify handle exists");
+assert.ok(
+  !colonialLines.some((l) => /isoroof-3g|cumbrera-isoroof-3g/i.test(l.handle || "")),
+  "never substitute IsoRoof 3G for colonial",
+);
+
+// Sibling families still resolve exactly.
+const foilLines = bomToCartLines(
+  [{ items: [{ sku: "ISOROOF_FOIL-30", descripcion: "ISOROOF FOIL 30mm", cant: 10, unidad: "m²", pu_usd: 46 }] }],
+  { techo: { familia: "ISOROOF_FOIL", espesor: "30" } },
+);
+assert.equal(foilLines[0]?.handle, "iagro30");
+const roof3g = bomToCartLines(
+  [{ items: [{ sku: "ISOROOF_3G-50", descripcion: "ISOROOF 3G 50mm", cant: 10, unidad: "m²", pu_usd: 40 }] }],
+  { techo: { familia: "ISOROOF_3G", espesor: "50" } },
+);
+assert.equal(roof3g[0]?.handle, "isoroof-3g-gris-rojo-blanco-bromyros");
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.ok(widget.includes("add_quote_to_cart"), "widget loads quote into cart");
