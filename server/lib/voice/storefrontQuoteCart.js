@@ -23,15 +23,39 @@ export const SKU_HANDLES = Object.freeze({
   cinta_butilo: "cinta-butilo",
   silicona: "bromplast-8-silicona-neutra",
   silicona_300_neutra: "silicona-neutra-pomo-premium",
+  // IsoDec babetas (MATRIZ numeric SKUs)
+  "6828": "babeta-isodec-adosar",
+  "6865": "babeta-de-empotrar-isodec",
 });
+
+/** IsoRoof babeta SKUs share one code for lateral + superior — pick handle from BOM label. */
+function isoroofBabetaHandle(sku, label) {
+  const s = String(sku || "").toUpperCase();
+  const L = String(label || "");
+  const superior = /superior/i.test(L);
+  if (s === "BBAS3G") {
+    return superior
+      ? "babeta-de-atornillar-superior-3g-isoroof"
+      : "babeta-de-atornillar-lateral-isoroof";
+  }
+  if (s === "BBESUP") {
+    return superior
+      ? "babeta-de-empotrar-superior-3g-isoroof-bmc-reloaded"
+      : "babeta-de-empotrar-lateral-isoroof";
+  }
+  return "";
+}
 
 const DESC_HANDLES = [
   [/gotero frontal.*isodec|gotero frontal para isodec/i, "gotero-frontal-isodec"],
   [/gotero lateral de c[aá]mara.*isodec/i, "gotero-lateral-de-camara-isodec"],
   [/gotero (lateral|superior).*isodec/i, "gotero-lateral-para-isodec-copia"],
   [/cumbrera.*isodec/i, "cumbrera-isodec"],
-  [/babeta.*adosar/i, "babeta-isodec-adosar"],
-  [/babeta.*empotrar/i, "babeta-de-empotrar-isodec"],
+  // Require family token — bare "Babeta lateral de adosar" is IsoRoof BOM text too.
+  [/babeta.*adosar.*isodec|babeta.*isodec.*adosar/i, "babeta-isodec-adosar"],
+  [/babeta.*empotrar.*isodec|babeta.*isodec.*empotrar/i, "babeta-de-empotrar-isodec"],
+  [/babeta.*adosar.*isoroof|babeta.*isoroof.*adosar|babeta.*atornillar.*isoroof/i, "babeta-de-atornillar-lateral-isoroof"],
+  [/babeta.*empotrar.*isoroof|babeta.*isoroof.*empotrar/i, "babeta-de-empotrar-lateral-isoroof"],
   [/canal[oó]n.*isodec/i, "canalon-isodec-kit-completo"],
   [/soporte.*canal[oó]n.*isodec/i, "soporte-de-canalon-isodec"],
   [/gotero frontal.*isoroof/i, "gotero-frontal-simple-isoroof"],
@@ -66,9 +90,11 @@ function handleForItem(item) {
   const sku = String(item.sku || "");
   if (/^FLETE$/i.test(sku)) return "";
   if (SKU_HANDLES[sku]) return SKU_HANDLES[sku];
+  const label = String(item.descripcion || item.label || "");
+  const roofBabeta = isoroofBabetaHandle(sku, label);
+  if (roofBabeta) return roofBabeta;
   const fam = familyFromSku(sku);
   if (fam) return PANEL_HANDLES[fam];
-  const label = String(item.descripcion || item.label || "");
   for (const [re, handle] of DESC_HANDLES) {
     if (re.test(label)) return handle;
   }
