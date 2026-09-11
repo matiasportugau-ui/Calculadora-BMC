@@ -50,6 +50,46 @@ assert.equal(panel.color, "Blanco");
 assert.equal(quotePayloadToCotizarBody({ scenario: "solo_techo" }).escenario, "solo_techo");
 assert.equal(quotePayloadToCotizarBody({ scenario: "solo_techo" }).flete, 0);
 
+// Soporte de canalón must not match the generic canalón kit regex first.
+const canalonBom = [
+  {
+    grupo: "ACCESORIOS",
+    items: [
+      { descripcion: "Soporte de canalón IsoDec", cant: 12, unidad: "unid", pu_usd: 5 },
+      { descripcion: "Canalón IsoDec kit completo", cant: 1, unidad: "unid", pu_usd: 40 },
+    ],
+  },
+];
+const canalonLines = bomToCartLines(canalonBom);
+assert.equal(
+  canalonLines.find((l) => /soporte/i.test(l.title))?.handle,
+  "soporte-de-canalon-isodec",
+  "soporte canalón → soporte handle",
+);
+assert.equal(
+  canalonLines.find((l) => /^canal[oó]n/i.test(l.title))?.handle,
+  "canalon-isodec-kit-completo",
+  "canalón kit still maps to kit",
+);
+
+// techo_fachada: techo color must not paint pared panel variants.
+const mixedBom = [
+  {
+    grupo: "PANELES",
+    items: [
+      { descripcion: "ISODEC EPS 100mm", sku: "ISODEC_EPS-100", cant: 50, unidad: "m²", pu_usd: 40 },
+      { descripcion: "ISOPANEL EPS 50mm", sku: "ISOPANEL_EPS-50", cant: 30, unidad: "m²", pu_usd: 35 },
+    ],
+  },
+];
+const mixed = bomToCartLines(mixedBom, {
+  techo: { familia: "ISODEC_EPS", espesor: "100", color: "Gris" },
+  pared: { familia: "ISOPANEL_EPS", espesor: "50", color: "Blanco" },
+});
+assert.equal(mixed.find((l) => l.sku === "ISODEC_EPS-100")?.color, "Gris");
+assert.equal(mixed.find((l) => l.sku === "ISOPANEL_EPS-50")?.color, "Blanco");
+assert.equal(mixed.find((l) => l.sku === "ISOPANEL_EPS-50")?.espesor, "50");
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.ok(widget.includes("add_quote_to_cart"), "widget loads quote into cart");
