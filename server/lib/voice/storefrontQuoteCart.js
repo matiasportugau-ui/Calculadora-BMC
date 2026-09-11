@@ -37,15 +37,23 @@ const DESC_HANDLES = [
   [/gotero frontal.*isoroof/i, "gotero-frontal-simple-isoroof"],
   [/gotero lateral de c[aá]mara.*isoroof/i, "gotero-lateral-de-camara-isoroof"],
   [/gotero lateral.*isoroof/i, "gotero-lateral-isoroof"],
+  // Colonial has no Shopify panel/cumbrera SKU yet — skip rather than map to IsoRoof 3G.
+  [/cumbrera.*colonial/i, ""],
   [/cumbrera.*isoroof/i, "cumbrera-isoroof-3g"],
   [/cinta butilo/i, "cinta-butilo"],
   [/tornillo t1/i, "tornillo-t1-p-mecha-01"],
 ];
 
+/**
+ * BOM panel SKUs are `${familia}-${espesor}` (familia may contain underscores).
+ * Exact familia match only — never prefix-collapse ISOROOF_COLONIAL → ISOROOF.
+ */
 function familyFromSku(sku) {
   const s = String(sku || "").toUpperCase();
-  const hit = Object.keys(PANEL_HANDLES).sort((a, b) => b.length - a.length).find((k) => s.startsWith(k));
-  return hit || "";
+  const dash = s.indexOf("-");
+  const famKey = dash === -1 ? s : s.slice(0, dash);
+  if (PANEL_HANDLES[famKey]) return famKey;
+  return "";
 }
 
 function mmFromSkuOrLabel(sku, label) {
