@@ -53,8 +53,14 @@ export function handleMetaMessagingWebhook(args) {
   const persist = args.persist || normalizeAndPersist;
   const notify = args.notifyOwner || enqueueNotifyOwner;
   const processing = Promise.all(
-    events.map((event) =>
-      persist(event, { databaseUrl: config.databaseUrl, logger })
+    events.map((event) => {
+      // Graph echoes (page/owner replies) arrive with message.is_echo. Persisting
+      // them as sender:"customer" corrupts Omni history and can feed message.ingested.
+      // Notify already skips echoes; skip persist here too (RUN1-STATUS contract).
+      if (event?.message?.metadata?.is_echo) {
+        return Promise.resolve({ skipped: "echo" });
+      }
+      return persist(event, { databaseUrl: config.databaseUrl, logger })
         .then(async (result) => {
           if (result && result.duplicate !== true) {
             try {
@@ -68,8 +74,8 @@ export function handleMetaMessagingWebhook(args) {
         .catch((err) => {
           logger?.warn?.({ err: err?.message, idempotency_key: event.idempotency_key }, "Meta omni persist failed");
           return null;
-        }),
-    ),
+        });
+    }),
   );
   return { status: 200, body: { ok: true, events: events.length }, processing };
 }

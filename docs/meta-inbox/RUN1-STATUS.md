@@ -9,7 +9,7 @@
 ## COMPLETED (local + PR slices)
 
 - `server/lib/meta/notify.js` — owner WhatsApp notify, 60s burst (5 immediate, then digest)
-- `server/lib/omni/metaWebhookHandler.js` — persist hook; skip duplicate and echo
+- `server/lib/omni/metaWebhookHandler.js` — persist hook; skip duplicate and echo (`metadata.is_echo` before persist; pin `tests/metaEchoPersistSkip.test.js`)
 - Tests: `tests/metaNotify.test.js`, `tests/omniMetaChannels.test.js`
 - `docs/meta-inbox/RUN1-CHECKLIST.md`
 - Local extra (may still be unpushed from bmc02): `tests/run1-e2e-local.test.js`, `docs/meta-inbox/RUN1-DEPLOY-VALIDATION.sh`
