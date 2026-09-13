@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-11 (feat — Meta inbox Slack operator notify wiring)
+**Última actualización:** 2026-09-13 (test — Meta Graph send deny, page-token isolation, notify queue reuse)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-13 (test — Meta Graph send deny, page-token isolation, notify queue reuse):** Tip still `#1239` / `#1229`. New gates on `test:core`: `isWithin24h` exact-24h / invalid date, missing page token / recipient (no fetch), Graph 400/502 without leaking the token, 2000-char clip, caller tag outside window (`metaSendGates`); IG vs FB page-token isolation + wrong-token deny (`metaPageTokenSendGates`); `enqueueNotifyOwner` process-lifetime queue freeze + send-throw swallow + `notifyOwner` alias (`metaNotifyQueueReuseGates`). Complementary to open `#1244` `#1246` `#1247` — those files not re-landed. Stubbed `fetch`; no Graph/Slack/Postgres.
 
 **2026-09-11 (feat — Meta inbox Slack operator notify wiring):** `deploy-calc-api.yml` ahora pasa `OMNI_IG_ENABLED`/`OMNI_FB_ENABLED`, `META_*` Run 1 vars, `OWNER_WHATSAPP`, y el canal opcional Slack (`SLACK_BOT_TOKEN`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFY_CHANNEL`) sin tocar `--set-secrets`. `server/config.js` y `.env.example` documentan el wiring; `server/lib/meta/notify.js` mantiene el burst/queue de WhatsApp y suma Slack opcional en paralelo, tolerando falla de Slack y permitiendo notify Slack-only cuando `OWNER_WHATSAPP` está vacío. Nuevo helper `server/lib/slack/notify.js`, `scripts/slack-ping.mjs`, y tests `metaNotify` + `slackNotify`. `META_COMMENTS_ENABLED` sigue default `0`; no se shippea `/webhooks/slack`.
 
