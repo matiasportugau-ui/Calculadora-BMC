@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-11 (feat — Meta inbox Slack operator notify wiring)
+**Última actualización:** 2026-09-13 (fix — storefront quote→cart real calc perfilería)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-13 (fix — storefront quote→cart: real calc perfilería no longer dropped):** `bomToCartLines` required `isodec`/`isoroof` tokens in `DESC_HANDLES`, but live `/calc` BOM labels are `Frente Inf: Canalón`, `Soporte canalón`, `Lat.Izq: Gotero Lateral`, etc., with matriz SKUs (`CD50`, `6801`, `GFS50`, …). Panelin Front PDF→Shopify cart silently omitted almost all perfilería. Fix: map `PERFIL_TECHO` SKUs → shop handles via product-media border links; label→border + quote familia fallback; merge qty for duplicate handle|sku (both roof sides). Tests `storefrontQuoteCart`. Orthogonal open: #1228 qty rescale, #1241 color, #1243 colonial panel, #1245 babeta synthetic labels.
 
 **2026-09-11 (feat — Meta inbox Slack operator notify wiring):** `deploy-calc-api.yml` ahora pasa `OMNI_IG_ENABLED`/`OMNI_FB_ENABLED`, `META_*` Run 1 vars, `OWNER_WHATSAPP`, y el canal opcional Slack (`SLACK_BOT_TOKEN`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFY_CHANNEL`) sin tocar `--set-secrets`. `server/config.js` y `.env.example` documentan el wiring; `server/lib/meta/notify.js` mantiene el burst/queue de WhatsApp y suma Slack opcional en paralelo, tolerando falla de Slack y permitiendo notify Slack-only cuando `OWNER_WHATSAPP` está vacío. Nuevo helper `server/lib/slack/notify.js`, `scripts/slack-ping.mjs`, y tests `metaNotify` + `slackNotify`. `META_COMMENTS_ENABLED` sigue default `0`; no se shippea `/webhooks/slack`.
 
