@@ -374,7 +374,12 @@ router.get("/api/me/branding", requireUser(), async (req, res) => {
 
 router.post("/api/me/branding", requirePaid(), async (req, res) => {
   try {
-    const displayName = String(req.body?.display_name || req.body?.displayName || "").trim().slice(0, 120);
+    // Strip HTML/control chars — display_name is injected into export HTML.
+    const displayName = String(req.body?.display_name || req.body?.displayName || "")
+      .replace(/[<>&"'`]/g, "")
+      .replace(/[\u0000-\u001f\u007f]/g, "")
+      .trim()
+      .slice(0, 120);
     let buf = null;
     if (req.body?.logo_base64) {
       try {

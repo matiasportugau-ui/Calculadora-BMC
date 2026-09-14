@@ -4,7 +4,12 @@ import express from "express";
 import { isPaidTier, canUseWhiteLabel, assertPaid, requirePaid } from "../server/lib/paidEntitlement.js";
 import { validateLogoBuffer, sniffImageMime } from "../server/lib/brandingValidate.js";
 import { applyPdfAudience, resolveAudience } from "../server/lib/pdfAudience.js";
-import { buildBmcSnapshot } from "../server/lib/quoteSnapshot.js";
+import {
+  buildBmcSnapshot,
+  buildListaActivaCatalog,
+  extractLines,
+  pickClientTotal,
+} from "../server/lib/quoteSnapshot.js";
 
 function png1x1() {
   return Buffer.from(
@@ -77,6 +82,15 @@ describe("pdf audience", () => {
     assert.equal(out.includes("Barraca Sur"), true);
   });
 
+  it("escapes hostile display_name in client HTML", () => {
+    const out = applyPdfAudience(html, {
+      audience: "client",
+      branding: { display_name: `<img src=x onerror=alert(1)>`, logo_data_url: null },
+    });
+    assert.equal(out.includes("<img src=x"), false);
+    assert.equal(out.includes("&lt;img"), true);
+  });
+
   it("anonymous / unpaid HTML stays BMC-branded", () => {
     const out = applyPdfAudience(html, { audience: "client", branding: null });
     assert.equal(out.includes("bmc-logo.png"), true);
@@ -93,7 +107,7 @@ describe("pdf audience", () => {
 });
 
 describe("bmc snapshot freeze", () => {
-  const catalog = { ISODEC_EPS_100: 37.76 };
+  const catalog = { ISODEC_EPS_100: 37.76, "ISODEC_EPS-100": 37.76 };
 
   it("ignores tampered client totals", () => {
     const { snapshot, reused } = buildBmcSnapshot({
@@ -103,6 +117,7 @@ describe("bmc snapshot freeze", () => {
     assert.equal(reused, false);
     assert.equal(snapshot.price_drift, true);
     assert.equal(snapshot.lines[0].unit_price_server, 37.76);
+    assert.equal(snapshot.lines[0].source, "LISTA_ACTIVA");
     const expectedSub = Math.round(37.76 * 10 * 100) / 100;
     assert.equal(snapshot.subtotal_usd, expectedSub);
     assert.equal(snapshot.total_usd, Math.round(expectedSub * 1.22 * 100) / 100);
@@ -119,5 +134,61 @@ describe("bmc snapshot freeze", () => {
     }, { catalog, existingSnapshot: first });
     assert.equal(second.reused, true);
     assert.deepEqual(second.snapshot, first);
+  });
+
+  it("never uses client unit prices when catalog misses (no payload_fallback)", () => {
+    const { snapshot } = buildBmcSnapshot({
+      totalUsd: 999,
+      lines: [{ sku: "FAKE_SKU_XYZ", qty: 10, unit_price: 50 }],
+    }, { catalog: {} });
+    assert.equal(snapshot.lines[0].source, "unpriced");
+    assert.equal(snapshot.lines[0].unit_price_server, 0);
+    assert.equal(snapshot.total_usd, null);
+    assert.equal(snapshot.incomplete, true);
+  });
+
+  it("calc-shaped payload without flat lines must not freeze total_usd=0", () => {
+    // Regression: /calc/cotizar/pdf used to store resumen+request without bom,
+    // extractLines=[] → snapshot.total_usd=0 → coalesce wiped real quote totals.
+    const payload = {
+      lista: "venta",
+      resumen: { total_usd: 5123.45, subtotal_usd: 4200 },
+      request: { escenario: "solo_techo", lista: "venta" },
+    };
+    assert.deepEqual(extractLines(payload), []);
+    assert.equal(pickClientTotal(payload), 5123.45);
+    const { snapshot } = buildBmcSnapshot(payload, { catalog: {} });
+    assert.equal(snapshot.lines.length, 0);
+    assert.equal(snapshot.total_usd, null);
+    assert.equal(snapshot.incomplete, true);
+    assert.equal(snapshot.client_total_usd, 5123.45);
+  });
+
+  it("extracts nested gpt bom groups and prices from LISTA_ACTIVA", () => {
+    const live = buildListaActivaCatalog("venta");
+    assert.ok(live["ISODEC_EPS-100"] > 0);
+    const payload = {
+      lista: "venta",
+      resumen: { total_usd: 1 },
+      bom: [
+        {
+          grupo: "PANELES",
+          items: [
+            { descripcion: "ISODEC EPS 100mm", sku: "ISODEC_EPS-100", cant: 10, pu_usd: 1, total_usd: 10 },
+          ],
+        },
+      ],
+    };
+    const lines = extractLines(payload);
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0].sku, "ISODEC_EPS-100");
+    assert.equal(lines[0].qty, 10);
+    const { snapshot } = buildBmcSnapshot(payload);
+    assert.equal(snapshot.incomplete, false);
+    assert.equal(snapshot.lines[0].source, "LISTA_ACTIVA");
+    assert.equal(snapshot.lines[0].unit_price_server, live["ISODEC_EPS-100"]);
+    assert.ok(snapshot.total_usd > 100);
+    assert.notEqual(snapshot.total_usd, 1);
+    assert.equal(snapshot.price_drift, true);
   });
 });

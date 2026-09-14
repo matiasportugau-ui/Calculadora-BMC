@@ -253,13 +253,27 @@ export async function completeQuote({ userId, quoteId, catalog, dataVersion } = 
     throw Object.assign(new Error("quote_deleted"), { status: 409 });
   }
 
-  const { buildBmcSnapshot } = await import("./quoteSnapshot.js");
+  const { buildBmcSnapshot, buildListaActivaCatalog } = await import("./quoteSnapshot.js");
+  const lista = q.payload?.lista || "venta";
+  // Never pass {} — empty catalog made every line "payload_fallback" and
+  // produced total_usd=0 which coalesce() then wiped the real quote total.
+  const effectiveCatalog =
+    catalog && Object.keys(catalog).length
+      ? catalog
+      : buildListaActivaCatalog(lista);
   const { snapshot, reused } = buildBmcSnapshot(q.payload || {}, {
-    catalog: catalog || {},
+    catalog: effectiveCatalog,
     existingSnapshot: q.bmc_snapshot,
     dataVersion,
-    lista: q.payload?.lista,
+    lista,
   });
+
+  // Only overwrite total_usd when the snapshot fully priced every line.
+  // incomplete/null totals must leave the existing column alone (coalesce).
+  const nextTotal =
+    snapshot?.total_usd != null && Number.isFinite(Number(snapshot.total_usd)) && snapshot.total_usd > 0
+      ? snapshot.total_usd
+      : null;
 
   const upd = await pool().query(
     `update identity.quotes
@@ -269,13 +283,14 @@ export async function completeQuote({ userId, quoteId, catalog, dataVersion } = 
             total_usd = coalesce($4, total_usd)
       where quote_id = $1 and user_id = $2
       returning quote_id, status, total_usd, bmc_snapshot, bmc_snapshot_at, updated_at`,
-    [quoteId, userId, JSON.stringify(snapshot), snapshot.total_usd],
+    [quoteId, userId, JSON.stringify(snapshot), nextTotal],
   );
   const row = upd.rows[0];
   if (!reused) {
     await _event(quoteId, "completed", userId, {
       total_usd: snapshot.total_usd,
       price_drift: snapshot.price_drift,
+      incomplete: !!snapshot.incomplete,
     });
   }
   return { ...row, reused };

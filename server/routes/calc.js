@@ -755,6 +755,9 @@ router.post("/cotizar/pdf", requireServiceOrUser({ optional: true }), async (req
             lista,
             client: clientInfo,
             resumen: gptResp.resumen,
+            // Required for bmc_snapshot freeze — extractLines reads bom groups.
+            bom: gptResp.bom,
+            calculator_data_version: gptResp.meta?.data_version || CALCULATOR_DATA_VERSION,
             quote_code: clientInfo.quote_code || null,
             // Original request params — lets export.pdf re-render on demand.
             request: { escenario, lista, techo, pared, camara, flete },
@@ -770,7 +773,13 @@ router.post("/cotizar/pdf", requireServiceOrUser({ optional: true }), async (req
         });
         // Phase I trigger: enqueue Sheets sync (debounced 60s) when authenticated.
         if (req.user?.id && stored?.quote_id) {
-          try { await completeQuote({ userId: req.user.id, quoteId: stored.quote_id }); } catch (e) {
+          try {
+            await completeQuote({
+              userId: req.user.id,
+              quoteId: stored.quote_id,
+              dataVersion: gptResp.meta?.data_version || CALCULATOR_DATA_VERSION,
+            });
+          } catch (e) {
             req.log.warn?.({ err: e }, "bmc_snapshot freeze failed (non-fatal)");
           }
         }
