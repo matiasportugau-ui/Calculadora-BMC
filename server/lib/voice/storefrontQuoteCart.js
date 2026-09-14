@@ -123,14 +123,30 @@ export function bomToCartLines(bom, quoteInput = {}) {
   return out;
 }
 
+/** Same contract as agentTools `normalizeFamilia` / `generar_pdf` body mapping. */
+export function normalizeFamilia(f) {
+  return f ? String(f).toUpperCase().replace(/-/g, "_") : f;
+}
+
+function withNormalizedFamilia(surface) {
+  if (!surface || typeof surface !== "object") return surface;
+  if (!surface.familia) return surface;
+  return { ...surface, familia: normalizeFamilia(surface.familia) };
+}
+
+/**
+ * Build `/calc/cotizar` body for PDF→cart re-quote.
+ * Must normalize familia like `generar_pdf` — raw LLM hyphens (`isoroof-3g`)
+ * otherwise 400 and `attachStorefrontCartLines` silently returns `cart_lines: []`.
+ */
 export function quotePayloadToCotizarBody(payload = {}) {
   return {
     lista: "web",
     escenario: payload.scenario || payload.escenario,
     flete: 0,
     source: "storefront-voice",
-    ...(payload.techo ? { techo: payload.techo } : {}),
-    ...(payload.pared ? { pared: payload.pared } : {}),
+    ...(payload.techo ? { techo: withNormalizedFamilia(payload.techo) } : {}),
+    ...(payload.pared ? { pared: withNormalizedFamilia(payload.pared) } : {}),
     ...(payload.camara ? { camara: payload.camara } : {}),
   };
 }

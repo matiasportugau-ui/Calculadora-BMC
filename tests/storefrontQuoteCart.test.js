@@ -5,7 +5,12 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { bomToCartLines, quotePayloadToCotizarBody } from "../server/lib/voice/storefrontQuoteCart.js";
+import { calcTechoCompleto } from "../src/utils/calculations.js";
+import {
+  bomToCartLines,
+  normalizeFamilia,
+  quotePayloadToCotizarBody,
+} from "../server/lib/voice/storefrontQuoteCart.js";
 
 const bom = [
   {
@@ -49,6 +54,68 @@ assert.equal(panel.espesor, "100");
 assert.equal(panel.color, "Blanco");
 assert.equal(quotePayloadToCotizarBody({ scenario: "solo_techo" }).escenario, "solo_techo");
 assert.equal(quotePayloadToCotizarBody({ scenario: "solo_techo" }).flete, 0);
+
+assert.equal(normalizeFamilia("isoroof-3g"), "ISOROOF_3G");
+assert.equal(normalizeFamilia("IsoDec-EPS"), "ISODEC_EPS");
+assert.equal(normalizeFamilia("ISOROOF_3G"), "ISOROOF_3G");
+
+const hyphenPayload = {
+  scenario: "solo_techo",
+  techo: {
+    familia: "isoroof-3g",
+    espesor: "30",
+    color: "Blanco",
+    zonas: [{ largo: 6, ancho: 4 }],
+  },
+};
+const cartBody = quotePayloadToCotizarBody(hyphenPayload);
+assert.equal(cartBody.techo.familia, "ISOROOF_3G", "cart re-cotizar must match generar_pdf familia normalize");
+assert.equal(hyphenPayload.techo.familia, "isoroof-3g", "must not mutate tool input");
+
+const rawFail = calcTechoCompleto({
+  familia: hyphenPayload.techo.familia,
+  espesor: Number(hyphenPayload.techo.espesor),
+  largo: 6,
+  ancho: 4,
+  tipoAguas: "una_agua",
+  pendiente: 10,
+  tipoEst: "metal",
+  color: "Blanco",
+  borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" },
+  opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
+});
+assert.ok(rawFail?.error, "raw hyphen familia must fail calc (precondition for silent empty cart)");
+
+const fixed = calcTechoCompleto({
+  familia: cartBody.techo.familia,
+  espesor: Number(cartBody.techo.espesor),
+  largo: 6,
+  ancho: 4,
+  tipoAguas: "una_agua",
+  pendiente: 10,
+  tipoEst: "metal",
+  color: "Blanco",
+  borders: { frente: "gotero_frontal", fondo: "gotero_lateral", latIzq: "gotero_lateral", latDer: "gotero_lateral" },
+  opciones: { inclCanalon: false, inclGotSup: false, inclSell: true },
+});
+assert.ok(!fixed?.error, "normalized familia must calc");
+const synthBom = [
+  {
+    grupo: "PANELES",
+    items: [
+      {
+        descripcion: "ISOROOF 3G 30mm",
+        sku: "ISOROOF_3G-30",
+        cant: fixed.paneles?.m2 || fixed.area_m2 || 24,
+        unidad: "m²",
+        pu_usd: 1,
+      },
+    ],
+  },
+];
+const cartLines = bomToCartLines(synthBom, cartBody);
+assert.ok(cartLines.length >= 1, "normalized path yields cart lines");
+assert.equal(cartLines[0].handle, "isoroof-3g-gris-rojo-blanco-bromyros");
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
