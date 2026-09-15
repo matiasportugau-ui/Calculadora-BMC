@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-11 (feat — Meta inbox Slack operator notify wiring)
+**Última actualización:** 2026-09-15 (test — Slack bot JSON status, catalog lista web, /chat history caps)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-15 (test — Slack bot JSON status, catalog lista web, /chat history caps):** Pins leftovers after tip `slackNotify` / `storefrontVoicePack` and open `#1227`/`#1244`/`#1251`. Slack bot HTTP 200 + invalid JSON still returns `{}`; HTTP 401 + invalid JSON throws `Slack API: HTTP 401`; webhook `text()` reject omits body/path. `forceListaWeb` forces `lista=web` on catalog/search/escenarios (not shop_*). `/chat` sanitize keeps assistant `tool_calls` and caps user/tool content. Tests `slackBotJsonStatusGates` + `storefrontForceListaCatalogGates` + `storefrontChatHistoryGates`. No production behavior change.
 
 **2026-09-11 (feat — Meta inbox Slack operator notify wiring):** `deploy-calc-api.yml` ahora pasa `OMNI_IG_ENABLED`/`OMNI_FB_ENABLED`, `META_*` Run 1 vars, `OWNER_WHATSAPP`, y el canal opcional Slack (`SLACK_BOT_TOKEN`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFY_CHANNEL`) sin tocar `--set-secrets`. `server/config.js` y `.env.example` documentan el wiring; `server/lib/meta/notify.js` mantiene el burst/queue de WhatsApp y suma Slack opcional en paralelo, tolerando falla de Slack y permitiendo notify Slack-only cuando `OWNER_WHATSAPP` está vacío. Nuevo helper `server/lib/slack/notify.js`, `scripts/slack-ping.mjs`, y tests `metaNotify` + `slackNotify`. `META_COMMENTS_ENABLED` sigue default `0`; no se shippea `/webhooks/slack`.
 
