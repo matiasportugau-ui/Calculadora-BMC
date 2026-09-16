@@ -165,7 +165,7 @@ function flagGuard(req, res, next) {
   next();
 }
 
-function sanitizePageUrl(raw) {
+export function sanitizePageUrl(raw) {
   const s = String(raw || "").trim().slice(0, 300);
   if (!s) return "";
   try {

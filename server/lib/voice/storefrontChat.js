@@ -100,12 +100,32 @@ export function sanitizeChatHistory(history) {
   return out;
 }
 
-function parseArgs(raw) {
+export function parseStorefrontToolArgs(raw) {
   if (raw && typeof raw === "object") return raw;
   try {
     return JSON.parse(String(raw || "{}"));
   } catch {
     return {};
+  }
+}
+
+/** After generar_pdf, emit add_quote_to_cart when the tool result already has cart_lines. */
+export function cartActionFromPdfToolResult(result, callId) {
+  try {
+    const parsed = JSON.parse(String(result || ""));
+    const lines = Array.isArray(parsed.cart_lines) ? parsed.cart_lines : [];
+    if (!lines.length) return null;
+    return {
+      id: `${callId}-cart`,
+      name: "add_quote_to_cart",
+      payload: {
+        lines,
+        pdf_url: parsed.pdf_url || parsed.pdf_file_url || "",
+        code: parsed.code || "",
+      },
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -234,7 +254,7 @@ export async function runStorefrontTextTurn(opts) {
     const shopCalls = [];
     for (const call of calls) {
       const name = call.function?.name || call.name || "";
-      const args = parseArgs(call.function?.arguments);
+      const args = parseStorefrontToolArgs(call.function?.arguments);
       const id = call.id || "";
       if (isStorefrontShopTool(name)) {
         shopCalls.push({ id, name, payload: args });
@@ -248,23 +268,8 @@ export async function runStorefrontTextTurn(opts) {
       }
       messages.push({ role: "tool", tool_call_id: id, content: result });
       if (name === "generar_pdf") {
-        try {
-          const parsed = JSON.parse(result);
-          const lines = Array.isArray(parsed.cart_lines) ? parsed.cart_lines : [];
-          if (lines.length) {
-            shopCalls.push({
-              id: `${id}-cart`,
-              name: "add_quote_to_cart",
-              payload: {
-                lines,
-                pdf_url: parsed.pdf_url || parsed.pdf_file_url || "",
-                code: parsed.code || "",
-              },
-            });
-          }
-        } catch {
-          /* ignore */
-        }
+        const cart = cartActionFromPdfToolResult(result, id);
+        if (cart) shopCalls.push(cart);
       }
     }
 
