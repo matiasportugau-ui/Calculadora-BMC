@@ -400,7 +400,8 @@
     if (pu > 0 && sp > pu * 4) {
       q = Math.max(1, Math.round((cant * pu) / sp));
     }
-    return Math.min(500, q);
+    // Do not clamp — large techos (600+ m²) must keep BOM qty into Shopify cart.
+    return q;
   }
 
   async function addQuoteLinesToCart(lines, meta = {}) {
