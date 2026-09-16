@@ -95,7 +95,6 @@ export function bomToCartLines(bom, quoteInput = {}) {
     quoteInput.techo?.espesor || quoteInput.pared?.espesor || quoteInput.camara?.espesor || "",
   ).replace(/\D/g, "");
   const out = [];
-  const seen = new Set();
   for (const g of groups) {
     for (const item of g.items || []) {
       const handle = handleForItem(item);
@@ -103,10 +102,17 @@ export function bomToCartLines(bom, quoteInput = {}) {
       const sku = String(item.sku || "");
       const descripcion = String(item.descripcion || item.label || sku);
       const espesor = mmFromSkuOrLabel(sku, descripcion) || espesorHint;
-      const quantity = Math.min(500, quantityForItem(item));
+      // Trust calc BOM quantities — never silently truncate large commercial roofs.
+      const quantity = quantityForItem(item);
       const key = `${handle}|${espesor}|${color}|${sku}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      const existing = out.find(
+        (l) => `${l.handle}|${l.espesor}|${l.color}|${l.sku || ""}` === key,
+      );
+      if (existing) {
+        existing.quantity += quantity;
+        existing.cant = (Number(existing.cant) || 0) + (Number(item.cant) || quantity);
+        continue;
+      }
       out.push({
         handle,
         sku: sku || null,

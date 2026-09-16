@@ -50,11 +50,40 @@ assert.equal(panel.color, "Blanco");
 assert.equal(quotePayloadToCotizarBody({ scenario: "solo_techo" }).escenario, "solo_techo");
 assert.equal(quotePayloadToCotizarBody({ scenario: "solo_techo" }).flete, 0);
 
+// Large commercial roof: must not silently clamp cart qty at 500.
+const bigBom = [
+  {
+    grupo: "PANELES",
+    items: [
+      {
+        descripcion: "ISODEC EPS 100mm · galpón",
+        sku: "ISODEC_EPS-100",
+        cant: 612.4,
+        unidad: "m²",
+        pu_usd: 41.15,
+      },
+    ],
+  },
+  {
+    grupo: "FIJACIONES",
+    items: [
+      { descripcion: "Tuerca 3/8\" galv.", sku: "tuerca_38", cant: 620, unidad: "unid", pu_usd: 0.08 },
+      { descripcion: "Tuerca 3/8\" galv.", sku: "tuerca_38", cant: 40, unidad: "unid", pu_usd: 0.08 },
+    ],
+  },
+];
+const bigLines = bomToCartLines(bigBom, { techo: { espesor: "100", color: "Blanco" } });
+const bigPanel = bigLines.find((l) => l.sku === "ISODEC_EPS-100");
+assert.equal(bigPanel.quantity, 612, "large m² must not clamp at 500");
+const bigTuerca = bigLines.find((l) => l.sku === "tuerca_38");
+assert.equal(bigTuerca.quantity, 660, "duplicate SKU lines must sum, not drop");
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.ok(widget.includes("add_quote_to_cart"), "widget loads quote into cart");
 assert.ok(widget.includes("addQuoteLinesToCart"), "bulk add helper");
 assert.ok(widget.includes("pickVariant"), "match thickness/color");
+assert.ok(!widget.includes("Math.min(500, q)"), "widget must not clamp cart qty at 500");
 
 const chat = fs.readFileSync(path.join(ROOT, "server/lib/voice/storefrontChat.js"), "utf8");
 assert.ok(chat.includes("add_quote_to_cart"), "text chat emits cart action after PDF");
