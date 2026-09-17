@@ -74,6 +74,34 @@ console.log("ok denyList");
     shapeToolResult("obtener_informe_completo", JSON.stringify({ lista: "web", asesoria: { a: 1, b: 2 } })),
   );
   assert.ok(informe.note);
+
+  // executeTool failures are often `{ error }` without ok:false — must not become ok:true.
+  const errOnly = JSON.parse(
+    shapeToolResult("calcular_cotizacion", JSON.stringify({ error: "Familia no encontrada" })),
+  );
+  assert.equal(errOnly.ok, false);
+  assert.equal(errOnly.error, "Familia no encontrada");
+  const pdfErr = JSON.parse(
+    shapeToolResult("generar_pdf", JSON.stringify({ error: "Error al generar PDF" })),
+  );
+  assert.equal(pdfErr.ok, false);
+  assert.equal(pdfErr.error, "Error al generar PDF");
+  // Flat success payloads (no ok field) must still shape as ok:true with money.
+  const flatOk = JSON.parse(
+    shapeToolResult(
+      "calcular_cotizacion",
+      JSON.stringify({
+        scenario: "solo_techo",
+        listaPrecios: "web",
+        subtotalSinIVA: 1000,
+        totalConIVA: 1220,
+        iva22: 220,
+      }),
+    ),
+  );
+  assert.equal(flatOk.ok, true);
+  assert.equal(flatOk.totals?.totalConIVA, 1220);
+  assert.equal(flatOk.totals?.iva, 220);
   console.log("ok voiceShape");
 }
 
