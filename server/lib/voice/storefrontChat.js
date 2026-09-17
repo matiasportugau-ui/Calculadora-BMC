@@ -47,6 +47,16 @@ export function listStorefrontChatBackends(cfg = config) {
   }
   return out;
 }
+
+/** Same pick `completeStorefrontTurn` uses: skip Grok only when the voice bubble is dead AND a fallback exists. */
+export function pickStorefrontChatBackends(cfg = config) {
+  let backends = listStorefrontChatBackends(cfg);
+  if (!storefrontVoiceBubbleOn()) {
+    const rest = backends.filter((b) => b.provider !== "grok");
+    if (rest.length) backends = rest;
+  }
+  return backends;
+}
 const MAX_ROUNDS = 6;
 const MAX_HISTORY = 20;
 const TEXT_HINT =
@@ -148,11 +158,7 @@ async function createCompletion(client, backend, messages, tools) {
 }
 
 async function completeStorefrontTurn(messages, tools) {
-  let backends = listStorefrontChatBackends();
-  if (!storefrontVoiceBubbleOn()) {
-    const rest = backends.filter((b) => b.provider !== "grok");
-    if (rest.length) backends = rest;
-  }
+  const backends = pickStorefrontChatBackends();
   if (!backends.length) {
     const err = new Error("Texto no disponible (falta clave de IA).");
     err.status = 503;
