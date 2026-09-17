@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-11 (feat — Meta inbox Slack operator notify wiring)
+**Última actualización:** 2026-09-17 (test — storefront /chat credits-dead backends, quota failover, phone-hash parity)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-17 (test — /chat credits-dead backends, quota failover, phone-hash parity):** Daily coverage. Pins leftover `#1198`/`#1170` edges open drafts do not: credits-dead `/chat` skips Grok only when Gemini/OpenAI exist (Grok-only still tries Grok); quota predicate treats 402/credits/`no body` as skip-to-next but not 401/plain 403/generic 5xx; Hub live and JSONL hash the same shopper phone (short stays `""` vs `null`). New files at end of `test:agent`. Tiny export `pickStorefrontChatBackends` only.
 
 **2026-09-11 (feat — Meta inbox Slack operator notify wiring):** `deploy-calc-api.yml` ahora pasa `OMNI_IG_ENABLED`/`OMNI_FB_ENABLED`, `META_*` Run 1 vars, `OWNER_WHATSAPP`, y el canal opcional Slack (`SLACK_BOT_TOKEN`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFY_CHANNEL`) sin tocar `--set-secrets`. `server/config.js` y `.env.example` documentan el wiring; `server/lib/meta/notify.js` mantiene el burst/queue de WhatsApp y suma Slack opcional en paralelo, tolerando falla de Slack y permitiendo notify Slack-only cuando `OWNER_WHATSAPP` está vacío. Nuevo helper `server/lib/slack/notify.js`, `scripts/slack-ping.mjs`, y tests `metaNotify` + `slackNotify`. `META_COMMENTS_ENABLED` sigue default `0`; no se shippea `/webhooks/slack`.
 
