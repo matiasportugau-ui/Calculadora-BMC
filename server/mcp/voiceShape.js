@@ -19,15 +19,19 @@ function truncateString(s, max = MAX_CHARS) {
 
 function compactCotizacion(parsed) {
   if (!parsed || typeof parsed !== "object") return parsed;
+  // executeTool often returns `{ error }` without `ok:false` on calc/PDF failure.
+  // Missing `ok` must stay success for flat quote payloads, but an `error` field
+  // must never be shaped as ok:true (storefront/Paneli voice would claim success).
+  const ok = parsed.ok !== false && !parsed.error;
   const out = {
-    ok: parsed.ok !== false,
+    ok,
     scenario: parsed.scenario,
     lista: parsed.lista || parsed.listaPrecios,
     totals: parsed.totals || parsed.totales || (
       parsed.subtotalSinIVA != null || parsed.totalConIVA != null
         ? {
           subtotalSinIVA: parsed.subtotalSinIVA,
-          iva: parsed.iva ?? parsed.IVA ?? null,
+          iva: parsed.iva ?? parsed.IVA ?? parsed.iva22 ?? null,
           totalConIVA: parsed.totalConIVA,
         }
         : null
