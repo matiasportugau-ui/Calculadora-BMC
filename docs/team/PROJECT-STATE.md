@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-11 (feat — Meta inbox Slack operator notify wiring)
+**Última actualización:** 2026-09-18 (test — storefront lead consent, price-strip, phone normalize gates)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-18 (test — storefront lead consent, price-strip, phone normalize gates):** Pins leftover `#1198` validators that tip happy-path + open coverage drafts do not: `assertCaptureLead`/`assertIdentifyLead` accept only `consent===true|"true"` (not `1`/`yes`/`TRUE`), consulta floor 8, identify `nombre` alias + cliente length ≥2; `stripInternalPrices` drops `cost_usd`/`shipping`/`precio_flete`/`lista_venta` and recurses arrays; `normalizeStorefrontPhone` 8-digit `598` prefix and current `099…` → `598099…` (pin, do not E.164-fix — `#1133`). Tests `storefrontLeadConsentGates` + `storefrontPriceStripGates` + `storefrontPhoneNormalizeGates` on `test:agent`. No production behavior change.
 
 **2026-09-11 (feat — Meta inbox Slack operator notify wiring):** `deploy-calc-api.yml` ahora pasa `OMNI_IG_ENABLED`/`OMNI_FB_ENABLED`, `META_*` Run 1 vars, `OWNER_WHATSAPP`, y el canal opcional Slack (`SLACK_BOT_TOKEN`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFY_CHANNEL`) sin tocar `--set-secrets`. `server/config.js` y `.env.example` documentan el wiring; `server/lib/meta/notify.js` mantiene el burst/queue de WhatsApp y suma Slack opcional en paralelo, tolerando falla de Slack y permitiendo notify Slack-only cuando `OWNER_WHATSAPP` está vacío. Nuevo helper `server/lib/slack/notify.js`, `scripts/slack-ping.mjs`, y tests `metaNotify` + `slackNotify`. `META_COMMENTS_ENABLED` sigue default `0`; no se shippea `/webhooks/slack`.
 
