@@ -241,6 +241,35 @@ await group("POST /api/agent/exec-tool — escribir_crm_taxonomia without auth �
   assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
 });
 
+// ── 5c. exec-tool — Admin/Drive PDF writes without auth → 401 (#1113 gap) ────
+
+await group("POST /api/agent/exec-tool — admin_cargar_pdfs_fila without auth → 401", async () => {
+  const { status, body } = await post("/api/agent/exec-tool", {
+    name: "admin_cargar_pdfs_fila",
+    input: {
+      row: 21,
+      pdfs: ["https://storage.googleapis.com/bmc-cotizaciones/quotes/pdf/x.pdf"],
+      user_confirmed: true,
+    },
+  });
+  assert(status === 401, "401 Unauthorized (Admin col M write requires auth)");
+  assert(body?.ok === false, "ok false");
+  assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
+});
+
+await group("POST /api/agent/exec-tool — archivar_pdfs_drive without auth → 401", async () => {
+  const { status, body } = await post("/api/agent/exec-tool", {
+    name: "archivar_pdfs_drive",
+    input: {
+      pdfs: ["https://storage.googleapis.com/bmc-cotizaciones/quotes/pdf/x.pdf"],
+      user_confirmed: true,
+    },
+  });
+  assert(status === 401, "401 Unauthorized (Drive archive requires auth)");
+  assert(body?.ok === false, "ok false");
+  assert(typeof body.error === "string" && body.error.includes("Bearer"), "error mentions Bearer");
+});
+
 // ── 6. exec-tool — write tool with wrong token → 401 ─────────────────────────
 
 await group("POST /api/agent/exec-tool — write tool with wrong token → 401", async () => {

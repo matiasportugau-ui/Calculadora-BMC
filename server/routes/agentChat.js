@@ -298,6 +298,11 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "wolfboard_actualizar_fila",
   "wolfboard_marcar_enviado",
   "wolfboard_quote_batch",
+  // Admin 2.0 col M + Drive quote folder — landed in #1113 for voice HITL but were
+  // never added here. Without this gate, unauthenticated POST /api/agent/exec-tool
+  // with user_confirmed:true can overwrite Admin rows / upload to Drive.
+  "admin_cargar_pdfs_fila",
+  "archivar_pdfs_drive",
   // Email cockpit + Omni (list/read/classify/draft/send — send is HITL)
   "email_panelsim_resumen",
   "email_borrador_saliente",
