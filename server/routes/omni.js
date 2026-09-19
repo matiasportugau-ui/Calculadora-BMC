@@ -30,7 +30,10 @@ import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
 import { rankUrgentConversations } from "../lib/omni/urgency.js";
-import { appendTeamIsolationFilter } from "../lib/omni/teamIsolation.js";
+import {
+  appendTeamIsolationFilter,
+  dealVisibleTo,
+} from "../lib/omni/teamIsolation.js";
 import { findDuplicateClusters } from "../lib/omni/identity/duplicateContacts.js";
 import { mergeContacts, ContactMergeError } from "../lib/omni/identity/contactMerge.js";
 import { callAgentOnce } from "../lib/agentCore.js";
@@ -1250,7 +1253,8 @@ router.get(
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
-    const deals = await listDeals(req.omniPool, req.query);
+    // Team isolation: non-admins must not list another team's deals + contact PII.
+    const deals = await listDeals(req.omniPool, req.query, req.user);
     res.json({ ok: true, deals });
   },
 );
@@ -1267,6 +1271,12 @@ router.post(
     const normalized = normalizeStage(stage);
     if (stage != null && !normalized) {
       return res.status(400).json({ ok: false, error: "invalid_stage" });
+    }
+    // Refuse attaching a deal to another team's conversation (guessed UUID).
+    if (source_conversation_id) {
+      if (!(await conversationVisibleTo(req.omniPool, source_conversation_id, req.user))) {
+        return res.status(404).json({ ok: false, error: "conversation_not_found" });
+      }
     }
     const deal = await createDeal(req.omniPool, {
       contact_id,
@@ -1291,6 +1301,11 @@ router.patch(
     if (!to) {
       return res.status(400).json({ ok: false, error: "invalid_stage", to: req.body?.stage ?? null });
     }
+    // Gate before updateDeal + syncDealToCrm so a cross-team stage change
+    // cannot rewrite CRM_Operativo Estado / Monto for another team's deal.
+    if (!(await dealVisibleTo(req.omniPool, req.params.id, req.user))) {
+      return res.status(404).json({ ok: false, error: "deal_not_found" });
+    }
     const result = await updateDeal(req.omniPool, req.params.id, { stage: to });
     if (!result.ok) {
       const status = result.error === "deal_not_found" ? 404 : result.error === "invalid_stage_transition" ? 409 : 400;
@@ -1306,6 +1321,9 @@ router.patch(
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
+    if (!(await dealVisibleTo(req.omniPool, req.params.id, req.user))) {
+      return res.status(404).json({ ok: false, error: "deal_not_found" });
+    }
     const result = await updateDeal(req.omniPool, req.params.id, req.body || {});
     if (!result.ok) {
       return res.status(result.error === "deal_not_found" ? 404 : 400).json(result);
