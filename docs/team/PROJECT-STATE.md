@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-11 (feat — Meta inbox Slack operator notify wiring)
+**Última actualización:** 2026-09-19 (test — storefront origin / WA handoff / public-tool deny gates)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-09-19 (test — storefront origin / WA handoff / public-tool deny gates):** Daily coverage. Tip still `#1239` / `#1229` — no newer production merge since 2026-09-11. Pins exact-match CORS (suffix/prefix/www/scheme/port/`Origin: null`), `wa.me` BMC-number fallback + encoding (no shopper phone), and operator writes (`wolfboard_actualizar_fila` / Sheets / WA / Drive / PEA) off the public voice pack. New files at the **end** of `test:agent`. Does not re-land open `#1259` `#1257` `#1255` `#1254` `#1251` `#1248` `#1246` `#1244` `#1227` `#1224` `#1219` `#1208` `#1203` `#1197` `#1189` `#1185` `#1183` `#1182` `#1180` `#1179` `#1177` `#1142`.
 
 **2026-09-11 (feat — Meta inbox Slack operator notify wiring):** `deploy-calc-api.yml` ahora pasa `OMNI_IG_ENABLED`/`OMNI_FB_ENABLED`, `META_*` Run 1 vars, `OWNER_WHATSAPP`, y el canal opcional Slack (`SLACK_BOT_TOKEN`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFY_CHANNEL`) sin tocar `--set-secrets`. `server/config.js` y `.env.example` documentan el wiring; `server/lib/meta/notify.js` mantiene el burst/queue de WhatsApp y suma Slack opcional en paralelo, tolerando falla de Slack y permitiendo notify Slack-only cuando `OWNER_WHATSAPP` está vacío. Nuevo helper `server/lib/slack/notify.js`, `scripts/slack-ping.mjs`, y tests `metaNotify` + `slackNotify`. `META_COMMENTS_ENABLED` sigue default `0`; no se shippea `/webhooks/slack`.
 
