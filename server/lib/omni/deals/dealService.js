@@ -1,6 +1,7 @@
 /**
  * omni_deals CRUD (WAVE 4 F1).
  */
+import { appendDealTeamIsolationFilter } from "../teamIsolation.js";
 import { canTransition, isTerminalStage, normalizeStage } from "./stageMachine.js";
 
 /**
@@ -78,8 +79,12 @@ export async function updateDeal(pool, dealId, patch) {
 /**
  * @param {import('pg').Pool} pool
  * @param {object} query
+ * @param {{ role?: string, id?: string } | null} [user] — when set, scopes
+ *   non-admins to deals whose source conversation is visible to their teams
+ *   (same rule as GET /omni/conversations). Pass null only for trusted
+ *   internal callers that already enforced visibility.
  */
-export async function listDeals(pool, query = {}) {
+export async function listDeals(pool, query = {}, user = null) {
   const limit = Math.min(Math.max(Number(query.limit) || 100, 1), 500);
   const offset = Math.max(Number(query.offset) || 0, 0);
   const params = [limit, offset];
@@ -98,11 +103,16 @@ export async function listDeals(pool, query = {}) {
     filters.push(`d.source_conversation_id = $${params.length}`);
   }
 
+  if (user) {
+    appendDealTeamIsolationFilter(user, filters, params);
+  }
+
   const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
   const { rows } = await pool.query(
     `SELECT d.*, co.name AS contact_name, co.email AS contact_email, co.wa_phone
      FROM omni_deals d
      JOIN omni_contacts co ON co.id = d.contact_id
+     LEFT JOIN omni_conversations c ON c.id = d.source_conversation_id
      ${where}
      ORDER BY d.updated_at DESC
      LIMIT $1 OFFSET $2`,
