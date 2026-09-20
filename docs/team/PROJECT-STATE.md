@@ -1,6 +1,8 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-08-21 (fix — archive merge no borra ruta)
+**Última actualización:** 2026-08-21 (fix — Leaflet XSS + draft revision race)
+
+**2026-08-21 (fix — Leaflet tooltip XSS + draft revision TOCTOU):** `RouteLeafletMap` pasa un nodo `textContent` a `bindTooltip` (Leaflet string tooltips usan innerHTML). PUT `/api/envios/drafts/:id` aplica el lock `expectedRevision` en el `UPDATE … WHERE revision = $n` atómico (antes SELECT+UPSERT perdía escrituras concurrentes). Tests `safeExternalUrl` + `enviosDraftArchive`.
 
 **2026-08-21 (fix — EV archive merge write):** `writeDraftArchive` ya no trata `decideDraftLoad === "merge"` como overwrite ciego. Autosave con más paradas pero sin `orderedLegs` ahora llama `mergeKeepRouteWork` y conserva el itinerario archivado. Test en `enviosDraftArchive`. Suite 29 validation alineada a AU 1.12 (no ROW_W 1.2).
 

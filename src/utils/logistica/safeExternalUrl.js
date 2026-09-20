@@ -9,6 +9,22 @@
 const BLOCKED = /^(javascript|data|vbscript|file):/i;
 
 /**
+ * Escape text for contexts that still go through HTML parsers (e.g. Leaflet
+ * string tooltips historically used innerHTML). Prefer DOM textContent when
+ * possible; this helper is for tests and any residual string sinks.
+ * @param {unknown} raw
+ * @returns {string}
+ */
+export function escapeHtml(raw) {
+  return String(raw ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * @param {string} [raw]
  * @param {{ allowRelative?: boolean }} [opts]
  * @returns {string|null} safe href or null

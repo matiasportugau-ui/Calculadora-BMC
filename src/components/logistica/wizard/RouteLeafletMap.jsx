@@ -75,7 +75,10 @@ export default function RouteLeafletMap({ legs = [], geometry = "", selectedRefI
           iconAnchor: [selected ? 16 : 13, selected ? 16 : 13],
         });
         const m = L.marker([Number(leg.geo.lat), Number(leg.geo.lng)], { icon }).addTo(group);
-        m.bindTooltip(`${i + 1}. ${leg.label || ""}`, { direction: "top" });
+        // Leaflet string tooltips use innerHTML — pass a text node so cliente/labels cannot XSS.
+        const tip = document.createElement("span");
+        tip.textContent = `${i + 1}. ${leg.label || ""}`;
+        m.bindTooltip(tip, { direction: "top" });
         m.on("click", () => onSelect?.(leg, i));
       });
       const boundsPts = road.length >= 2 ? road : latlngs;
@@ -108,8 +111,8 @@ export default function RouteLeafletMap({ legs = [], geometry = "", selectedRefI
         mapRef.current = null;
       }
     };
-    // legs identity: serialize geo+ids
-  }, [JSON.stringify((legs || []).map((l) => [l?.refId, l?.type, l?.geo?.lat, l?.geo?.lng])), geometry, selectedRefId]);
+    // Include label so tooltip text stays in sync (still never HTML-injected).
+  }, [JSON.stringify((legs || []).map((l) => [l?.refId, l?.type, l?.label, l?.geo?.lat, l?.geo?.lng])), geometry, selectedRefId]);
 
   return <div ref={hostRef} className="ruta-desk-map" role="img" aria-label="Mapa del recorrido" />;
 }
