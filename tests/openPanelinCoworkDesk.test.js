@@ -14,8 +14,10 @@ import {
 import {
   PANELIN_COWORK_CHANNEL,
   COWORK_MSG,
+  onPanelinCoworkMessage,
   postCalcState,
   postChatAction,
+  postPanelinCoworkMessage,
 } from "../src/utils/panelinCoworkChannel.js";
 
 describe("openPanelinCoworkDesk", () => {
@@ -84,5 +86,90 @@ describe("panelinCoworkChannel constants", () => {
   it("post helpers do not throw without BroadcastChannel", () => {
     assert.doesNotThrow(() => postCalcState({ scenario: "solo_techo" }));
     assert.doesNotThrow(() => postChatAction({ type: "setLP", payload: "web" }));
+  });
+
+  it("delivers typed messages in both directions and unsubscribes cleanly", () => {
+    class FakeBroadcastChannel {
+      static instances = [];
+
+      constructor(name) {
+        this.name = name;
+        this.listeners = new Set();
+        this.posts = [];
+        FakeBroadcastChannel.instances.push(this);
+      }
+
+      postMessage(message) {
+        this.posts.push(message);
+      }
+
+      addEventListener(type, listener) {
+        if (type === "message") this.listeners.add(listener);
+      }
+
+      removeEventListener(type, listener) {
+        if (type === "message") this.listeners.delete(listener);
+      }
+
+      emit(data) {
+        for (const listener of this.listeners) listener({ data });
+      }
+    }
+
+    const previousWindow = globalThis.window;
+    const previousBroadcastChannel = globalThis.BroadcastChannel;
+    globalThis.window = {};
+    globalThis.BroadcastChannel = FakeBroadcastChannel;
+
+    try {
+      const received = [];
+      const unsubscribe = onPanelinCoworkMessage((message) => received.push(message));
+
+      assert.equal(FakeBroadcastChannel.instances.length, 1);
+      const channel = FakeBroadcastChannel.instances[0];
+      assert.equal(channel.name, PANELIN_COWORK_CHANNEL);
+
+      postCalcState({ scenario: "solo_techo", listaPrecios: "web" });
+      postChatAction({ type: "setLP", payload: "venta" });
+      postPanelinCoworkMessage({ type: COWORK_MSG.HELLO, at: 1234 });
+
+      assert.deepEqual(
+        channel.posts.map(({ type, payload }) => ({ type, payload })),
+        [
+          {
+            type: COWORK_MSG.CALC_STATE,
+            payload: { scenario: "solo_techo", listaPrecios: "web" },
+          },
+          {
+            type: COWORK_MSG.CHAT_ACTION,
+            payload: { type: "setLP", payload: "venta" },
+          },
+          { type: COWORK_MSG.HELLO, payload: undefined },
+        ],
+      );
+      assert.ok(
+        channel.posts.slice(0, 2).every(({ at }) => Number.isFinite(at)),
+        "generated messages include a timestamp",
+      );
+      assert.equal(channel.posts[2].at, 1234, "explicit timestamp is preserved");
+
+      const calcMessage = {
+        type: COWORK_MSG.CALC_STATE,
+        payload: { scenario: "solo_fachada" },
+        at: 2345,
+      };
+      channel.emit(calcMessage);
+      channel.emit("malformed");
+      assert.deepEqual(received, [calcMessage], "only object messages reach subscribers");
+
+      unsubscribe();
+      channel.emit({ type: COWORK_MSG.CLOSE });
+      assert.deepEqual(received, [calcMessage], "unsubscribe detaches the listener");
+    } finally {
+      if (previousWindow === undefined) delete globalThis.window;
+      else globalThis.window = previousWindow;
+      if (previousBroadcastChannel === undefined) delete globalThis.BroadcastChannel;
+      else globalThis.BroadcastChannel = previousBroadcastChannel;
+    }
   });
 });
