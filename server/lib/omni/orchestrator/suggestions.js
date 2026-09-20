@@ -2,11 +2,16 @@
  * HITL suggestions store (WAVE 4 I1).
  */
 
+import { appendTeamIsolationFilter } from "../teamIsolation.js";
+
 /**
  * @param {import('pg').Pool} pool
  * @param {object} query
+ * @param {{ role?: string, id?: string } | null} [user] — when set, scopes to
+ *   the operator's conversation teams (same rule as GET /omni/conversations).
+ *   Omit for trusted internal callers.
  */
-export async function listSuggestions(pool, query = {}) {
+export async function listSuggestions(pool, query = {}, user = null) {
   const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
   const params = [limit];
   const filters = ["s.approval_state = 'pending'"];
@@ -16,10 +21,15 @@ export async function listSuggestions(pool, query = {}) {
     filters.push(`s.conversation_id = $${params.length}`);
   }
 
+  if (user) {
+    appendTeamIsolationFilter(user, filters, params);
+  }
+
   const { rows } = await pool.query(
     `SELECT s.*, m.body AS customer_message
      FROM omni_suggestions s
      JOIN omni_messages m ON m.id = s.message_id
+     JOIN omni_conversations c ON c.id = s.conversation_id
      WHERE ${filters.join(" AND ")}
      ORDER BY s.created_at DESC
      LIMIT $1`,

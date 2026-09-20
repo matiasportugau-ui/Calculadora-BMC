@@ -26,6 +26,7 @@ import { listModelRegistry, listPromptRegistry, getActivePromptContract } from "
 import { createDeal, listDeals, updateDeal } from "../lib/omni/deals/dealService.js";
 import { syncDealToCrm } from "../lib/omni/deals/syncCrm.js";
 import { listSuggestions, resolveSuggestion } from "../lib/omni/orchestrator/suggestions.js";
+import { suggestionVisibleTo } from "../lib/omni/teamIsolation.js";
 import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/evalFeedback.js";
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
@@ -1323,7 +1324,7 @@ router.get(
   requireGrant.read("canales"),
   requireOmniDb,
   async (req, res) => {
-    const suggestions = await listSuggestions(req.omniPool, req.query);
+    const suggestions = await listSuggestions(req.omniPool, req.query, req.user);
     res.json({ ok: true, suggestions });
   },
 );
@@ -1333,6 +1334,9 @@ router.post(
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
+    if (!(await suggestionVisibleTo(req.omniPool, req.params.id, req.user))) {
+      return res.status(404).json({ ok: false, error: "suggestion_not_found_or_resolved" });
+    }
     const result = await resolveSuggestion(req.omniPool, req.params.id, "accept", {
       actor: req.user?.email || req.user?.id,
     });
@@ -1360,6 +1364,9 @@ router.post(
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
+    if (!(await suggestionVisibleTo(req.omniPool, req.params.id, req.user))) {
+      return res.status(404).json({ ok: false, error: "suggestion_not_found_or_resolved" });
+    }
     const result = await resolveSuggestion(req.omniPool, req.params.id, "reject", {
       actor: req.user?.email || req.user?.id,
     });
