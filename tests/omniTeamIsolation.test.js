@@ -1,7 +1,7 @@
 // tests/omniTeamIsolation.test.js — standalone (no deps, no DB) unit test for
 // the shared team-isolation SQL-fragment builder. Run: `node tests/omniTeamIsolation.test.js`.
 import assert from "node:assert/strict";
-import { appendTeamIsolationFilter } from "../server/lib/omni/teamIsolation.js";
+import { appendTeamIsolationFilter, isOmniAdmin } from "../server/lib/omni/teamIsolation.js";
 
 let passed = 0;
 function check(name, fn) {
@@ -9,6 +9,13 @@ function check(name, fn) {
   passed += 1;
   console.log(`  ok ${name}`);
 }
+
+check("isOmniAdmin recognizes admin/superadmin only", () => {
+  assert.equal(isOmniAdmin({ role: "admin" }), true);
+  assert.equal(isOmniAdmin({ role: "superadmin" }), true);
+  assert.equal(isOmniAdmin({ role: "operator" }), false);
+  assert.equal(isOmniAdmin({}), false);
+});
 
 check("admin role: no filter, no param appended", () => {
   const filters = ["c.status = 'open'"];
