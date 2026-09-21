@@ -30,7 +30,11 @@ import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
 import { rankUrgentConversations } from "../lib/omni/urgency.js";
-import { appendTeamIsolationFilter } from "../lib/omni/teamIsolation.js";
+import {
+  appendTeamIsolationFilter,
+  buildDuplicateContactsScanQuery,
+  isOmniAdmin,
+} from "../lib/omni/teamIsolation.js";
 import { findDuplicateClusters } from "../lib/omni/identity/duplicateContacts.js";
 import { mergeContacts, ContactMergeError } from "../lib/omni/identity/contactMerge.js";
 import { callAgentOnce } from "../lib/agentCore.js";
@@ -300,19 +304,9 @@ router.get(
   async (req, res) => {
     const SCAN_LIMIT = 5000;
     try {
-      const { rows } = await req.omniPool.query(
-        `SELECT co.id, co.name, co.email, co.phone, co.wa_phone, co.ml_user_id, co.created_at,
-                (SELECT COUNT(*)::int FROM omni_conversations c WHERE c.contact_id = co.id) AS conversation_count
-           FROM omni_contacts co
-          WHERE (co.email IS NOT NULL OR co.phone IS NOT NULL OR co.wa_phone IS NOT NULL)
-            -- Already-merged ("loser") contacts keep their original email/phone
-            -- forever (mergeContacts() never touches them) — without this guard
-            -- a resolved cluster would resurface on every scan after its merge.
-            AND co.properties->>'merged_into' IS NULL
-          ORDER BY co.updated_at DESC
-          LIMIT $1`,
-        [SCAN_LIMIT],
-      );
+      // Team-scoped like GET /omni/contacts — never dump peer-team PII to operadores.
+      const { sql, params } = buildDuplicateContactsScanQuery(req.user, SCAN_LIMIT);
+      const { rows } = await req.omniPool.query(sql, params);
       const clusters = findDuplicateClusters(rows);
       res.json({
         ok: true,
@@ -399,13 +393,12 @@ router.get(
     const q = String(req.query.search || req.query.q || "").trim();
     const search = q ? `%${q}%` : null;
 
-    const isAdmin = req.user?.role === "admin" || req.user?.role === "superadmin";
     // For non-admins, scope both aggregation and contact visibility to their
     // team's conversations (matching the predicate used by GET /omni/conversations).
     const params = [search, limit, offset];
     let aggWhere = "";
     let contactTeamFilter = "";
-    if (!isAdmin) {
+    if (!isOmniAdmin(req.user)) {
       params.push(req.user.id);
       aggWhere = `WHERE (c.team_id IS NULL OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $${params.length}::uuid))`;
       // Only expose contacts that have at least one conversation visible to this user.
@@ -1105,9 +1098,12 @@ router.get(
   },
 );
 
+// Rules are global (engine has no team_id). Only canales admins may create or
+// toggle them — a write-level operator must not invent set_conversation_status /
+// create_deal actions that fire on peer-team ingest.
 router.post(
   "/omni/automation/rules",
-  requireGrant.write("canales"),
+  requireGrant.admin("canales"),
   requireOmniDb,
   async (req, res) => {
     if (!config.omniAutomationEnabled) {
@@ -1140,7 +1136,7 @@ router.post(
 
 router.patch(
   "/omni/automation/rules/:id",
-  requireGrant.write("canales"),
+  requireGrant.admin("canales"),
   requireOmniDb,
   async (req, res) => {
     const { enabled, priority } = req.body || {};

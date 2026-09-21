@@ -14,6 +14,11 @@
  * applied to one row instead of a list.
  */
 
+export function isOmniAdmin(user) {
+  const role = user?.role;
+  return role === "admin" || role === "superadmin";
+}
+
 /**
  * Appends the team-isolation filter (if the role requires one) to `filters`,
  * pushing its parameter onto `params` in place — mirrors how every other
@@ -25,10 +30,41 @@
  * @param {Array} params - mutated in place
  */
 export function appendTeamIsolationFilter(user, filters, params) {
-  const role = user?.role;
-  if (role === "admin" || role === "superadmin") return;
+  if (isOmniAdmin(user)) return;
   params.push(user.id);
   filters.push(
     `(c.team_id IS NULL OR c.team_id IN (SELECT team_id FROM omni_team_members WHERE user_id = $${params.length}::uuid))`,
   );
+}
+
+/**
+ * SQL + params for GET /omni/contacts/duplicates.
+ * Non-admins only scan contacts that have ≥1 conversation visible to their
+ * team(s) — same visibility rule as GET /omni/contacts. conversation_count
+ * is also scoped so peer-team volume is not leaked via the cluster payload.
+ *
+ * @param {{ role?: string, id?: string }} user
+ * @param {number} [scanLimit=5000]
+ * @returns {{ sql: string, params: unknown[] }}
+ */
+export function buildDuplicateContactsScanQuery(user, scanLimit = 5000) {
+  const params = [scanLimit];
+  const filters = [];
+  appendTeamIsolationFilter(user, filters, params);
+  const teamPred = filters[0] || null;
+  const visibility = teamPred
+    ? `AND EXISTS (SELECT 1 FROM omni_conversations c WHERE c.contact_id = co.id AND ${teamPred})`
+    : "";
+  const countScope = teamPred ? `AND ${teamPred}` : "";
+
+  const sql = `SELECT co.id, co.name, co.email, co.phone, co.wa_phone, co.ml_user_id, co.created_at,
+                (SELECT COUNT(*)::int FROM omni_conversations c WHERE c.contact_id = co.id ${countScope}) AS conversation_count
+           FROM omni_contacts co
+          WHERE (co.email IS NOT NULL OR co.phone IS NOT NULL OR co.wa_phone IS NOT NULL)
+            AND co.properties->>'merged_into' IS NULL
+            ${visibility}
+          ORDER BY co.updated_at DESC
+          LIMIT $1`;
+
+  return { sql, params };
 }
