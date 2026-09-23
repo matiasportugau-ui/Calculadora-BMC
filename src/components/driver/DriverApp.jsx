@@ -1,4 +1,4 @@
-import { NavLink, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import useDriverSession from "./useDriverSession.js";
 import useDriverManifest from "../../hooks/useDriverManifest.js";
 import DriverLogin from "./DriverLogin.jsx";
@@ -27,14 +27,8 @@ export default function DriverApp() {
   useDriverManifest();
   const sess = useDriverSession();
   const navigate = useNavigate();
-
-  if (!sess.token) {
-    return (
-      <div className="drv-app">
-        <DriverLogin onLogin={sess.loginWithIdentity} status={sess.status} />
-      </div>
-    );
-  }
+  const location = useLocation();
+  const onLoginScreen = /\/ingresar\/?$/.test(location.pathname);
 
   const evidence = async (file) => {
     try {
@@ -60,9 +54,11 @@ export default function DriverApp() {
               timeline={sess.timeline}
               pendingCount={sess.pendingCount}
               online={sess.online}
+              guest={!sess.token}
               status={sess.status}
               onSync={sess.syncOutbox}
               onGoCarga={() => navigate("/conductor/carga")}
+              onLogin={() => navigate("/conductor/ingresar")}
               onEvidence={evidence}
             />
           }
@@ -100,14 +96,30 @@ export default function DriverApp() {
               profile={sess.profile}
               pendingCount={sess.pendingCount}
               online={sess.online}
+              guest={!sess.token}
               onSave={sess.saveProfile}
               onLogout={sess.logout}
+              onLogin={() => navigate("/conductor/ingresar")}
             />
+          }
+        />
+        <Route
+          path="ingresar"
+          element={
+            sess.token ? (
+              <Navigate to="/conductor" replace />
+            ) : (
+              <DriverLogin
+                onLogin={sess.loginWithIdentity}
+                onGuest={() => navigate("/conductor", { replace: true })}
+                status={sess.status}
+              />
+            )
           }
         />
         <Route path="*" element={<Navigate to="/conductor" replace />} />
       </Routes>
-      <Tabs />
+      {onLoginScreen ? null : <Tabs />}
     </div>
   );
 }

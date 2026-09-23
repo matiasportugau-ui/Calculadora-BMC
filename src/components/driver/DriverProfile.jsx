@@ -1,6 +1,14 @@
 import { useState } from "react";
 
-export default function DriverProfile({ profile, pendingCount, online, onSave, onLogout }) {
+export default function DriverProfile({
+  profile,
+  pendingCount,
+  online,
+  guest,
+  onSave,
+  onLogout,
+  onLogin,
+}) {
   const [name, setName] = useState(profile.name || "");
   const [phone, setPhone] = useState(profile.phone || "");
   const [email, setEmail] = useState(profile.email || "");
@@ -18,8 +26,8 @@ export default function DriverProfile({ profile, pendingCount, online, onSave, o
       <div className="drv-row" style={{ marginBottom: 16 }}>
         <div className="drv-avatar">{initials}</div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 18 }}>{name || "Chofer BMC"}</div>
-          <div className="drv-muted">Chofer · BMC Uruguay</div>
+          <div style={{ fontWeight: 700, fontSize: 18 }}>{name || (guest ? "Invitado" : "Chofer BMC")}</div>
+          <div className="drv-muted">{guest ? "Sin sesión" : "Chofer · BMC Uruguay"}</div>
         </div>
       </div>
       <div className="drv-card">
@@ -55,9 +63,15 @@ export default function DriverProfile({ profile, pendingCount, online, onSave, o
         {online ? "En línea" : "Offline"}
         {pendingCount ? ` · ${pendingCount} pendiente(s)` : " · Sin pendientes"}
       </div>
-      <button type="button" className="drv-cta drv-cta--ghost drv-danger" onClick={onLogout}>
-        Cerrar sesión
-      </button>
+      {guest ? (
+        <button type="button" className="drv-cta drv-cta--navy" onClick={onLogin}>
+          Ingresar con email o enlace
+        </button>
+      ) : (
+        <button type="button" className="drv-cta drv-cta--ghost drv-danger" onClick={onLogout}>
+          Cerrar sesión
+        </button>
+      )}
     </div>
   );
 }

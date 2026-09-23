@@ -43,10 +43,12 @@ Phone compact **390×844**. CTA in bottom 40%. Hit ≥ 48px. `100dvh` + `env(saf
 
 ## 2. Screen contracts
 
-### 2.1 Login — `/conductor` without session
+### 2.1 Login — `/conductor/ingresar` (optional)
 
-**Primary action:** Ingresar (orange, full width).  
-**Secondary:** Trabajá sin conexión (navy).
+`/conductor` **opens the PWA without email or token** (guest). Magic `?t=` still skips the form. Login is optional: Home/Perfil → Ingresar, or `/conductor/ingresar`.
+
+**Primary action:** Ingresar (orange, full width) — email/celular + contraseña, or token.  
+**Secondary:** Entrar a la app (navy) — guest shell, no credentials. If a saved driver token exists, reuse it.
 
 | Spec | Integration |
 |------|-------------|
