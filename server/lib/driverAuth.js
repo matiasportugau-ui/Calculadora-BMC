@@ -62,7 +62,13 @@ export async function resolveDriverAuth(pool, bearer) {
 export async function listTripsForDriverAuth(pool, auth) {
   if (!auth?.ok) return { ok: false, error: auth?.error || "Unauthorized", trips: [] };
   if (auth.kind === "driver_session") {
-    const { rows } = await pool.query(`select * from trips where trip_id = $1::uuid`, [auth.trip_id]);
+    // Magic-link sessions are trip-scoped but must still match current assignee.
+    // Otherwise a reassigned trip stays readable via the previous driver's Bearer.
+    const { rows } = await pool.query(
+      `select * from trips
+        where trip_id = $1::uuid and assigned_driver_id = $2::uuid`,
+      [auth.trip_id, auth.driver_id],
+    );
     return { ok: true, trips: rows };
   }
   const { rows } = await pool.query(
@@ -76,7 +82,15 @@ export async function listTripsForDriverAuth(pool, auth) {
 
 export async function driverAuthOwnsTrip(pool, auth, tripId) {
   if (!auth?.ok || !tripId) return false;
-  if (auth.kind === "driver_session") return String(auth.trip_id) === String(tripId);
+  if (auth.kind === "driver_session") {
+    if (String(auth.trip_id) !== String(tripId)) return false;
+    const { rows } = await pool.query(
+      `select trip_id from trips
+        where trip_id = $1::uuid and assigned_driver_id = $2::uuid`,
+      [tripId, auth.driver_id],
+    );
+    return Boolean(rows[0]);
+  }
   const { rows } = await pool.query(
     `select trip_id from trips
       where trip_id = $1::uuid and assigned_driver_id = $2::uuid`,

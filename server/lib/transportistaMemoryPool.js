@@ -138,10 +138,11 @@ export function createTransportistaMemoryPool() {
           }
         }
         if (t === "driver_sessions" && /revoked_at/i.test(raw)) {
+          const filterByDriver = /driver_id/i.test(raw) && params.length >= 2;
           for (const r of list) {
             if (
               String(r.trip_id) === String(params[0]) &&
-              String(r.driver_id) === String(params[1]) &&
+              (!filterByDriver || String(r.driver_id) === String(params[1])) &&
               !r.revoked_at
             ) {
               r.revoked_at = new Date().toISOString();

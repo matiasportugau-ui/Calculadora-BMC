@@ -105,10 +105,12 @@ export async function assignTripToChofer(pool, { tripId, choferId, frontendBaseU
       where trip_id = $1::uuid`,
     [tripId, choferId, ch[0].phone_e164 || null],
   );
+  // Revoke every active magic-link for this trip (prior assignees included).
+  // Filtering by the new driver_id left the previous driver's Bearer valid.
   await pool.query(
     `update driver_sessions set revoked_at = now()
-      where trip_id = $1::uuid and driver_id = $2::uuid and revoked_at is null`,
-    [tripId, choferId],
+      where trip_id = $1::uuid and revoked_at is null`,
+    [tripId],
   );
   const plain = generateOpaqueToken();
   const expires = new Date(Date.now() + 24 * 3600 * 1000);

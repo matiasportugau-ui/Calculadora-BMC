@@ -96,10 +96,11 @@ export async function joinRepartoToTrip({
       [tripId, idem, JSON.stringify({ actor, reparto_no: reparto.reparto_no })],
     );
 
+    // Drop all prior magic-links for this trip, including previous assignees.
     await client.query(
       `update driver_sessions set revoked_at = now()
-        where trip_id = $1::uuid and driver_id = $2::uuid and revoked_at is null`,
-      [tripId, driverId],
+        where trip_id = $1::uuid and revoked_at is null`,
+      [tripId],
     );
     const plain = generateOpaqueToken();
     const tokenHash = sha256Hex(plain);

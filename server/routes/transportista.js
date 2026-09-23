@@ -242,8 +242,8 @@ export default function createTransportistaRouter(config, logger) {
 
         await client.query(
           `update driver_sessions set revoked_at = now()
-           where trip_id = $1::uuid and driver_id = $2::uuid and revoked_at is null`,
-          [tripId, driver_id],
+           where trip_id = $1::uuid and revoked_at is null`,
+          [tripId],
         );
 
         await client.query(
@@ -344,8 +344,8 @@ export default function createTransportistaRouter(config, logger) {
 
         await client.query(
           `update driver_sessions set revoked_at = now()
-           where trip_id = $1::uuid and driver_id = $2::uuid and revoked_at is null`,
-          [tripId, driver_id],
+           where trip_id = $1::uuid and revoked_at is null`,
+          [tripId],
         );
         await client.query(
           `insert into driver_sessions (trip_id, driver_id, token_hash, expires_at)
