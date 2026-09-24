@@ -30,7 +30,11 @@ import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/
 import { normalizeStage } from "../lib/omni/deals/stageMachine.js";
 import { buildConversationPatch, isUuid } from "../lib/omni/conversationPatch.js";
 import { rankUrgentConversations } from "../lib/omni/urgency.js";
-import { appendTeamIsolationFilter } from "../lib/omni/teamIsolation.js";
+import {
+  appendTeamIsolationFilter,
+  authorizeConversationTeamAssignment,
+  isOmniAdmin,
+} from "../lib/omni/teamIsolation.js";
 import { findDuplicateClusters } from "../lib/omni/identity/duplicateContacts.js";
 import { mergeContacts, ContactMergeError } from "../lib/omni/identity/contactMerge.js";
 import { callAgentOnce } from "../lib/agentCore.js";
@@ -103,8 +107,7 @@ function requireOmniDb(req, res, next) {
 // per-conversation reads (messages/notes/assist) so a guessed UUID can't expose
 // another team's thread. Returns true if the conversation is visible to req.user.
 async function conversationVisibleTo(pool, conversationId, user) {
-  const role = user?.role;
-  if (role === "admin" || role === "superadmin") {
+  if (isOmniAdmin(user)) {
     const { rowCount } = await pool.query(
       `SELECT 1 FROM omni_conversations WHERE id = $1`,
       [conversationId],
@@ -866,6 +869,7 @@ router.patch(
 
     // Validate the assignee: only allow assigning to a real user holding a
     // `canales` grant — never an arbitrary/non-existent UUID. (Unassign = null is fine.)
+    // Fail closed if the identity lookup errors — never skip the gate.
     const assignField = patch.fields.find((f) => f.col === "assigned_to_user_id" && f.value);
     if (assignField) {
       try {
@@ -875,6 +879,22 @@ router.patch(
         }
       } catch (e) {
         req.log?.warn?.({ err: e.message }, "omni assignee validation failed");
+        return res.status(503).json({ ok: false, error: "assignee_validation_failed" });
+      }
+    }
+
+    // Team isolation write-gate: non-admins cannot re-home a visible thread into
+    // another team (or clear team_id → shared pool) without membership.
+    const teamField = patch.fields.find((f) => f.col === "team_id");
+    if (teamField) {
+      const gate = await authorizeConversationTeamAssignment(
+        req.omniPool,
+        req.user,
+        teamField.value,
+      );
+      if (!gate.ok) {
+        if (gate.cause) req.log?.warn?.({ err: gate.cause }, "omni team membership check failed");
+        return res.status(gate.status || 403).json({ ok: false, error: gate.error });
       }
     }
 
