@@ -1192,10 +1192,13 @@ router.get(
   },
 );
 
-/** Internal AI connector (E4) — service token or admin */
+/** Internal AI connector (E4) — service token ONLY (API_AUTH_TOKEN).
+ * docs/transformation/09-security-model.md: never identity JWT.
+ * A canales:write JWT previously could force-run any job_id (incl. wa_crm_sync
+ * CRM append) or ad-hoc classify/suggest on any conversation_id. */
 router.post(
   "/internal/omni/ai/run",
-  requireServiceOrUser({ module: "canales", minLevel: "write" }),
+  requireServiceOrUser(),
   requireOmniDb,
   async (req, res) => {
     if (!config.omniAiOrchestratorEnabled) {
