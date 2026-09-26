@@ -1072,8 +1072,14 @@
       const here = location.hostname.replace(/^www\./, "").toLowerCase();
       if (host === here) return true;
       if (SHOP_HOSTS.some((h) => h.replace(/^www\./, "") === host)) return true;
-      if (host === "wa.me" || host.endsWith("whatsapp.com")) return true;
-      if (host.endsWith("run.app") || host.endsWith("googleapis.com") || host.endsWith("googleusercontent.com")) return true;
+      // Exact base or real subdomain — never bare endsWith("whatsapp.com"|"run.app")
+      // (that allowed evilwhatsapp.com / evilrun.app phishing links in chat).
+      const trusted = (base) => host === base || host.endsWith("." + base);
+      if (host === "wa.me") return true;
+      if (trusted("whatsapp.com")) return true;
+      if (trusted("run.app")) return true;
+      if (trusted("googleapis.com")) return true;
+      if (trusted("googleusercontent.com")) return true;
       return false;
     } catch {
       return false;
