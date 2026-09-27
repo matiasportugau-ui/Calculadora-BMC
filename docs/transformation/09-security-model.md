@@ -44,6 +44,7 @@ Modules include: `canales`, `wa`, `ml`, `admin`, `cotizaciones`, etc.
 | `/api/omni/contacts/:id/merge` | — | — | admin |
 | `/api/omni/automation/*` | admin:read | admin:write | admin |
 | `/api/internal/omni/ai/run` | — | — | service token only |
+| `/api/omni/ingest` | — | — | service token only (tests/manual replay; no JWT forge) |
 | `/api/unified-crm-ingest` | — | — | HMAC webhook |
 | `/api/crm/suggest-response` | **fix:** cockpit read or service | — | — |
 
