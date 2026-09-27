@@ -1038,11 +1038,11 @@ router.post(
   },
 );
 
-/** Internal ingest for tests / manual replay */
+/** Internal ingest for tests / manual replay — service token only (no JWT forge). */
 router.post(
   "/omni/ingest",
   omniWriteLimiter,
-  requireGrant.write("canales"),
+  requireServiceOrUser(),
   requireOmniDb,
   async (req, res) => {
     const parsed = parseOmniInboundEvent(req.body);
