@@ -3,6 +3,32 @@
  */
 
 /**
+ * Pin persist to an already-authorized conversation row (e.g. Omni reply API).
+ * Skips contact/channel re-resolution so a concurrent contact merge cannot
+ * orphan the outbound copy onto a newly-created loser-contact thread.
+ *
+ * @param {import("pg").PoolClient} client
+ * @param {string} conversationId
+ * @returns {Promise<{ conversation_id: string, created: false, contact_id: string }>}
+ */
+export async function resolvePinnedConversation(client, conversationId) {
+  const { rows } = await client.query(
+    `SELECT id, contact_id FROM omni_conversations WHERE id = $1 FOR UPDATE`,
+    [conversationId],
+  );
+  if (!rows[0]) {
+    const err = new Error("pinned_conversation_not_found");
+    err.code = "PINNED_CONVERSATION_NOT_FOUND";
+    throw err;
+  }
+  return {
+    conversation_id: rows[0].id,
+    created: false,
+    contact_id: rows[0].contact_id,
+  };
+}
+
+/**
  * @param {import("pg").PoolClient} client
  * @param {{
  *   contact_id: string;

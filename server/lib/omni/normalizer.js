@@ -4,7 +4,10 @@
 import { getOmniPool } from "./omniDb.js";
 import { parseOmniInboundEvent } from "./types.js";
 import { resolveContact } from "./identity/resolveContact.js";
-import { resolveConversation } from "./identity/resolveConversation.js";
+import {
+  resolveConversation,
+  resolvePinnedConversation,
+} from "./identity/resolveConversation.js";
 import { emit } from "./eventBus.js";
 import { config as appConfig } from "../../config.js";
 
@@ -41,7 +44,15 @@ async function loadDuplicateResult(client, idempotencyKey) {
 
 /**
  * @param {import("./types.js").OmniInboundEvent | object} rawEvent
- * @param {{ databaseUrl?: string; logger?: { warn?: Function; info?: Function } }} [opts]
+ * @param {{
+ *   databaseUrl?: string;
+ *   logger?: { warn?: Function; info?: Function };
+ *   pinConversationId?: string;
+ * }} [opts]
+ * `pinConversationId` (trusted server callers only — never from untrusted body):
+ * lock and write into that conversation row instead of re-resolving via
+ * contact_hint. Used by POST /omni/conversations/:id/reply so a concurrent
+ * contact merge cannot orphan the outbound copy under the loser contact.
  */
 export async function normalizeAndPersist(rawEvent, opts = {}) {
   const parsed = parseOmniInboundEvent(rawEvent);
@@ -85,18 +96,31 @@ export async function normalizeAndPersist(rawEvent, opts = {}) {
       return { ...dup, trace_id: event.trace_id ?? null };
     }
 
-    const contact = await resolveContact(client, {
-      contact_hint: event.contact_hint,
-      channel: event.channel,
-      source: event.source,
-    });
+    let contact;
+    let conversation;
+    if (opts.pinConversationId) {
+      // Trusted pin: lock the authorized row; use its current contact_id
+      // (post-merge if a merge already committed) — never re-resolve by hint.
+      conversation = await resolvePinnedConversation(client, opts.pinConversationId);
+      contact = {
+        contact_id: conversation.contact_id,
+        created: false,
+        integration_uuid: null,
+      };
+    } else {
+      contact = await resolveContact(client, {
+        contact_hint: event.contact_hint,
+        channel: event.channel,
+        source: event.source,
+      });
 
-    const conversation = await resolveConversation(client, {
-      contact_id: contact.contact_id,
-      channel: event.channel,
-      conversation_hint: event.conversation_hint,
-      source: event.source,
-    });
+      conversation = await resolveConversation(client, {
+        contact_id: contact.contact_id,
+        channel: event.channel,
+        conversation_hint: event.conversation_hint,
+        source: event.source,
+      });
+    }
 
     const occurredAt = event.occurred_at || new Date().toISOString();
     const metadata = {
