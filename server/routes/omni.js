@@ -1010,8 +1010,13 @@ router.post(
 
     let persisted = null;
     try {
+      // Pin the conversation we authorized + sent on. Re-resolving via
+      // contact_hint after a concurrent contact merge would INSERT a new
+      // orphan thread under the loser contact (outbound already delivered).
       persisted = await normalizeAndPersist(persistBody, {
         databaseUrl: config.databaseUrl,
+        pinConversationId: conversationId,
+        logger: req.log,
       });
     } catch (e) {
       req.log?.warn?.({ err: e.message }, "omni reply persist failed after outbound ok");
