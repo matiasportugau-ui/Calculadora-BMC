@@ -140,7 +140,10 @@ assert.equal(idFail.ok, false);
 const idOk = assertIdentifyLead({ cliente: "Ana", telefono: "099123456", consent: true });
 assert.equal(idOk.ok, true);
 assert.equal(idOk.lead.cliente, "Ana");
-assert.match(idOk.lead.consulta, /Chat tienda Panelin/);
+assert.equal(idOk.lead.consulta, "Chat tienda Panelin — inicio · 598099123456");
+const idOk2 = assertIdentifyLead({ cliente: "Bob", telefono: "098765432", consent: true });
+assert.equal(idOk2.lead.consulta, "Chat tienda Panelin — inicio · 598098765432");
+assert.notEqual(idOk.lead.consulta, idOk2.lead.consulta);
 const namedPack = buildStorefrontVoicePack({ shopperName: "Ana" });
 assert.ok(namedPack.instructions.includes("Already identified as Ana"));
 

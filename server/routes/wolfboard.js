@@ -30,6 +30,11 @@ import { appendQuoteToCrm } from "../lib/crmAppend.js";
 import { normalizePanelinRole, resolveInternalServiceActor } from "../lib/panelinInternalRbac.js";
 import { deriveOutcome } from "../lib/wolfboardOutcome.js";
 import {
+  findCrmRowForWolfboard,
+  mapCrmRowsForWolfboardMatch,
+  normalizeCorrelationId,
+} from "../lib/wolfboardCrmMatch.js";
+import {
   requireWolfboardRead,
   requireWolfboardWrite,
 } from "../middleware/requireWolfboardAuth.js";
@@ -180,83 +185,8 @@ function sheetsAuthFail(res, err) {
   });
 }
 
-function normalizeText(s) {
-  return String(s ?? "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** 0-based indices when reading `CRM_Operativo!A4:AK` as row[] (A = 0). */
-const CRM_INDEX = { A: 0, G: 6, W: 22 };
-
-function normalizeCorrelationId(s) {
-  return String(s ?? "").trim();
-}
-
 function generateWbkCorrelationId() {
   return `WBK-${crypto.randomUUID()}`;
-}
-
-/**
- * First segment of observaciones (W): Wolfboard / appendQuoteToCrm joins
- * `consulta — PDF: …` with a spaced dash; split keeps the original consulta stem.
- */
-function observacionesConsultaStem(w) {
-  const s = String(w ?? "").trim();
-  if (!s) return "";
-  const seg = s.split(/\s+[—–−-]\s+/)[0] || s;
-  return String(seg).trim();
-}
-
-/** True if CRM row G or W (full or stem) matches Admin consulta after normalizeText. */
-function consultaMatchesCrmRow(cr, consultaRaw) {
-  const q = normalizeText(consultaRaw);
-  if (!q) return false;
-  const g = normalizeText(cr.G);
-  const wFull = normalizeText(cr.W);
-  const wStem = normalizeText(observacionesConsultaStem(cr.W));
-  return (g && g === q) || (wFull && wFull === q) || (wStem && wStem === q);
-}
-
-/**
- * Find CRM row for an Admin consulta. Scans **bottom-up** so duplicate keys
- * prefer the most recently appended row.
- */
-function findCrmRowByConsulta(crmRows, consulta) {
-  if (!String(consulta ?? "").trim()) return null;
-  for (let i = crmRows.length - 1; i >= 0; i--) {
-    const cr = crmRows[i];
-    if (consultaMatchesCrmRow(cr, consulta)) return cr;
-  }
-  return null;
-}
-
-/**
- * Match Admin ↔ CRM: prefer **column A** (corr. id) on both sheets; else text (G/W).
- * @returns {{ cr: object, matchKind: "id"|"text" }|null}
- */
-function findCrmRowForWolfboard(crmRows, consulta, correlationId) {
-  const cid = normalizeCorrelationId(correlationId);
-  if (cid) {
-    for (let i = crmRows.length - 1; i >= 0; i--) {
-      const cr = crmRows[i];
-      const a = normalizeCorrelationId(cr.corrId);
-      if (a && a === cid) return { cr, matchKind: "id" };
-    }
-  }
-  const byText = findCrmRowByConsulta(crmRows, consulta);
-  if (byText) return { cr: byText, matchKind: "text" };
-  return null;
-}
-
-function mapCrmRowsForWolfboardMatch(values) {
-  return (values || []).map((row, idx) => ({
-    _rowNum: idx + 4,
-    corrId: String(row[CRM_INDEX.A] ?? "").trim(),
-    G: String(row[CRM_INDEX.G] ?? "").trim(),
-    W: String(row[CRM_INDEX.W] ?? "").trim(),
-  }));
 }
 
 // Top-10 run 2026-05-11 (item #9): helper para 503 ENV_MISSING con shape estructurado (envVar, where, docs).
