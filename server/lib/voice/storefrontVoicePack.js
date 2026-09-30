@@ -48,6 +48,16 @@ export const STOREFRONT_LEAD_ORIGEN = STOREFRONT_AGENT_CONFIG.lead.origen;
 export const STOREFRONT_CHAT_START_CONSULTA =
   STOREFRONT_AGENT_CONFIG.lead.startConsulta || "Chat tienda Panelin — inicio";
 
+/**
+ * Per-lead Admin consulta so Wolfboard CRM text-match (G/W) cannot collide across
+ * shoppers who all identified with the shared seed label.
+ */
+export function buildStorefrontStartConsulta(telefono) {
+  const phone = normalizeStorefrontPhone(telefono);
+  if (phone) return `${STOREFRONT_CHAT_START_CONSULTA} · ${phone}`;
+  return STOREFRONT_CHAT_START_CONSULTA;
+}
+
 export const STOREFRONT_WA_NUMBER_DEFAULT = "59892663245";
 
 export const STOREFRONT_WEB_SEARCH_TOOL = Object.freeze({
@@ -360,7 +370,7 @@ export function assertIdentifyLead(payload = {}) {
     cliente,
     telefono,
     zona: payload.zona,
-    consulta: STOREFRONT_CHAT_START_CONSULTA,
+    consulta: buildStorefrontStartConsulta(telefono),
     consent: true,
   });
 }
