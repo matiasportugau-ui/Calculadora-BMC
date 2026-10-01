@@ -107,6 +107,7 @@
     "pre-release": "npm run gate:local:full && npm run test:fitness && npm run test:catalog-goldens && npm run harness:score:report && GOLDEN_REQUIRED=1 npm run test:agent-golden",
     "mcp:panelin": "node scripts/mcp-panelin-http.mjs",
     "smoke:paneli-mcp": "node scripts/smoke-paneli-mcp.mjs",
+    "meta:moderate:comments": "node scripts/meta-moderate-comments.mjs",
     "verify-tabs": "node scripts/verify-sheets-tabs.js",
     "setup-sheets-tabs": "node scripts/setup-sheets-tabs.js",
     "integrate-admin-cotizaciones": "node scripts/integrate-admin-cotizaciones.js",
