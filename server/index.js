@@ -64,6 +64,7 @@ import { startWaSlaWorker } from "./lib/waSlaWorker.js";
 import { startWaFollowupsWorker } from "./lib/waFollowupsWorker.js";
 import { startWaTranscriptWorker } from "./lib/waTranscriptWorker.js";
 import { createWolfboardRouter } from "./routes/wolfboard.js";
+import { createHitlBoardRouter } from "./routes/hitlBoard.js";
 import marketingRouter from "./routes/marketing.js";
 import adsRouter from "./routes/ads.js";
 import { createBugsRouter } from "./routes/bugs.js";
@@ -1135,6 +1136,9 @@ app.use("/api/internal/presup", presupOrchestratorRouter);
 app.use("/api/panelin", requireServiceOrUser(), createPanelinRouter(config));
 // Wolfboard admin — must be before the broad /api router
 app.use("/api/wolfboard", createWolfboardRouter(config));
+// HITL cola live board — bidirectional Admin. ⇄ bmc-cola-hitl Vercel dashboard
+// bridge. Reads/writes the same Admin. sheet; see docs/team/HITL-DASHBOARD-SYNC.md.
+app.use("/api/hitl", createHitlBoardRouter(config));
 // Market Intelligence — competitor price monitoring, ETL, alerts, mystery shopping
 // Auth applied per-route inside the router (same pattern as followups.js, mlEtlRun.js)
 app.use("/api/marketing", marketingRouter);
