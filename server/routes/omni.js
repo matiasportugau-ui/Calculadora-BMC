@@ -305,9 +305,9 @@ router.get(
                 (SELECT COUNT(*)::int FROM omni_conversations c WHERE c.contact_id = co.id) AS conversation_count
            FROM omni_contacts co
           WHERE (co.email IS NOT NULL OR co.phone IS NOT NULL OR co.wa_phone IS NOT NULL)
-            -- Already-merged ("loser") contacts keep their original email/phone
-            -- forever (mergeContacts() never touches them) — without this guard
-            -- a resolved cluster would resurface on every scan after its merge.
+            -- Already-merged ("loser") contacts are archived via merged_into
+            -- (unique channel keys are cleared; email/phone may remain). Without
+            -- this guard a resolved cluster would resurface after its merge.
             AND co.properties->>'merged_into' IS NULL
           ORDER BY co.updated_at DESC
           LIMIT $1`,

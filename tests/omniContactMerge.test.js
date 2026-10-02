@@ -33,11 +33,6 @@ function makePool(handlers) {
   };
 }
 
-const BOTH_LOCKED = (fromId, intoId) => [
-  "FOR UPDATE",
-  { rows: [{ id: fromId }, { id: intoId }] },
-];
-
 await check("fromId === intoId throws same_contact, never opens a connection", async () => {
   const pool = makePool([]);
   await assert.rejects(
@@ -55,14 +50,39 @@ await check("missing ids throw missing_id", async () => {
   );
 });
 
-await check("happy path: repoints conversations + deals, archives loser, logs audit, commits", async () => {
+await check("happy path: repoints, clears loser uniques, unions onto winner, logs, commits", async () => {
   const FROM = "11111111-1111-1111-1111-111111111111";
   const INTO = "22222222-2222-2222-2222-222222222222";
   const pool = makePool([
-    ["FOR UPDATE", { rows: [{ id: FROM }, { id: INTO }] }],
+    [
+      "FOR UPDATE",
+      {
+        rows: [
+          {
+            id: FROM,
+            name: "WA Lead",
+            email: null,
+            phone: null,
+            wa_phone: "59899111222",
+            ml_user_id: null,
+            chrome_ext_contact_id: null,
+          },
+          {
+            id: INTO,
+            name: "Email Lead",
+            email: "cliente@bmc.uy",
+            phone: null,
+            wa_phone: null,
+            ml_user_id: null,
+            chrome_ext_contact_id: null,
+          },
+        ],
+      },
+    ],
     ["UPDATE omni_conversations", { rowCount: 3 }],
     ["UPDATE omni_deals", { rowCount: 1 }],
-    ["UPDATE omni_contacts", { rowCount: 1 }],
+    ["wa_phone = NULL", { rowCount: 1 }],
+    ["wa_phone = COALESCE", { rowCount: 1 }],
     ["INSERT INTO omni_contact_merge_log", { rowCount: 1 }],
   ]);
   const result = await mergeContacts(pool, { fromId: FROM, intoId: INTO, performedByUserId: "op-1" });
@@ -83,9 +103,12 @@ await check("happy path: repoints conversations + deals, archives loser, logs au
   const dealsCall = pool.calls.find((c) => c.sql.includes("UPDATE omni_deals"));
   assert.deepEqual(dealsCall.params, [FROM, INTO]);
 
-  const archiveCall = pool.calls.find((c) => c.sql.includes("UPDATE omni_contacts"));
-  assert.match(archiveCall.sql, /merged_into/);
-  assert.deepEqual(archiveCall.params, [FROM, INTO]);
+  const clearCall = pool.calls.find((c) => c.sql.includes("wa_phone = NULL"));
+  assert.match(clearCall.sql, /merged_into/);
+  assert.deepEqual(clearCall.params, [FROM, INTO]);
+
+  const unionCall = pool.calls.find((c) => c.sql.includes("wa_phone = COALESCE"));
+  assert.deepEqual(unionCall.params, [INTO, "59899111222", null, null, null, null, "WA Lead"]);
 
   const logCall = pool.calls.find((c) => c.sql.includes("INSERT INTO omni_contact_merge_log"));
   assert.deepEqual(logCall.params, [FROM, INTO, "op-1", 3, 1]);
@@ -98,7 +121,7 @@ await check("one contact not found → contact_not_found, rolls back, releases",
   const INTO = "33333333-3333-3333-3333-333333333333";
   const pool = makePool([
     // only FROM exists — INTO is missing from the locked rows
-    ["FOR UPDATE", { rows: [{ id: FROM }] }],
+    ["FOR UPDATE", { rows: [{ id: FROM, wa_phone: null, ml_user_id: null, chrome_ext_contact_id: null, email: null, phone: null, name: null }] }],
   ]);
   await assert.rejects(
     () => mergeContacts(pool, { fromId: FROM, intoId: INTO }),
@@ -114,7 +137,15 @@ await check("a mid-transaction query failure rolls back and still releases", asy
   const FROM = "11111111-1111-1111-1111-111111111111";
   const INTO = "22222222-2222-2222-2222-222222222222";
   const pool = makePool([
-    ["FOR UPDATE", { rows: [{ id: FROM }, { id: INTO }] }],
+    [
+      "FOR UPDATE",
+      {
+        rows: [
+          { id: FROM, wa_phone: "1", ml_user_id: null, chrome_ext_contact_id: null, email: null, phone: null, name: null },
+          { id: INTO, wa_phone: null, ml_user_id: null, chrome_ext_contact_id: null, email: "a@b.c", phone: null, name: null },
+        ],
+      },
+    ],
     ["UPDATE omni_conversations", () => { throw new Error("db boom"); }],
   ]);
   await assert.rejects(() => mergeContacts(pool, { fromId: FROM, intoId: INTO }), /db boom/);
