@@ -199,6 +199,17 @@ function generateWbkCorrelationId() {
 }
 
 /**
+ * Correlation id for manual / storefront Admin row-create (`wa_lead_to_admin`,
+ * identify). Must be unique under concurrent creates — `MAN-${Date.now()}`
+ * collided when two identifies hit the same millisecond, so quote-batch/sync
+ * bound both Admin rows to one CRM col A and the later AF write stole the
+ * first lead's response.
+ */
+export function generateManCorrelationId() {
+  return `MAN-${crypto.randomUUID()}`;
+}
+
+/**
  * First segment of observaciones (W): Wolfboard / appendQuoteToCrm joins
  * `consulta — PDF: …` with a spaced dash; split keeps the original consulta stem.
  */
@@ -564,7 +575,7 @@ export function createWolfboardRouter(config) {
   //   - origen (string, optional — UI restricts to CL/LL/LO/FB/IG)
   //   - telefono / cliente / zona (strings, optional — sanitized for Sheets)
   //
-  // Generates a synthetic ID `MAN-<timestamp>` so the row can later be matched
+  // Generates a synthetic ID `MAN-<uuid>` so the row can later be matched
   // back to CRM_Operativo via the existing ID flow in `/sync`. Estado is set
   // to "Pendiente" to enter the standard triage queue.
   router.post("/row-create", requireWolfboardWrite, async (req, res) => {
@@ -583,7 +594,7 @@ export function createWolfboardRouter(config) {
     try { sheets = await getSheetsClient(); }
     catch (e) { return sheetsAuthFail(res, e); }
 
-    const id = `MAN-${Date.now()}`;
+    const id = generateManCorrelationId();
     const now = new Date();
     const fecha = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
 
