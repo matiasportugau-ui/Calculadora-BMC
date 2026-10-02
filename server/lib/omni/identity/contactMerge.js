@@ -14,11 +14,14 @@
  *    for audit/undo-by-hand.
  *  - Both contacts are row-locked (SELECT ... FOR UPDATE) for the duration of
  *    the transaction so a concurrent merge touching either side can't interleave.
- *  - Deliberately does NOT copy identity columns (email/phone/wa_phone/
- *    ml_user_id) from loser to winner: wa_phone/ml_user_id are UNIQUE and the
- *    loser still holds its value at update time, so blindly copying it over
- *    risks a unique-constraint conflict for marginal benefit — an operator can
- *    edit the winner's profile by hand afterward if a field is worth keeping.
+ *  - Unique channel keys (wa_phone / ml_user_id / chrome_ext_contact_id) are
+ *    cleared on the loser and COALESCE'd onto the winner when the winner's
+ *    field is null — matching docs/transformation/05-identity-resolution.md
+ *    ("Union onto survivor"). Leaving them on the loser made post-merge
+ *    inbound resolve to a Contactos-Unificados-hidden row (thread split) and
+ *    blocked hand-editing those keys onto the winner (UNIQUE still held).
+ *    integration_uuid stays on the loser (NOT NULL); resolveContact follows
+ *    merged_into when inbound still matches that uuid.
  *
  * MAINTENANCE NOTE — repoint list: the repoint step below currently knows
  * about exactly two FKs into omni_contacts (omni_conversations.contact_id,
@@ -62,13 +65,15 @@ export async function mergeContacts(pool, { fromId, intoId, performedByUserId = 
     await client.query("BEGIN");
 
     const { rows: locked } = await client.query(
-      `SELECT id FROM omni_contacts WHERE id = ANY($1::uuid[]) FOR UPDATE`,
+      `SELECT id, name, email, phone, wa_phone, ml_user_id, chrome_ext_contact_id
+         FROM omni_contacts WHERE id = ANY($1::uuid[]) FOR UPDATE`,
       [[fromId, intoId]],
     );
-    const lockedIds = new Set(locked.map((r) => r.id));
-    if (!lockedIds.has(fromId) || !lockedIds.has(intoId)) {
+    const byId = new Map(locked.map((r) => [r.id, r]));
+    if (!byId.has(fromId) || !byId.has(intoId)) {
       throw new ContactMergeError("contact_not_found", "one or both contacts do not exist");
     }
+    const fromRow = byId.get(fromId);
 
     const convResult = await client.query(
       `UPDATE omni_conversations SET contact_id = $2, updated_at = now() WHERE contact_id = $1`,
@@ -79,12 +84,38 @@ export async function mergeContacts(pool, { fromId, intoId, performedByUserId = 
       [fromId, intoId],
     );
 
+    // Free UNIQUE keys on the loser first so the winner can absorb them.
     await client.query(
       `UPDATE omni_contacts
-          SET properties = jsonb_set(COALESCE(properties, '{}'::jsonb), '{merged_into}', to_jsonb($2::text)),
+          SET wa_phone = NULL,
+              ml_user_id = NULL,
+              chrome_ext_contact_id = NULL,
+              properties = jsonb_set(COALESCE(properties, '{}'::jsonb), '{merged_into}', to_jsonb($2::text)),
               updated_at = now()
         WHERE id = $1`,
       [fromId, intoId],
+    );
+
+    // Union channel identity + blank profile fields onto the survivor.
+    await client.query(
+      `UPDATE omni_contacts
+          SET wa_phone = COALESCE(wa_phone, $2),
+              ml_user_id = COALESCE(ml_user_id, $3),
+              chrome_ext_contact_id = COALESCE(chrome_ext_contact_id, $4),
+              email = COALESCE(email, $5),
+              phone = COALESCE(phone, $6),
+              name = COALESCE(name, $7),
+              updated_at = now()
+        WHERE id = $1`,
+      [
+        intoId,
+        fromRow.wa_phone || null,
+        fromRow.ml_user_id ?? null,
+        fromRow.chrome_ext_contact_id || null,
+        fromRow.email || null,
+        fromRow.phone || null,
+        fromRow.name || null,
+      ],
     );
 
     await client.query(

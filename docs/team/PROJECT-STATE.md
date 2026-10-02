@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-11 (feat — Meta inbox Slack operator notify wiring)
+**Última actualización:** 2026-10-02 (fix — Omni post-merge identity redirect)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-10-02 (fix — Omni post-merge ingest follows survivor):** After `POST /omni/contacts/merge`, inbound still resolved to the archived loser (UNIQUE `wa_phone` / `integration_uuid` left on the hidden row) → new conversations split off Contactos Unificados. `resolveContact` now follows `properties.merged_into`; `mergeContacts` clears unique channel keys on the loser and COALESCE-unions them onto the winner. Tests `omniResolveContact` (+3) + `omniContactMerge` updated.
 
 **2026-09-11 (feat — Meta inbox Slack operator notify wiring):** `deploy-calc-api.yml` ahora pasa `OMNI_IG_ENABLED`/`OMNI_FB_ENABLED`, `META_*` Run 1 vars, `OWNER_WHATSAPP`, y el canal opcional Slack (`SLACK_BOT_TOKEN`, `SLACK_WEBHOOK_URL`, `SLACK_NOTIFY_CHANNEL`) sin tocar `--set-secrets`. `server/config.js` y `.env.example` documentan el wiring; `server/lib/meta/notify.js` mantiene el burst/queue de WhatsApp y suma Slack opcional en paralelo, tolerando falla de Slack y permitiendo notify Slack-only cuando `OWNER_WHATSAPP` está vacío. Nuevo helper `server/lib/slack/notify.js`, `scripts/slack-ping.mjs`, y tests `metaNotify` + `slackNotify`. `META_COMMENTS_ENABLED` sigue default `0`; no se shippea `/webhooks/slack`.
 

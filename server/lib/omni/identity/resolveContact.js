@@ -8,6 +8,9 @@ import {
   normalizeWaPhone,
 } from "../types.js";
 
+/** Cap merge-chain walks (cycle / pathological depth). */
+const MERGED_INTO_MAX_DEPTH = 8;
+
 /**
  * @param {import("pg").PoolClient} client
  * @param {string} sql
@@ -19,6 +22,31 @@ async function findContact(client, sql, params) {
 }
 
 /**
+ * Soft-merged losers keep their UNIQUE keys (or at least integration_uuid).
+ * Ingest must follow properties.merged_into to the survivor, or new channel
+ * traffic lands on a Contactos-Unificados-hidden row and splits the thread.
+ * @param {import("pg").PoolClient} client
+ * @param {{ id: string, integration_uuid?: string, merged_into?: string|null } | null} row
+ * @param {number} [depth]
+ */
+export async function followMergedInto(client, row, depth = 0) {
+  if (!row?.id) return row;
+  const mergedInto = row.merged_into ? String(row.merged_into) : null;
+  if (!mergedInto) return row;
+  if (mergedInto === row.id) return row;
+  if (depth >= MERGED_INTO_MAX_DEPTH) return row;
+
+  const next = await findContact(
+    client,
+    `SELECT id, integration_uuid, properties->>'merged_into' AS merged_into
+       FROM omni_contacts WHERE id = $1 LIMIT 1`,
+    [mergedInto],
+  );
+  if (!next) return row;
+  return followMergedInto(client, next, depth + 1);
+}
+
+/**
  * Identity lookup in priority order (integration_uuid → channel key → chrome ext).
  * Re-used both BEFORE the insert and AGAIN after an `ON CONFLICT DO NOTHING`, so a
  * contact created by a concurrent transaction is resolved instead of dropped
@@ -26,28 +54,30 @@ async function findContact(client, sql, params) {
  * @param {import("pg").PoolClient} client
  */
 async function findExistingContact(client, { integrationUuid, channel, waPhone, mlUserId, email, chromeExt }) {
+  const selectCols = `id, integration_uuid, properties->>'merged_into' AS merged_into`;
+
   const byUuid = await findContact(
     client,
-    `SELECT id, integration_uuid FROM omni_contacts WHERE integration_uuid = $1 LIMIT 1`,
+    `SELECT ${selectCols} FROM omni_contacts WHERE integration_uuid = $1 LIMIT 1`,
     [integrationUuid],
   );
-  if (byUuid) return byUuid;
+  if (byUuid) return followMergedInto(client, byUuid);
 
   if (channel === "wa" && waPhone) {
-    const r = await findContact(client, `SELECT id, integration_uuid FROM omni_contacts WHERE wa_phone = $1 LIMIT 1`, [waPhone]);
-    if (r) return r;
+    const r = await findContact(client, `SELECT ${selectCols} FROM omni_contacts WHERE wa_phone = $1 LIMIT 1`, [waPhone]);
+    if (r) return followMergedInto(client, r);
   }
   if (channel === "ml" && mlUserId != null) {
-    const r = await findContact(client, `SELECT id, integration_uuid FROM omni_contacts WHERE ml_user_id = $1 LIMIT 1`, [mlUserId]);
-    if (r) return r;
+    const r = await findContact(client, `SELECT ${selectCols} FROM omni_contacts WHERE ml_user_id = $1 LIMIT 1`, [mlUserId]);
+    if (r) return followMergedInto(client, r);
   }
   if (channel === "email" && email) {
-    const r = await findContact(client, `SELECT id, integration_uuid FROM omni_contacts WHERE lower(email) = $1 LIMIT 1`, [email]);
-    if (r) return r;
+    const r = await findContact(client, `SELECT ${selectCols} FROM omni_contacts WHERE lower(email) = $1 LIMIT 1`, [email]);
+    if (r) return followMergedInto(client, r);
   }
   if (chromeExt) {
-    const r = await findContact(client, `SELECT id, integration_uuid FROM omni_contacts WHERE chrome_ext_contact_id = $1 LIMIT 1`, [chromeExt]);
-    if (r) return r;
+    const r = await findContact(client, `SELECT ${selectCols} FROM omni_contacts WHERE chrome_ext_contact_id = $1 LIMIT 1`, [chromeExt]);
+    if (r) return followMergedInto(client, r);
   }
   return null;
 }
@@ -60,11 +90,13 @@ export async function resolveContact(client, { contact_hint: hint, channel, sour
   if (hint.contact_id) {
     const row = await findContact(
       client,
-      `SELECT id, integration_uuid FROM omni_contacts WHERE id = $1 LIMIT 1`,
+      `SELECT id, integration_uuid, properties->>'merged_into' AS merged_into
+         FROM omni_contacts WHERE id = $1 LIMIT 1`,
       [hint.contact_id],
     );
     if (row) {
-      return { contact_id: row.id, created: false, integration_uuid: row.integration_uuid };
+      const resolved = await followMergedInto(client, row);
+      return { contact_id: resolved.id, created: false, integration_uuid: resolved.integration_uuid };
     }
   }
 
