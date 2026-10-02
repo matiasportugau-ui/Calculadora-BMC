@@ -126,11 +126,41 @@ mutated[9] = "Nueva respuesta";
 const s3 = buildHitlBoardSnapshot([sampleRow, mutated], { sheetId: SHEET_ID, tab: "Admin." });
 assert.notEqual(s1.etag, s3.etag);
 
-// 8. board.json-compat projection shape.
+// 8. board.json-compat projection shape + url precedence regression.
 const compat = projectBoardJsonCompat(snapshot);
 assert.equal(compat.length, 2);
 assert.ok(compat[0].qid, "qid required by legacy board.json consumers");
 assert.equal(compat[0].source, "admin");
+// listing_url must win over sheet_id. `||` binds tighter than `?:`, so the
+// original one-liner always returned the Admin sheet edit URL in prod.
+{
+  const withListing = projectBoardJsonCompat(
+    buildHitlBoardSnapshot([sampleRow], { sheetId: SHEET_ID, tab: "Admin." }),
+  );
+  assert.equal(
+    withListing[0].url,
+    "https://articulo.mercadolibre.com.uy/MLU-757318280-foo",
+    "listing_url must win over sheet fallback",
+  );
+  const driveOnly = [...sampleRow];
+  driveOnly[8] = "Consulta sin markers ML";
+  driveOnly[10] = "https://drive.google.com/file/d/abc";
+  const withLink = projectBoardJsonCompat(
+    buildHitlBoardSnapshot([driveOnly], { sheetId: SHEET_ID, tab: "Admin." }),
+  );
+  assert.equal(withLink[0].url, "https://drive.google.com/file/d/abc", "link must win over sheet fallback");
+  const neither = [...sampleRow];
+  neither[8] = "Consulta sin markers ni link";
+  neither[10] = "";
+  const withSheet = projectBoardJsonCompat(
+    buildHitlBoardSnapshot([neither], { sheetId: SHEET_ID, tab: "Admin." }),
+  );
+  assert.equal(
+    withSheet[0].url,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`,
+    "sheet fallback only when listing_url and link are empty",
+  );
+}
 
 // 9. validateRowUpdate — happy + rejection paths.
 assert.equal(validateRowUpdate({}).ok, false);
