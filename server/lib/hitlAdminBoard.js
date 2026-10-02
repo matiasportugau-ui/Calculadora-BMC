@@ -202,14 +202,19 @@ export function computeEtag(snapshot) {
  * flat shape so bmc-cola-hitl can swap data sources with zero UI change.
  */
 export function projectBoardJsonCompat(snapshot) {
+  const sheetFallback = snapshot.sheet_id
+    ? `https://docs.google.com/spreadsheets/d/${snapshot.sheet_id}/edit`
+    : "";
   return (snapshot.items || []).map((it) => ({
     source: "admin",
     admin_row: it.admin_row,
     qid: it.ml_qid || it.id || `ADMIN-${it.admin_row}`,
     title: it.title || it.cliente || `Fila ${it.admin_row}`,
-    url: it.listing_url || it.link || snapshot.sheet_id
-      ? `${snapshot.sheet_id ? `https://docs.google.com/spreadsheets/d/${snapshot.sheet_id}/edit` : ""}`
-      : "",
+    // Prefer ML listing URL, then Drive/archive link, then Admin sheet.
+    // Parentheses are required: `||` binds tighter than `?:`, so without them
+    // a truthy listing_url/link still evaluated the ternary and always returned
+    // the sheet URL whenever sheet_id was set (every prod snapshot).
+    url: it.listing_url || it.link || sheetFallback,
     status: it.estado || "",
     cliente: it.cliente,
     canal: it.canal,
