@@ -94,6 +94,13 @@ Todos bajo `/api/hitl/*`. Auth: `requireServiceOrUser({ role: "admin" })` — ac
 
 All values pass through `sanitizeCellValue` (`server/lib/sheetsCsvGuard.js`) so leading `=/+/-/@` are escaped — the write uses `USER_ENTERED`.
 
+**`link` field provenance (service-auth, not GIS):** the string the dashboard
+passes in `link` MUST come from the canonical server-side Drive archive path
+(`POST /api/quotes/drive-archive` → `GOOGLE_DRIVE_REFRESH_TOKEN` +
+`DRIVE_QUOTE_FOLDER_ID` shared folder) or from the public GCS
+`bmc-cotizaciones` HTML/PDF. **No desktop OAuth / GIS popup / device-code
+flow is supported for agents or the HITL dashboard.** See §11.
+
 ## 4. Sync latency
 
 | Dirección | Mecanismo | Latencia típica |
@@ -227,7 +234,89 @@ El CSV sample (admin-live-2026-10-02) proyecta **47 filas accionables**, consist
 - `tests/hitlBoardRoutes.test.js` — rutas: health abierto, auth 401, ENV_MISSING 503, dry-run write path, validación 400, CORS allowlist.
 - Ambos están incluidos en `npm run test:api` (y por lo tanto en `gate:local`).
 
-## 11. Qué queda abierto
+## 11. Drive integration — service-auth only (agents / dashboard / MCP)
+
+**Guardrail (voice 2026-10-02):** the HITL dashboard, Panelin agents, and the
+`bmc-grok-mcp` MCP server **MUST NOT** depend on desktop OAuth, device-code
+flow, or the browser GIS popup for Drive. Every quote archive / Drive read
+from automated or server-side callers goes through the service-auth endpoints
+already shipped in this repo.
+
+### Canonical path (don't invent a parallel one)
+
+| Need | Endpoint | Auth | Backing secret |
+|------|----------|------|----------------|
+| Archive **PDF + `.bmc.json`** of a quote into the Panelin Drive folder | `POST /api/quotes/drive-archive` | `requireServiceOrUser({ authOnly: true })` → Bearer `API_AUTH_TOKEN` or admin JWT | `GOOGLE_DRIVE_CLIENT_ID` + `GOOGLE_DRIVE_CLIENT_SECRET` + `GOOGLE_DRIVE_REFRESH_TOKEN` + `DRIVE_QUOTE_FOLDER_ID` (shared folder "Panelin BMC Cotizaciones") |
+| Read the `.bmc.json` behind an Admin.AO "🧮 openDrive" link | `GET /api/quotes/drive-project?folderId=…` | public-ish (folder id is the secret) — uses server OAuth under the hood | same four Drive env vars |
+| Push PDFs into Drive from the Panelin chat / voice agent | agent tool `archivar_pdfs_drive` (wraps the endpoint above) | agent surface + `user_confirmed` gate | same four Drive env vars |
+
+Why this is the only supported pattern:
+
+- The Panelin BMC Cotizaciones folder is a **shared folder** owned by a human
+  (not the SA). The server OAuth refresh token is scoped to a user that has
+  edit access, so there is no "SA has no My Drive quota" problem and no need
+  for Workspace-wide delegation.
+- All agents (Cloud Run calls, MCP tools, HITL dashboard write-back) share
+  the same Bearer secret pulled from Doppler / Secret Manager. No per-user
+  OAuth state has to live in Vercel, in the MCP, or in the chat worker.
+- Operators are explicitly out of the Drive OAuth loop; there is no "connect
+  your Google account" ritual to onboard a new agent.
+
+### How this plugs into the HITL bridge
+
+`POST /api/hitl/row/update` writes a string into **column K** (`link`). That
+string **must** be a URL produced by the canonical archive path above —
+typically either:
+
+- the Drive file URL returned by `POST /api/quotes/drive-archive`, or
+- the public GCS `bmc-cotizaciones` URL for the HTML/PDF snapshot (already
+  used across `wolfboard` + `adminQuoteLinks`).
+
+The dashboard should NEVER:
+
+- open a Google Sign-In popup / GIS flow to the operator before writing;
+- call Drive directly from the browser;
+- store any per-operator Drive OAuth token in the dashboard session.
+
+If the dashboard needs to archive a PDF end-to-end on behalf of the operator,
+it forwards the PDF to `POST /api/quotes/drive-archive` with the same Bearer
+token it already uses for `/api/hitl/row/update`, then feeds the returned
+URL back into `/api/hitl/row/update` with `{ admin_row, link }`. One secret,
+one flow, zero popups.
+
+### Env vars (Doppler / Cloud Run secrets)
+
+| Var | Purpose |
+|-----|---------|
+| `GOOGLE_DRIVE_CLIENT_ID` | OAuth client that owns the refresh token |
+| `GOOGLE_DRIVE_CLIENT_SECRET` | same |
+| `GOOGLE_DRIVE_REFRESH_TOKEN` | long-lived refresh token for the human account that has edit access to the shared folder |
+| `DRIVE_QUOTE_FOLDER_ID` | shared folder "Panelin BMC Cotizaciones" |
+| `API_AUTH_TOKEN` | Bearer used by all agent/dashboard callers |
+
+These are **separate** from `GOOGLE_APPLICATION_CREDENTIALS` (service account
+for Sheets). The two auth paths are intentional: Sheets uses the SA, Drive
+uses the shared-folder OAuth refresh token.
+
+### Verification
+
+```bash
+# 1. Confirm the Drive secret quartet is wired in Cloud Run
+gcloud run services describe panelin-calc --region us-central1 \
+  --format='value(spec.template.spec.containers[0].env)' | tr ',' '\n' \
+  | grep -E 'GOOGLE_DRIVE_|DRIVE_QUOTE_FOLDER_ID'
+
+# 2. Smoke the archive endpoint (service token)
+curl -s -X POST "https://<api>/api/quotes/drive-archive" \
+  -H "Authorization: Bearer $API_AUTH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"pdfBase64":"<base64>","projectData":{"_meta":{"quotationCode":"TEST-R999"}},"quotationCode":"TEST-R999"}'
+
+# 3. Read it back via the AO openDrive deep-link (no auth popup):
+curl -s "https://<api>/api/quotes/drive-project?folderId=<returned-folder-id>" | jq
+```
+
+## 12. Qué queda abierto
 
 - Un endpoint liviano `POST /api/hitl/invalidate` + trigger Apps Script si queremos matar el polling. No bloquea el objetivo actual.
 - Opcional: emitir SSE desde `/api/hitl/stream` para dashboards con conexión persistente — también posterior.
