@@ -49,6 +49,18 @@ export async function dispatchAdminInbound(config, fields = {}, { getSheets = ge
   }
 }
 
+/**
+ * Best-effort Admin row write that must not block webhook/CRM persist.
+ * Sheets get/append can hang; callers that already ack HTTP 200 (WA) or that
+ * must reach CRM/AI (email) should schedule instead of awaiting.
+ */
+export function scheduleAdminInbound(task, { logger, message = "Admin inbound row failed", ...context } = {}) {
+  return Promise.resolve(task).catch((err) => {
+    logger?.warn?.({ err: err?.message, ...context }, message);
+    return { ok: false, error: "admin_inbound_failed" };
+  });
+}
+
 export function whatsAppInboundFields({ msg, contactName } = {}) {
   const type = String(msg?.type || "").toLowerCase();
   let media;

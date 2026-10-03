@@ -6,6 +6,7 @@ import { handleMetaMessagingWebhook } from "../server/lib/omni/metaWebhookHandle
 import {
   recordWhatsAppAdminInbound,
   recordEmailAdminInbound,
+  scheduleAdminInbound,
 } from "../server/lib/adminInboundDispatch.js";
 
 let passed = 0;
@@ -267,6 +268,36 @@ const noId = await recordEmailAdminInbound({
   getSheets: async () => { throw new Error("sheets_should_not_be_created"); },
 });
 assert("Email without a message id does not touch sheets", noId.error === "message_id_required");
+
+const scheduled = scheduleAdminInbound(
+  new Promise(() => {}),
+  { logger: { warn: () => {} } },
+);
+assert("scheduleAdminInbound returns a promise without awaiting the task", typeof scheduled.then === "function");
+
+let rejectWarned = 0;
+const rejected = await scheduleAdminInbound(
+  Promise.reject(new Error("sheets_hung")),
+  {
+    logger: { warn: () => { rejectWarned += 1; } },
+    message: "WA admin inbound row failed",
+    msg_id: "wamid.x",
+  },
+);
+assert("scheduleAdminInbound swallows a rejected Admin write", rejected?.ok === false && rejected?.error === "admin_inbound_failed" && rejectWarned === 1);
+
+let slowDone = false;
+const slowAdmin = new Promise((resolve) => {
+  setTimeout(() => {
+    slowDone = true;
+    resolve({ ok: true });
+  }, 50);
+});
+let criticalFinishedFirst = false;
+scheduleAdminInbound(slowAdmin, { logger: { warn: () => {} } });
+criticalFinishedFirst = slowDone === false;
+await new Promise((r) => setTimeout(r, 80));
+assert("scheduleAdminInbound does not block the critical persist path", criticalFinishedFirst === true && slowDone === true);
 
 console.log(`\nadminInboundChannels: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
