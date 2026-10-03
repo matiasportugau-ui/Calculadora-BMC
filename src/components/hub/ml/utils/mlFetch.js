@@ -2,6 +2,11 @@ import { getCalcApiBase } from '../../../../utils/calcApiBase.js';
 import { ensureIdentityJwt, refreshIdentityJwt } from '../../../../utils/operatorApiClient.js';
 
 /** Prefer Vercel same-origin rewrites for /ml/* and /auth/ml/* (matches BmcAuthProvider). */
+export function mlReauthHref() {
+  const base = getMlApiBase().replace(/\/+$/, "");
+  return `${base}/auth/ml/start`;
+}
+
 function getMlApiBase() {
   if (typeof window !== 'undefined' && /\.vercel\.app$/i.test(window.location.hostname)) {
     return '';

@@ -1,5 +1,7 @@
 import React from 'react';
-import { useUserMe, useListings, useQuestions, useOrders, useMlPlaybooks } from '../hooks/useMlConnector.js';
+import { useUserMe, useListings, useQuestions, useOrders, useMlPlaybooks, useConnectorStatus } from '../hooks/useMlConnector.js';
+import { mlReauthHref } from '../utils/mlFetch.js';
+import { mlOverviewFailure } from '../mlOverviewFailure.js';
 
 const card = {
   background: 'var(--ac-surface)',
@@ -36,16 +38,17 @@ export default function OverviewTab({ onNavigateTab }) {
   const questions = useQuestions({ status: 'UNANSWERED', limit: 1 });
   const orders = useOrders({ limit: 1 });
   const playbooks = useMlPlaybooks();
+  const connector = useConnectorStatus();
 
-  const anyError = me.error || listings.error || questions.error || orders.error;
-  const authError = [me.error, listings.error, questions.error, orders.error].some(
-    (err) => err?.status === 401,
+  const failure = mlOverviewFailure(
+    [me.error, listings.error, questions.error, orders.error],
+    connector,
   );
 
-  if (anyError) {
+  if (failure) {
     return (
       <div style={{ padding: '40px', color: 'var(--ac-error)', textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
-        {authError ? (
+        {failure === "session" ? (
           <>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Sesión expirada o sin permiso</div>
             <div style={{ fontSize: 13, color: 'var(--ac-text-2)', lineHeight: 1.45 }}>
@@ -54,7 +57,15 @@ export default function OverviewTab({ onNavigateTab }) {
             </div>
           </>
         ) : (
-          <>Error al cargar el resumen. Verificá la conexión con Mercado Libre.</>
+          <>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Sin conexión con Mercado Libre</div>
+            <div style={{ fontSize: 13, color: 'var(--ac-text-2)', lineHeight: 1.45 }}>
+              El token del servidor no respondió. Abrí la re-autorización y aceptá el permiso de Mercado Libre.
+            </div>
+            <a href={mlReauthHref()} style={{ display: 'inline-block', marginTop: 12, fontSize: 13 }}>
+              Re-autorizar Mercado Libre
+            </a>
+          </>
         )}
       </div>
     );
