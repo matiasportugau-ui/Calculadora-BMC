@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-10-03 (fix — Admin inbound must not block WA/email persist):** WhatsApp webhook and `POST /api/crm/ingest-email` schedule Admin row writes via `scheduleAdminInbound` instead of awaiting Sheets. With `ADMIN_INBOUND_ROWS` on, a hung `values.get`/`append` no longer skips `wa_messages`/omni (Meta already acked 200) or blocks CRM email ingest. ML/Meta paths were already non-blocking for their primary persist. Tests: `tests/adminInboundChannels.test.js`.
+
 **2026-10-03 (feat — Admin inbound channel adapters, flag off):** WhatsApp webhook, Mercado Libre questions, Instagram, Messenger, and `POST /api/crm/ingest-email` call `appendAdminInboundRow`. Each inbound message is its own Pendiente row. CRM sync and omni persist stay. `ADMIN_INBOUND_ROWS` stays off, so these calls return before a Sheets client is created. Gmail poll reaches the same email path via loopback. No send button.
 
 **2026-10-03 (feat — Admin inbound row, flag off):** `appendAdminInboundRow` appends one Admin row per inbound message (`WA` / `ML` / `FB` / `IG` / `EM`). Column C stores the external id and a retry returns the existing row. Mercado Libre consulta keeps the `Q:` trailer. `/hub/cotizaciones` hides a `crm-ml` card when that question is already on an Admin row. `ADMIN_INBOUND_ROWS` defaults off, so no channel calls this yet and no live sheet write is added. Tests: `tests/adminInboundRow.test.js`.

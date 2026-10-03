@@ -107,7 +107,7 @@ import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
-import { recordWhatsAppAdminInbound } from "./lib/adminInboundDispatch.js";
+import { recordWhatsAppAdminInbound, scheduleAdminInbound } from "./lib/adminInboundDispatch.js";
 import { handleMetaMessagingWebhook, verifyMetaWebhookSubscribe } from "./lib/omni/metaWebhookHandler.js";
 import { normalizeAndPersist } from "./lib/omni/normalizer.js";
 import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
@@ -911,7 +911,12 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
   for (const msg of value.messages) {
     const chatId = msg.from; // número del cliente
     const contactName = value.contacts?.[0]?.profile?.name || msg.from;
-    await recordWhatsAppAdminInbound({ config, msg, contactName, logger });
+    // Fire-and-forget: never await Sheets before wa_messages / omni persist.
+    // Meta already got 200 above; a hung Admin append would otherwise drop the message.
+    scheduleAdminInbound(
+      recordWhatsAppAdminInbound({ config, msg, contactName, logger }),
+      { logger, message: "WA admin inbound row failed", msg_id: msg?.id, chat_id: chatId },
+    );
     const text = msg.text?.body || msg.caption || "";
     if (!text) continue;
 
