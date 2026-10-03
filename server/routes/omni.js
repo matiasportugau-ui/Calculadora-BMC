@@ -24,6 +24,7 @@ import {
 import { runAdHocAiJob, runAiJobById, ALLOWED_AI_JOB_TYPES, getDailyAiCost } from "../lib/omni/orchestrator/aiWorker.js";
 import { listModelRegistry, listPromptRegistry, getActivePromptContract } from "../lib/omni/orchestrator/aiRegistry.js";
 import { createDeal, listDeals, updateDeal } from "../lib/omni/deals/dealService.js";
+import { automationRulePatchSchema } from "../lib/omni/automationRulePatch.js";
 import { syncDealToCrm } from "../lib/omni/deals/syncCrm.js";
 import { listSuggestions, resolveSuggestion } from "../lib/omni/orchestrator/suggestions.js";
 import { recordOmniPromptEval, getPromptEvalStats } from "../lib/omni/knowledge/evalFeedback.js";
@@ -1143,7 +1144,11 @@ router.patch(
   requireGrant.write("canales"),
   requireOmniDb,
   async (req, res) => {
-    const { enabled, priority } = req.body || {};
+    const parsed = automationRulePatchSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: "validation_failed", details: parsed.error.flatten() });
+    }
+    const { enabled, priority } = parsed.data;
     const { rows } = await req.omniPool.query(
       `UPDATE omni_automation_rules SET
          enabled = COALESCE($2, enabled),
@@ -1268,16 +1273,24 @@ router.post(
     if (stage != null && !normalized) {
       return res.status(400).json({ ok: false, error: "invalid_stage" });
     }
-    const deal = await createDeal(req.omniPool, {
-      contact_id,
-      title,
-      value_usd,
-      stage: normalized,
-      source_channel,
-      source_conversation_id,
-      owner_agent_id: req.user?.email || req.user?.id || null,
-      properties: req.body?.properties || {},
-    });
+    let deal;
+    try {
+      deal = await createDeal(req.omniPool, {
+        contact_id,
+        title,
+        value_usd,
+        stage: normalized,
+        source_channel,
+        source_conversation_id,
+        owner_agent_id: req.user?.email || req.user?.id || null,
+        properties: req.body?.properties || {},
+      });
+    } catch (e) {
+      if (e?.code === "properties_too_large") {
+        return res.status(400).json({ ok: false, error: "properties_too_large" });
+      }
+      throw e;
+    }
     res.status(201).json({ ok: true, deal });
   },
 );

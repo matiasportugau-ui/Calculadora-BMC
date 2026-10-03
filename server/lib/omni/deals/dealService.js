@@ -3,11 +3,25 @@
  */
 import { canTransition, isTerminalStage, normalizeStage } from "./stageMachine.js";
 
+/** Serialized JSON cap for omni_deals.properties. Arbitrary blobs stay out of the row. */
+export const OMNI_DEAL_PROPERTIES_MAX_BYTES = 16 * 1024;
+
+export function dealPropertiesTooLarge(properties) {
+  if (properties == null) return false;
+  const serialized = typeof properties === "string" ? properties : JSON.stringify(properties);
+  return Buffer.byteLength(serialized, "utf8") > OMNI_DEAL_PROPERTIES_MAX_BYTES;
+}
+
 /**
  * @param {import('pg').Pool} pool
  * @param {object} input
  */
 export async function createDeal(pool, input) {
+  if (dealPropertiesTooLarge(input.properties)) {
+    const err = new Error("properties_too_large");
+    err.code = "properties_too_large";
+    throw err;
+  }
   const stage = normalizeStage(input.stage) || "lead";
   const { rows } = await pool.query(
     `INSERT INTO omni_deals
@@ -39,6 +53,9 @@ export async function updateDeal(pool, dealId, patch) {
   const { rows: existingRows } = await pool.query(`SELECT * FROM omni_deals WHERE id = $1`, [dealId]);
   const existing = existingRows[0];
   if (!existing) return { ok: false, error: "deal_not_found" };
+  if (patch.properties != null && dealPropertiesTooLarge(patch.properties)) {
+    return { ok: false, error: "properties_too_large" };
+  }
 
   const nextStage = patch.stage != null ? normalizeStage(patch.stage) : existing.stage;
   if (patch.stage != null && !canTransition(existing.stage, nextStage)) {

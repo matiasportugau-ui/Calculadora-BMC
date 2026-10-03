@@ -99,6 +99,14 @@ export async function enqueueAiJob(pool, job, opts = {}) {
     throw new Error("invalid_job_type");
   }
 
+  // Suggest is the only job that spends the daily budget. Refuse it here so an
+  // over-budget ingest does not leave a row the worker would skip anyway.
+  // Bookkeeping jobs (classify, extract_deal, embed, wa_crm_sync) still enqueue.
+  if (job.job_type === "suggest") {
+    const dailyCost = await getDailyAiCost(pool);
+    if (dailyCost >= config.omniAiDailyBudgetUsd) return null;
+  }
+
   const hasDelay = Number.isFinite(opts.runAfterMs) && opts.runAfterMs > 0;
 
   let conflictClause = "";
