@@ -72,6 +72,12 @@ function hitlCors(req, res, next) {
   return next();
 }
 
+/** Production calls `getSheetsClient`. Tests may pass `cfg.getSheetsClient`. */
+function sheetsClientFor(cfg) {
+  if (typeof cfg?.getSheetsClient === "function") return cfg.getSheetsClient();
+  return getSheetsClient();
+}
+
 function envMissing503(res, envVar) {
   return res.status(503).json({
     ok: false,
@@ -120,7 +126,7 @@ export function createHitlBoardRouter(cfg = config) {
 
     let sheets;
     try {
-      sheets = await getSheetsClient();
+      sheets = await sheetsClientFor(cfg);
     } catch (e) {
       return res.status(503).json({
         ok: false,
@@ -159,7 +165,7 @@ export function createHitlBoardRouter(cfg = config) {
 
     let sheets;
     try {
-      sheets = await getSheetsClient();
+      sheets = await sheetsClientFor(cfg);
     } catch (e) {
       return res.status(503).json({
         ok: false,
@@ -224,7 +230,7 @@ export function createHitlBoardRouter(cfg = config) {
 
     let sheets;
     try {
-      sheets = await getSheetsClient();
+      sheets = await sheetsClientFor(cfg);
     } catch (e) {
       return res.status(503).json({
         ok: false,
