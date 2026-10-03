@@ -23,8 +23,8 @@
 |---|-----|--------|-----------------|
 | 2.1 | CRM_Operativo | ☐ verificar | cotizaciones, proximas-entregas, coordinacion-logistica · creado vía `npm run setup-sheets-tabs` (2026-03-19); confirmar con `npm run verify-tabs` post-1.4 — ver [`runbook §2.x`](./GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md#secci%C3%B3n-2x--tabs-probable--ya-ejecutar-verify-tabs-despu%C3%A9s-de-14) |
 | 2.2 | Pagos_Pendientes | ☐ verificar | kpi-financiero · ídem 2.1 |
-| 2.3 | Metas_Ventas | ☐ verificar | kpi-financiero (metas) · ídem 2.1 |
-| 2.4 | AUDIT_LOG | ☐ verificar | audit · ídem 2.1 |
+| 2.3 | Metas_Ventas | ☑ 2026-10-03 | Creado en `BMC_SHEET_ID` por `node scripts/setup-sheets-tabs.js --crm-go-live`. Fila 1: `PERIODO`, `TIPO`, `META_MONTO`, `MONEDA`, `NOTAS`. Segunda corrida: skip, sin reescribir la fila. |
+| 2.4 | AUDIT_LOG | ☑ 2026-10-03 | Creado en el mismo workbook. Fila 1: `TIMESTAMP`, `ACTION`, `ROW`, `OLD_VALUE`, `NEW_VALUE`, `REASON`, `USER`, `SHEET`. Segunda corrida: skip. `CRM_Operativo` sigue presente. |
 
 ---
 
@@ -32,7 +32,7 @@
 
 | # | Requisito | Estado |
 |---|-----------|--------|
-| 3.1 | Code.gs en proyecto Apps Script del workbook | ☐ pendiente acción Matías — [`runbook §3.1`](./GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md#secci%C3%B3n-31--pegar-codegs-en-el-apps-script-del-workbook-crm_automatizado) |
+| 3.1 | Code.gs en proyecto Apps Script del workbook | ☑ 2026-10-03 | Proyecto ligado `BMC_Dashboard_Automation` (`scriptId` `1_dMB2zt1iWpHCGc8ZFlGSlAyxsUocsbZSmuEytBIt967iCnju3zkfD1u`). `Code.gs` leído de vuelta coincide con `docs/bmc-dashboard-modernization/Code.gs`. No se ejecutó ninguna función. |
 | 3.2 | DialogEntregas.html | ☐ pendiente acción Matías — [`runbook §3.2`](./GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md#secci%C3%B3n-32--pegar-dialogentregashtml) |
 | 3.3 | runInitialSetup ejecutado | ☐ pendiente acción Matías — [`runbook §3.3`](./GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md#secci%C3%B3n-33--ejecutar-runinitialsetup) |
 | 3.4 | Triggers configurados (onEdit, etc.) | ☐ pendiente acción Matías — [`runbook §3.4`](./GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md#secci%C3%B3n-34--configurar-triggers) |
