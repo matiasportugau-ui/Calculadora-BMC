@@ -107,6 +107,7 @@ import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
+import { recordWhatsAppAdminInbound } from "./lib/adminInboundDispatch.js";
 import { handleMetaMessagingWebhook, verifyMetaWebhookSubscribe } from "./lib/omni/metaWebhookHandler.js";
 import { normalizeAndPersist } from "./lib/omni/normalizer.js";
 import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
@@ -910,6 +911,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
   for (const msg of value.messages) {
     const chatId = msg.from; // número del cliente
     const contactName = value.contacts?.[0]?.profile?.name || msg.from;
+    await recordWhatsAppAdminInbound({ config, msg, contactName, logger });
     const text = msg.text?.body || msg.caption || "";
     if (!text) continue;
 
