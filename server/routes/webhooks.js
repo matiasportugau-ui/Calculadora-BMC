@@ -1,7 +1,8 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { verifyWhatsAppSignature } from "../lib/whatsappSignature.js";
 import { verifyMLSignature } from "../lib/mlSignature.js";
-import { authorizeMlWebhook, cloudRunPeerIp } from "../lib/mlWebhookAuth.js";
+import { authorizeMlWebhook, cloudRunPeerIp, mlWebhookRateKey } from "../lib/mlWebhookAuth.js";
 import { config } from "../config.js";
 import { createMlWebhookBuffer, createMlWebhookProcessor } from "../lib/mlWebhookService.js";
 
@@ -13,8 +14,17 @@ const router = express.Router();
 const mlWebhookBuffer = createMlWebhookBuffer(250);
 const mlWebhookProcessor = createMlWebhookProcessor({ config, buffer: mlWebhookBuffer });
 
+const mlWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: mlWebhookRateKey,
+  message: { ok: false, error: "rate_limited" },
+});
+
 // ML webhook (signature verification + basic handling)
-router.post("/ml", async (req, res, next) => {
+router.post("/ml", mlWebhookLimiter, async (req, res, next) => {
   try {
     const mlSigVerified = verifyMLSignature({
       clientSecret: config.mlClientSecret,

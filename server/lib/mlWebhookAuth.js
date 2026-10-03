@@ -56,6 +56,10 @@ export function isMlNotificationIp(ip) {
   return ML_NOTIFICATION_IP_SET.has(normalizePeerIp(ip));
 }
 
+export function mlWebhookRateKey(req) {
+  return cloudRunPeerIp(req) || "unknown";
+}
+
 /**
  * @param {{ mlSigVerified?: { ok?: boolean, skipped?: boolean, reason?: string }, peerIp?: string, webhookVerifyToken?: string, receivedToken?: string }} opts
  * @returns {{ accept: boolean, via: string, reason?: string, peerIp: string }}

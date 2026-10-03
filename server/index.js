@@ -103,7 +103,7 @@ import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
-import { authorizeMlWebhook, cloudRunPeerIp } from "./lib/mlWebhookAuth.js";
+import { authorizeMlWebhook, cloudRunPeerIp, mlWebhookRateKey } from "./lib/mlWebhookAuth.js";
 import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
@@ -599,7 +599,16 @@ app.get("/ml/orders/:id", requireMlAuth, asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.post("/webhooks/ml", asyncHandler(async (req, res) => {
+const mlWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: mlWebhookRateKey,
+  message: { ok: false, error: "rate_limited" },
+});
+
+app.post("/webhooks/ml", mlWebhookLimiter, asyncHandler(async (req, res) => {
   // HMAC when x-signature is present. Mercado Libre's current notification
   // contract omits that header and identifies the caller by source IP.
   const mlSigVerified = verifyMLSignature({

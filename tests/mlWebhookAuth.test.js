@@ -5,6 +5,7 @@ import {
   ML_NOTIFICATION_IPS,
   authorizeMlWebhook,
   cloudRunPeerIp,
+  mlWebhookRateKey,
   normalizePeerIp,
 } from "../server/lib/mlWebhookAuth.js";
 
@@ -146,6 +147,8 @@ for (const ip of ML_NOTIFICATION_IPS) {
 {
   const req = { headers: {}, socket: { remoteAddress: `::ffff:${ML_IP}` } };
   assert.equal(cloudRunPeerIp(req), ML_IP);
+  assert.equal(mlWebhookRateKey({ headers: { "x-forwarded-for": `9.9.9.9, ${ML_IP}` } }), ML_IP);
+  assert.equal(mlWebhookRateKey({ headers: {} }), "unknown");
 }
 
 {
