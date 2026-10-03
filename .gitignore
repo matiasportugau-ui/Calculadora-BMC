@@ -102,6 +102,9 @@ data/training/
 # Storefront conversation JSONL (hashed phone; still not for git)
 data/storefront-turns/
 
+# Meta Page comment ledger (operator registry; comment text stays local)
+data/meta-comments/
+
 # UX — sesiones de vídeo locales (pesadas / posible PII; ver docs/team/ux-feedback/sessions/README.md)
 docs/team/ux-feedback/sessions/**/*.mp4
 docs/team/ux-feedback/sessions/**/*.mov
