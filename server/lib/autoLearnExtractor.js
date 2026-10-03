@@ -7,6 +7,7 @@
  * @param {string} [options.source] — e.g. "panelin_chat", "wa", "ml", "autolearned"
  * @param {string|null} [options.convId]
  * @param {string} [options.surface]
+ * @param {{ info?: Function } | null} [options.logger] — caller's existing pino logger
  * @returns {Promise<Array<object>>} enriched pairs (with source/convId when provided)
  */
 import { config } from "../config.js";
@@ -18,6 +19,20 @@ export const MIN_CONFIDENCE = 0.70;
 export const DEDUP_SCORE_THRESHOLD = 4;
 export const MAX_PAIRS_PER_CONV = 8;
 export const MIN_GOOD_ANSWER_LEN = 40; // basic quality gate
+
+/**
+ * Structured training log. Callers pass the pino logger they already have
+ * (`req.log` or the WA ingest logger). No separate cost-telemetry module.
+ * @param {{ info?: Function } | null | undefined} logger
+ * @param {Record<string, unknown>} payload
+ */
+export function logTrainingEvent(logger, payload) {
+  if (logger && typeof logger.info === "function") {
+    logger.info(payload, payload.event);
+    return;
+  }
+  console.log(JSON.stringify(payload));
+}
 
 const EXTRACT_PROMPT = `Eres un especialista en entrenamiento de IA para BMC Uruguay (paneles de aislamiento térmico/acústico — Panelin).
 
@@ -59,6 +74,7 @@ export async function extractLearnablePairs(turns, options = {}) {
     source = "autolearned",
     convId = null,
     surface = null,
+    logger = null,
   } = options;
 
   const apiKey = config.anthropicApiKey;
@@ -82,15 +98,14 @@ export async function extractLearnablePairs(turns, options = {}) {
   // Structured observability for training cost & usage
   const usage = msg.usage || {};
   const cost = estimateCostUSD("claude", EXTRACT_MODEL, usage);
-  // TODO: thread pino logger here once cost-telemetry module exists
-  console.log(JSON.stringify({
+  logTrainingEvent(logger, {
     event: "ai_training_extraction",
     model: EXTRACT_MODEL,
     input_tokens: usage.input_tokens || 0,
     output_tokens: usage.output_tokens || 0,
     estimated_cost_usd: cost,
     pairs_extracted: "pending", // will be known after parsing
-  }));
+  });
 
   const raw = msg.content?.[0]?.text ?? "[]";
   let pairs;
@@ -133,13 +148,12 @@ export async function extractLearnablePairs(turns, options = {}) {
   }));
 
   // Final log with actual training value produced
-  // TODO: thread pino logger here once cost-telemetry module exists
-  console.log(JSON.stringify({
+  logTrainingEvent(logger, {
     event: "ai_training_extraction_complete",
     model: EXTRACT_MODEL,
     pairs_returned: enriched.length,
     pairs_filtered: filtered.length - unique.length,
-  }));
+  });
 
   return enriched;
 }

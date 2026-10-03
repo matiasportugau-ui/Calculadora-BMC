@@ -213,7 +213,7 @@ router.post("/agent/autolearn", requireDevModeAuthMiddleware, async (req, res) =
     if (!Array.isArray(turns) || turns.length < 2) {
       return res.status(400).json({ ok: false, error: "turns array required (min 2)" });
     }
-    const pairs = await extractLearnablePairs(turns, { source: "manual_autolearn", convId: conversationId || null });
+    const pairs = await extractLearnablePairs(turns, { source: "manual_autolearn", convId: conversationId || null, logger: req.log });
     const added = pairs.map((p) =>
       addTrainingEntry({
         question: p.question,

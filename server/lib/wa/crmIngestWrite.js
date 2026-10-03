@@ -273,7 +273,7 @@ export async function findCrmRowByPhone({ config, phone, sheets: injectedSheets 
  */
 export async function runWaAutoLearn({ turns, chatId, logger }) {
   try {
-    const pairs = await extractLearnablePairs(turns, { source: "wa", convId: chatId });
+    const pairs = await extractLearnablePairs(turns, { source: "wa", convId: chatId, logger });
     for (const p of pairs) {
       addTrainingEntry({
         question: p.question,
