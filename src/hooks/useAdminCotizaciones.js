@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { addBugLog, addErrorToBugLog } from "../utils/bugCapture.js";
 import { useCockpitOperatorAuth } from "./useCockpitOperatorAuth.js";
+import { filterCrmMlRowsCoveredByAdmin } from "../utils/crmMlAdminDedup.js";
 
 // TODO refactor split (no behavior change, ~407 LOC today): three slice hooks
 //   useToken          — identity JWT via useCockpitOperatorAuth (S5 Phase B)
@@ -199,12 +200,8 @@ export function useAdminCotizaciones() {
       .map((r) => ({ ...r, source: "admin" }));
     const mlRowsRaw = mlRes.ok && Array.isArray(mlRes.data?.items) ? mlRes.data.items : [];
 
-    // Dedupe: if an ML question already has an Admin row with matching ID,
-    // prefer the Admin row (it has rowNum + supports the standard actions).
-    const adminIds = new Set(adminRows.map((r) => String(r.id || "").trim()).filter(Boolean));
-    const mlRows = mlRowsRaw
-      .map(mapCrmMlItemToRow)
-      .filter((r) => !adminIds.has(String(r.id || "").trim()));
+    // Prefer the Admin row when it already carries the same id or Mercado Libre question id.
+    const mlRows = filterCrmMlRowsCoveredByAdmin(adminRows, mlRowsRaw.map(mapCrmMlItemToRow));
 
     // Enrich with any borrador/responsable data that may come from the sheet via wolfboard
     const enrichedAdminRows = adminRows.map(r => ({
