@@ -3,6 +3,7 @@ import { normalizeAndPersist } from "./normalizer.js";
 import { igWebhookToOmniEvents } from "./adapters/igWebhook.js";
 import { messengerWebhookToOmniEvents } from "./adapters/messengerWebhook.js";
 import { enqueueNotifyOwner } from "../meta/notify.js";
+import { dispatchAdminInbound, metaMessagingAdminFields, metaMessagingItems } from "../adminInboundDispatch.js";
 
 export function verifyMetaWebhookSubscribe(req, verifyToken) {
   const mode = req?.query?.["hub.mode"];
@@ -28,7 +29,8 @@ function adapterFor(channel) {
  */
 export function handleMetaMessagingWebhook(args) {
   const { channel, enabled, appSecret, rawBodyBuffer, signatureHeader, config, logger } = args;
-  if (!enabled) {
+  const adminOn = Boolean(config?.adminInboundRows);
+  if (!enabled && !adminOn) {
     logger?.debug?.({ channel }, "Meta messaging webhook ignored because flag is OFF");
     return { status: 200, body: { ok: true, skipped: "flag_off" }, processing: Promise.resolve([]) };
   }
@@ -49,27 +51,39 @@ export function handleMetaMessagingWebhook(args) {
     return { status: 200, body: { ok: true }, processing: Promise.resolve([]) };
   }
 
-  const events = adapterFor(channel)(body);
+  const events = enabled ? adapterFor(channel)(body) : [];
   const persist = args.persist || normalizeAndPersist;
   const notify = args.notifyOwner || enqueueNotifyOwner;
-  const processing = Promise.all(
-    events.map((event) =>
-      persist(event, { databaseUrl: config.databaseUrl, logger })
-        .then(async (result) => {
-          if (result && result.duplicate !== true) {
-            try {
-              await notify({ event, persistResult: result, config, logger });
-            } catch (err) {
-              logger?.warn?.({ err: err?.message, channel }, "Meta owner notify enqueue failed");
-            }
-          }
-          return result;
-        })
-        .catch((err) => {
-          logger?.warn?.({ err: err?.message, idempotency_key: event.idempotency_key }, "Meta omni persist failed");
-          return null;
-        }),
-    ),
-  );
+  const processing = (async () => {
+    const results = enabled
+      ? await Promise.all(
+        events.map((event) =>
+          persist(event, { databaseUrl: config.databaseUrl, logger })
+            .then(async (result) => {
+              if (result && result.duplicate !== true) {
+                try {
+                  await notify({ event, persistResult: result, config, logger });
+                } catch (err) {
+                  logger?.warn?.({ err: err?.message, channel }, "Meta owner notify enqueue failed");
+                }
+              }
+              return result;
+            })
+            .catch((err) => {
+              logger?.warn?.({ err: err?.message, idempotency_key: event.idempotency_key }, "Meta omni persist failed");
+              return null;
+            }),
+        ),
+      )
+      : [];
+    if (adminOn) {
+      for (const item of metaMessagingItems(body)) {
+        const fields = metaMessagingAdminFields(channel, item);
+        if (!fields) continue;
+        await dispatchAdminInbound(config, fields, { logger, getSheets: args.getSheets });
+      }
+    }
+    return results;
+  })();
   return { status: 200, body: { ok: true, events: events.length }, processing };
 }
