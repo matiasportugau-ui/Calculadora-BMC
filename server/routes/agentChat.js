@@ -1690,7 +1690,7 @@ router.post("/agent/chat", async (req, res) => {
           }
           const fullTurns = [...allTurns, { role: "assistant", content: visibleAssistantText }];
           setImmediate(() => {
-            extractLearnablePairs(fullTurns, { source: "panelin_chat", convId: conversationId })
+            extractLearnablePairs(fullTurns, { source: "panelin_chat", convId: conversationId, logger: req.log })
               .then((pairs) => {
                 for (const p of pairs) {
                   addTrainingEntry({
