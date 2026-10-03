@@ -4,6 +4,7 @@
  * Used when Finanzas tab is served at /finanzas from the main server.
  * Error semantics: 503 = Sheets backend unavailable; 200 + empty = no data.
  */
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
@@ -908,11 +909,21 @@ async function appendAuditLog(sheets, sheetId, action, rowId, oldVal, newVal, sh
   }
 }
 
+/**
+ * Mint a durable CRM_Operativo cotización id.
+ * Must be unique under concurrent POST /api/cotizaciones — `COT-${Date.now()}`
+ * collides in the same ms, and handleUpdateCotizacion / handleUpdatePago
+ * `findIndex` the first match → silent cross-quote overwrite.
+ */
+export function generateCotizacionId() {
+  return `COT-${crypto.randomUUID()}`;
+}
+
 async function handleCreateCotizacion(sheetId, body) {
   const authClient = await getGoogleAuthClient(SCOPE_WRITE);
   const sheets = google.sheets({ version: "v4", auth: authClient });
 
-  const newId = "COT-" + Date.now();
+  const newId = generateCotizacionId();
   const today = new Date().toISOString().slice(0, 10);
 
   // Get headers from CRM_Operativo — row 3 (headerRowOffset: 2)
