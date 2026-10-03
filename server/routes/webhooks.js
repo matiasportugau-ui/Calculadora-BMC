@@ -1,6 +1,8 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { verifyWhatsAppSignature } from "../lib/whatsappSignature.js";
 import { verifyMLSignature } from "../lib/mlSignature.js";
+import { authorizeMlWebhook, cloudRunPeerIp, mlWebhookRateKey } from "../lib/mlWebhookAuth.js";
 import { config } from "../config.js";
 import { createMlWebhookBuffer, createMlWebhookProcessor } from "../lib/mlWebhookService.js";
 
@@ -12,8 +14,17 @@ const router = express.Router();
 const mlWebhookBuffer = createMlWebhookBuffer(250);
 const mlWebhookProcessor = createMlWebhookProcessor({ config, buffer: mlWebhookBuffer });
 
+const mlWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: mlWebhookRateKey,
+  message: { ok: false, error: "rate_limited" },
+});
+
 // ML webhook (signature verification + basic handling)
-router.post("/ml", async (req, res, next) => {
+router.post("/ml", mlWebhookLimiter, async (req, res, next) => {
   try {
     const mlSigVerified = verifyMLSignature({
       clientSecret: config.mlClientSecret,
@@ -21,24 +32,24 @@ router.post("/ml", async (req, res, next) => {
       dataId: req.query.id ?? req.body?.id,
       requestId: req.headers["x-request-id"],
     });
-
-    if (!mlSigVerified.skipped && !mlSigVerified.ok) {
-      req.log?.warn({ reason: mlSigVerified.reason }, "ML webhook: invalid HMAC signature — rejected");
-      return res.status(401).json({ ok: false, error: "Invalid webhook signature" });
-    }
-    if (mlSigVerified.reason === "secret_not_configured") {
-      req.log?.error("ML_CLIENT_SECRET is not configured — rejecting webhook for security");
-      return res.status(503).json({ ok: false, error: "Webhook security not configured" });
-    }
-
-    if (config.webhookVerifyToken) {
-      const received =
+    const decision = authorizeMlWebhook({
+      mlSigVerified,
+      peerIp: cloudRunPeerIp(req),
+      webhookVerifyToken: config.webhookVerifyToken,
+      receivedToken:
         req.query.verify_token ||
         req.headers["x-webhook-token"] ||
-        req.headers.authorization;
-      if (String(received) !== String(config.webhookVerifyToken)) {
-        return res.status(401).json({ ok: false, error: "Invalid webhook token" });
-      }
+        req.headers.authorization,
+    });
+    if (!decision.accept) {
+      const error = decision.reason === "invalid_webhook_token"
+        ? "Invalid webhook token"
+        : "Invalid webhook signature";
+      req.log?.warn({ reason: decision.reason, via: decision.via }, "ML webhook: invalid HMAC signature — rejected");
+      return res.status(401).json({ ok: false, error });
+    }
+    if (decision.via === "ip_allowlist") {
+      req.log?.info({ peerIp: decision.peerIp }, "ML webhook: accepted from published notification IP");
     }
 
     const event = mlWebhookProcessor.handleWebhook({
