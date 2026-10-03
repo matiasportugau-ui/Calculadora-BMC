@@ -40,7 +40,15 @@ npm shortcut:
 npm run meta:moderate:comments -- --apply --block
 ```
 
-El script escribe un reporte JSON en `/opt/cursor/artifacts/meta-moderate-*.json`.
+El script registra cada match en `data/meta-comments/registry.jsonl` (gitignored) y escribe el último reporte en `data/meta-comments/last-report.json`.
+
+- El nombre se compara sin importar mayúsculas, acentos ni espacios extra (`FERNANDO`, `Fernando`, `Fernándo`).
+- Cuando un autor ya está en el ledger, los comentarios nuevos de ese `authorId` también se registran aunque cambie el nombre visible.
+- Un scan más corto no borra filas ya registradas.
+- Si Graph informa `summary.total_count` mayor a lo escaneado, el log dice `truncated: true`. Los topes default siguen en 50 posts y 100 comentarios por post.
+- **Ocultar** hace `POST /{comment-id}` con `is_hidden=true`. No hay DELETE.
+- Graph queda en **v21.0** (el pin del repo). No bajar la versión.
+- `META_COMMENTS_ENABLED` sigue en `0`. Este script no suscribe webhooks de `feed` / `comments`.
 
 ## B) Manual (Meta Business Suite) — si no hay token
 
@@ -61,7 +69,7 @@ El script escribe un reporte JSON en `/opt/cursor/artifacts/meta-moderate-*.json
 
 ## Notas
 
-- **Ocultar** no borra; el público no ve el comentario; admins sí.
+- **Ocultar** no borra; el público no ve el comentario; admins sí. El ledger local conserva el texto.
 - **Bloquear** impide que esa persona vuelva a comentar / mensajear la Página.
 - Desactivar comentarios en una publicación afecta a **cualquiera**, no solo a un usuario.
 - No guardar tokens en el repo; usar `.env` / Doppler / secret manager.
