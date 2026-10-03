@@ -2,7 +2,7 @@
 
 **Propósito:** Lista de verificación para dejar el dashboard operativo para vendedores y administradivos de BMC.
 
-**Última actualización:** 2026-07-04 (**6.0 CERRADO**: `npm run smoke:prod` = 9/9 verde incluyendo `POST /api/crm/suggest-response` 200 — `ASSISTANTS_ACTIVE=canales;ml` renderizada por el deploy workflow tras PRs #560/#561. `npm run verify-tabs` también verde con credencial real de Doppler + schema `CRM_Operativo`: los 5 workbooks accesibles.)
+**Última actualización:** 2026-10-03 (`npm run verify-tabs` verde otra vez contra la revisión Cloud Run `panelin-calc-01123-cgs`, schema `CRM_Operativo`: la service account accede a los 5 workbooks. 2.1 confirmado. 2.2 es el workbook de pagos, tab real `Pendientes_`. 2.3 y 2.4 siguen ausentes. 3.x y 6.1–6.7 siguen en UAT humano.)
 
 ---
 
@@ -13,7 +13,7 @@
 | 1.1 | `.env` con `BMC_SHEET_ID` | ☑ | Verificado run_dashboard_setup.sh 2026-03-16 |
 | 1.2 | `.env` con `GOOGLE_APPLICATION_CREDENTIALS` | ☑ | Verificado run_dashboard_setup.sh |
 | 1.3 | `service-account.json` en `docs/bmc-dashboard-modernization/` | ☑ | Service account JSON valid |
-| 1.4 | Workbook compartido con email de la service account (Editor) | ☑ verificado 2026-07-04 | Probado indirectamente con `npm run verify-tabs` verde: la SA `bmc-dashboard-sheets@chatbot-bmc-live.iam.gserviceaccount.com` accede a los 5 workbooks (principal + pagos + ventas + stock + calendario) |
+| 1.4 | Workbook compartido con email de la service account (Editor) | ☑ re-verificado 2026-10-03 | `npm run verify-tabs` exit 0 con `~/.config/bmc/service-account.json` y los IDs de Cloud Run. La SA `bmc-dashboard-sheets@chatbot-bmc-live.iam.gserviceaccount.com` lee los 5 workbooks (principal, pagos, ventas, stock, calendario). Primera verificación: 2026-07-04. |
 
 ---
 
@@ -21,10 +21,10 @@
 
 | # | Tab | Estado | API que consume |
 |---|-----|--------|-----------------|
-| 2.1 | CRM_Operativo | ☐ verificar | cotizaciones, proximas-entregas, coordinacion-logistica · creado vía `npm run setup-sheets-tabs` (2026-03-19); confirmar con `npm run verify-tabs` post-1.4 — ver [`runbook §2.x`](./GO-LIVE-MANUAL-RUNBOOK-2026-05-13.md#secci%C3%B3n-2x--tabs-probable--ya-ejecutar-verify-tabs-despu%C3%A9s-de-14) |
-| 2.2 | Pagos_Pendientes | ☐ verificar | kpi-financiero · ídem 2.1 |
-| 2.3 | Metas_Ventas | ☐ verificar | kpi-financiero (metas) · ídem 2.1 |
-| 2.4 | AUDIT_LOG | ☐ verificar | audit · ídem 2.1 |
+| 2.1 | CRM_Operativo | ☑ 2026-10-03 | Existe en `BMC_SHEET_ID`. `verify-tabs` lo encontró con schema `CRM_Operativo`. |
+| 2.2 | Pagos_Pendientes | ☑ acceso 2026-10-03 | No hay un tab llamado `Pagos_Pendientes`. El workbook `BMC_PAGOS_SHEET_ID` es accesible (5 tabs). El tab vivo es `Pendientes_` (`accessible-base-sync.js` usa el primer tab). |
+| 2.3 | Metas_Ventas | ☐ ausente | No está en el workbook principal (9 tabs). En código es opcional (`accessible-base-sync.js`). No se creó en este paso. |
+| 2.4 | AUDIT_LOG | ☐ ausente | No está en el workbook principal. En código es opcional. No se creó en este paso. |
 
 ---
 
@@ -54,9 +54,9 @@
 
 | # | Opción | Estado |
 |---|--------|--------|
-| 5.1 | Cloud Run (panelin-calc) | ☑ live · revisión `panelin-calc-00371-j97` (2026-05-13 unblock); URL canónica `https://panelin-calc-q74zutv7dq-uc.a.run.app`. Frontend SPA + `/finanzas` se sirven desde Vercel (`calculadora-bmc.vercel.app`); Cloud Run hospeda sólo la API. Ver PROJECT-STATE 2026-05-13. |
-| 5.2 | VPS Netuy | ☐ skipped — Cloud Run elegido como superficie productiva |
-| 5.3 | ngrok (temporal) | ☐ n/a — Cloud Run es la URL pública estable |
+| 5.1 | Cloud Run (panelin-calc) | ☑ live · revisión lista `panelin-calc-01123-cgs` (2026-10-03, `gcloud run services describe`). URL canónica `https://panelin-calc-q74zutv7dq-uc.a.run.app`. El SPA y `/finanzas` salen de Vercel. |
+| 5.2 | VPS Netuy | ☑ skipped — Cloud Run es la superficie productiva |
+| 5.3 | ngrok (temporal) | ☑ n/a — Cloud Run es la URL pública estable |
 
 ---
 
