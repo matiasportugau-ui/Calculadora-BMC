@@ -107,7 +107,11 @@ import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
-import { handleMetaMessagingWebhook, verifyMetaWebhookSubscribe } from "./lib/omni/metaWebhookHandler.js";
+import {
+  handleMetaMessagingWebhook,
+  httpResultAfterProcessing,
+  verifyMetaWebhookSubscribe,
+} from "./lib/omni/metaWebhookHandler.js";
 import { normalizeAndPersist } from "./lib/omni/normalizer.js";
 import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
 import { getOmniPool } from "./lib/omni/omniDb.js";
@@ -709,7 +713,7 @@ app.get("/webhooks/messenger", metaWebhookLimiter, (req, res) => {
   res.status(result.status).send(result.body);
 });
 
-function handleMetaMessagingRoute(req, res, channel) {
+async function handleMetaMessagingRoute(req, res, channel) {
   const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
   const result = handleMetaMessagingWebhook({
     channel,
@@ -720,18 +724,25 @@ function handleMetaMessagingRoute(req, res, channel) {
     config,
     logger: req.log || logger,
   });
-  res.status(result.status).json(result.body);
-  result.processing.catch((err) => {
-    req.log?.warn?.({ err: err?.message, channel }, "Meta webhook async processing failed");
-  });
+  let outcomes = [];
+  try {
+    // Await before ack: detached processing after 200 is killed on Cloud Run
+    // scale-to-zero / CPU throttle (min-instances=0).
+    outcomes = await result.processing;
+  } catch (err) {
+    req.log?.warn?.({ err: err?.message, channel }, "Meta webhook processing failed");
+    outcomes = null;
+  }
+  const final = httpResultAfterProcessing(result, outcomes);
+  res.status(final.status).json(final.body);
 }
 
 app.post("/webhooks/instagram", metaWebhookLimiter, asyncHandler(async (req, res) => {
-  handleMetaMessagingRoute(req, res, "ig");
+  await handleMetaMessagingRoute(req, res, "ig");
 }));
 
 app.post("/webhooks/messenger", metaWebhookLimiter, asyncHandler(async (req, res) => {
-  handleMetaMessagingRoute(req, res, "fb");
+  await handleMetaMessagingRoute(req, res, "fb");
 }));
 
 // POST — mensajes entrantes

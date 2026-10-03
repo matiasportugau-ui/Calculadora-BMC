@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { handleMetaMessagingWebhook } from "../server/lib/omni/metaWebhookHandler.js";
+import {
+  handleMetaMessagingWebhook,
+  httpResultAfterProcessing,
+} from "../server/lib/omni/metaWebhookHandler.js";
 import {
   channelLabel,
   createNotifyQueue,
@@ -15,6 +18,19 @@ import {
 
 resetNotifyQueueForTests();
 resetNotifySeqForTests();
+
+const sampleMessaging = (senderId, mid, text) => ({
+  object: "page",
+  entry: [{
+    id: "page_1",
+    messaging: [{
+      sender: { id: senderId, name: "Cliente Test" },
+      recipient: { id: "page_1" },
+      timestamp: 1_783_515_000,
+      message: { mid, text },
+    }],
+  }],
+});
 
 const igEvent = {
   channel: "ig",
@@ -246,19 +262,7 @@ assert.equal(isSlackConfigured({ slackBotToken: "xoxb", slackNotifyChannel: "#me
 
 // Webhook hook: persist success enqueues notify; duplicate / flag-off / bad sig do not
 {
-  const sample = (senderId, mid, text) => ({
-    object: "page",
-    entry: [{
-      id: "page_1",
-      messaging: [{
-        sender: { id: senderId, name: "Cliente Test" },
-        recipient: { id: "page_1" },
-        timestamp: 1_783_515_000,
-        message: { mid, text },
-      }],
-    }],
-  });
-  const raw = Buffer.from(JSON.stringify(sample("PSID_9", "mid_ok", "precio?")));
+  const raw = Buffer.from(JSON.stringify(sampleMessaging("PSID_9", "mid_ok", "precio?")));
   const sig = "sha256=" + crypto.createHmac("sha256", "secret").update(raw).digest("hex");
   const notified = [];
   const good = handleMetaMessagingWebhook({
@@ -304,6 +308,84 @@ assert.equal(isSlackConfigured({ slackBotToken: "xoxb", slackNotifyChannel: "#me
   });
   await off.processing;
   assert.equal(offNotified.length, 0);
+}
+
+// Total persist failure must NOT stay HTTP 200 (Meta would never retry → silent drop)
+{
+  const rawFail = Buffer.from(JSON.stringify(sampleMessaging("PSID_fail", "mid_fail", "precio?")));
+  const sigFail = "sha256=" + crypto.createHmac("sha256", "secret").update(rawFail).digest("hex");
+  const failed = handleMetaMessagingWebhook({
+    channel: "fb",
+    enabled: true,
+    appSecret: "secret",
+    rawBodyBuffer: rawFail,
+    signatureHeader: sigFail,
+    config: {},
+    persist: async () => {
+      throw new Error("omni_db_unavailable");
+    },
+    notifyOwner: async () => {
+      throw new Error("must not notify");
+    },
+  });
+  assert.equal(failed.status, 200);
+  assert.equal(failed.body.events, 1);
+  const outcomes = await failed.processing;
+  assert.deepEqual(outcomes, [null]);
+  const final = httpResultAfterProcessing(failed, outcomes);
+  assert.equal(final.status, 503);
+  assert.equal(final.body.error, "persist_failed");
+
+  // Partial success still acks 200
+  const rawMix = Buffer.from(JSON.stringify({
+    object: "page",
+    entry: [{
+      id: "page_1",
+      messaging: [
+        {
+          sender: { id: "PSID_a", name: "A" },
+          recipient: { id: "page_1" },
+          timestamp: 1_783_515_000,
+          message: { mid: "mid_a", text: "a" },
+        },
+        {
+          sender: { id: "PSID_b", name: "B" },
+          recipient: { id: "page_1" },
+          timestamp: 1_783_515_001,
+          message: { mid: "mid_b", text: "b" },
+        },
+      ],
+    }],
+  }));
+  const sigMix = "sha256=" + crypto.createHmac("sha256", "secret").update(rawMix).digest("hex");
+  let mixN = 0;
+  const mixed = handleMetaMessagingWebhook({
+    channel: "fb",
+    enabled: true,
+    appSecret: "secret",
+    rawBodyBuffer: rawMix,
+    signatureHeader: sigMix,
+    config: {},
+    persist: async () => {
+      mixN += 1;
+      if (mixN === 1) throw new Error("boom");
+      return { duplicate: false, message_id: "m_b" };
+    },
+    notifyOwner: async () => ({ skipped: "test" }),
+  });
+  const mixOut = await mixed.processing;
+  assert.equal(mixOut.filter((r) => r == null).length, 1);
+  assert.equal(httpResultAfterProcessing(mixed, mixOut).status, 200);
+
+  // Duplicate-only batch is a successful keep (not persist_failed)
+  assert.equal(
+    httpResultAfterProcessing({ status: 200, body: { ok: true, events: 1 } }, [{ duplicate: true }]).status,
+    200,
+  );
+  assert.equal(
+    httpResultAfterProcessing({ status: 200, body: { ok: true, events: 0 } }, []).status,
+    200,
+  );
 }
 
 resetNotifyQueueForTests();

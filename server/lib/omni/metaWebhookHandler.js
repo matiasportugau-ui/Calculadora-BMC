@@ -21,10 +21,30 @@ function adapterFor(channel) {
 }
 
 /**
- * Meta webhooks require quick 200s. This helper returns the HTTP ack plus a
- * promise for best-effort persistence so routes can ack before DB work.
+ * Map ack + persist outcomes to the final HTTP response.
+ * If Meta delivered N messaging events but every persist failed (null), return
+ * 503 so Meta retries — a 200 here permanently drops inbound (no retry).
+ * @param {{ status:number, body:object }} ack
+ * @param {unknown} outcomes
+ */
+export function httpResultAfterProcessing(ack, outcomes) {
+  if (ack?.status === 200 && Number(ack?.body?.events) > 0) {
+    const anyKept = Array.isArray(outcomes) && outcomes.some((r) => r != null);
+    if (!anyKept) {
+      return { status: 503, body: { ok: false, error: "persist_failed" } };
+    }
+  }
+  return { status: ack.status, body: ack.body };
+}
+
+/**
+ * Meta webhooks need a timely HTTP response, but Cloud Run (--min-instances=0,
+ * CPU throttled after the request) will kill fire-and-forget work after ack.
+ * Routes MUST await `processing` and pass outcomes through
+ * `httpResultAfterProcessing` *before* sending the status — never ack 200
+ * while persist is still in flight, and never ack 200 when every persist failed.
  * @param {{ channel:"ig"|"fb", enabled:boolean, appSecret:string, rawBodyBuffer:Buffer,
- * signatureHeader?:string, config:object, logger?:object, persist?:Function }} args
+ * signatureHeader?:string, config:object, logger?:object, persist?:Function, notifyOwner?:Function }} args
  */
 export function handleMetaMessagingWebhook(args) {
   const { channel, enabled, appSecret, rawBodyBuffer, signatureHeader, config, logger } = args;
