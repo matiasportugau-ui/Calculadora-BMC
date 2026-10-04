@@ -161,4 +161,25 @@ Los scripts Apps Script se ejecutan con permisos del usuario propietario del wor
 
 ---
 
-**Última actualización:** 2026-03-16
+## 10. Bot autónomo `bmc-crm-golive` (Grok agent)
+
+Existe un agente Grok (`~/.grok/agents/bmc-crm-golive.md`, máquina de Matías) que cierra
+los pasos restantes del go-live de forma autónoma: tab `CONTACTOS` en Pagos (Sheets API +
+SA), conversión de `2.0 - Ventas` .xlsx → Google Sheet con propagación del ID nuevo
+(.env / Doppler / defaults / docs), Script Properties del digest en
+`BMC_Dashboard_Automation`, y pegado de `VentasConsolidar.gs` + triggers vía browser.
+
+Reglas duras del bot: **binding-check por paso** contra la tabla §1 de este doc
+(spreadsheet ID ↔ proyecto ↔ función; mismatch = stop + handoff); **nunca** ejecuta
+funciones Apps Script (3.3 `runInitialSetup` es manual de Matías); popup OAuth = gate
+humano (`deferred-HITL`); dry-run por defecto, escrituras solo con `APPLY=1` + confirmación
+citada; merges solo con checks requeridos verdes y sin conflictos.
+
+Estado de triggers ya instalados (2026-10-03, sesión asistida): CRM
+`sendWeeklyAlarmDigest` ✅ · Pagos `alertarPagosVencidos` + `onEdit` ✅
+(`BMC_Pagos_Automation`) · Stock `alertarBajoStock` ✅ (`BMC_Stock_Automation`) ·
+Ventas ⛔ bloqueado (.xlsx).
+
+---
+
+**Última actualización:** 2026-10-04
