@@ -103,10 +103,12 @@ import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
+import { authorizeMlWebhook, cloudRunPeerIp, mlWebhookRateKey } from "./lib/mlWebhookAuth.js";
 import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
 import { shadowWriteWaWebhook, waWebhookToOmniEvent } from "./lib/omni/adapters/waWebhook.js";
+import { recordWhatsAppAdminInbound } from "./lib/adminInboundDispatch.js";
 import { handleMetaMessagingWebhook, verifyMetaWebhookSubscribe } from "./lib/omni/metaWebhookHandler.js";
 import { normalizeAndPersist } from "./lib/omni/normalizer.js";
 import { chooseWaIngestMode } from "./lib/wa/ingestMode.js";
@@ -597,32 +599,45 @@ app.get("/ml/orders/:id", requireMlAuth, asyncHandler(async (req, res) => {
   res.json(payload);
 }));
 
-app.post("/webhooks/ml", asyncHandler(async (req, res) => {
-  // Layer 1: HMAC signature verification (Gap #1 fix)
-  // ML signs: "id:{data.id};request-id:{x-request-id};ts:{ts}" with ML_CLIENT_SECRET
+const mlWebhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: mlWebhookRateKey,
+  message: { ok: false, error: "rate_limited" },
+});
+
+app.post("/webhooks/ml", mlWebhookLimiter, asyncHandler(async (req, res) => {
+  // HMAC when x-signature is present. Mercado Libre's current notification
+  // contract omits that header and identifies the caller by source IP.
   const mlSigVerified = verifyMLSignature({
     clientSecret: config.mlClientSecret,
     signatureHeader: req.headers["x-signature"],
     dataId: req.query.id ?? req.body?.id,
     requestId: req.headers["x-request-id"],
   });
-  if (!mlSigVerified.skipped && !mlSigVerified.ok) {
-    req.log.warn({ reason: mlSigVerified.reason }, "ML webhook: invalid HMAC signature — rejected");
-    return res.status(401).json({ ok: false, error: "Invalid webhook signature" });
-  }
-  if (mlSigVerified.skipped && config.appEnv !== "test") {
-    req.log.warn("ML_CLIENT_SECRET unset — POST /webhooks/ml HMAC verification skipped");
-  }
-
-  // Layer 2: verify token (second layer — kept for defence in depth)
-  if (config.webhookVerifyToken) {
-    const received =
+  const decision = authorizeMlWebhook({
+    mlSigVerified,
+    peerIp: cloudRunPeerIp(req),
+    webhookVerifyToken: config.webhookVerifyToken,
+    receivedToken:
       req.query.verify_token ||
       req.headers["x-webhook-token"] ||
-      req.headers.authorization;
-    if (String(received) !== String(config.webhookVerifyToken)) {
-      return res.status(401).json({ ok: false, error: "Invalid webhook token" });
-    }
+      req.headers.authorization,
+  });
+  if (!decision.accept) {
+    const error = decision.reason === "invalid_webhook_token"
+      ? "Invalid webhook token"
+      : "Invalid webhook signature";
+    req.log.warn({ reason: decision.reason, via: decision.via }, "ML webhook: invalid HMAC signature — rejected");
+    return res.status(401).json({ ok: false, error });
+  }
+  if (decision.via === "hmac_skipped" && config.appEnv !== "test") {
+    req.log.warn("ML_CLIENT_SECRET unset — POST /webhooks/ml HMAC verification skipped");
+  }
+  if (decision.via === "ip_allowlist") {
+    req.log.info({ peerIp: decision.peerIp }, "ML webhook: accepted from published notification IP");
   }
 
   const event = mlWebhookProcessor.handleWebhook({
@@ -910,6 +925,7 @@ app.post("/webhooks/whatsapp", asyncHandler(async (req, res) => {
   for (const msg of value.messages) {
     const chatId = msg.from; // número del cliente
     const contactName = value.contacts?.[0]?.profile?.name || msg.from;
+    await recordWhatsAppAdminInbound({ config, msg, contactName, logger });
     const text = msg.text?.body || msg.caption || "";
     if (!text) continue;
 

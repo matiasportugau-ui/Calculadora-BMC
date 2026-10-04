@@ -97,6 +97,11 @@ export const config = {
   wolfbAdminCotDualWriteEnabled: bool(process.env.WOLFB_ADMIN_COT_DUAL_WRITE, false),
   wolfbAdminCotEnviadosTab: process.env.WOLFB_ADMIN_COT_ENVIADOS_TAB || "Enviados",
   wolfbDryRun: process.env.WOLFB_DRY_RUN === "1",
+  /**
+   * When on, each inbound WhatsApp, Mercado Libre, Facebook, Instagram, and
+   * email message appends its own Admin row. Default off. Do not enable here.
+   */
+  adminInboundRows: bool(process.env.ADMIN_INBOUND_ROWS, false),
   wolfbRitualLog: process.env.WOLFB_RITUAL_LOG === "1",
   wolfbCalcApiBase: process.env.WOLFB_CALC_API_BASE || "",
   /** Primera fila de datos H:K en Admin 2.0 (default 2). */
