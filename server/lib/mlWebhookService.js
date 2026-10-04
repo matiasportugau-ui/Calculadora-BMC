@@ -119,6 +119,8 @@ export function createMlWebhookProcessor({
 
     const notification = { ...(body || {}), topic };
     const resourceId = extractMlWebhookResourceId(notification);
+    // CRM sync is the durable primary for questions — let it throw so the route
+    // can 503 and Mercado Libre retries. Omni/Admin stay best-effort.
     const [omniResult, syncResult, adminResult] = await Promise.all([
       persistWebhookToOmni({ notification, topic }).catch((err) => {
         logger?.warn?.({ err: err?.message, topic, resourceId }, "ML omni webhook persist failed");
@@ -137,13 +139,24 @@ export function createMlWebhookProcessor({
     return { ok: true, topic, resourceId, omni: omniResult, sync: syncResult, admin: adminResult };
   }
 
-  function handleWebhook({ body, query, headers, autoMode } = {}) {
+  /**
+   * Persist + CRM sync must finish before the HTTP ack. Cloud Run
+   * (--min-instances=0) throttles CPU after the response; fire-and-forget
+   * processNotification was killed after Mercado Libre already got 200 →
+   * permanent drop (no retry). Same class as Meta IG/FB #1314.
+   *
+   * @returns {Promise<{ event: object, ok: boolean, result?: object, error?: string }>}
+   */
+  async function handleWebhook({ body, query, headers, autoMode } = {}) {
     const event = buffer.push(buildMlWebhookEvent({ body, query, headers }));
     logger?.info?.({ eventId: event.id, topic: event.headers.topic }, "MercadoLibre webhook received");
-    processNotification({ body, headers, autoMode }).catch((err) => {
+    try {
+      const result = await processNotification({ body, headers, autoMode });
+      return { event, ok: true, result };
+    } catch (err) {
       logger?.error?.({ err }, "ML webhook pipeline failed");
-    });
-    return event;
+      return { event, ok: false, error: err?.message || "pipeline_failed" };
+    }
   }
 
   return {
