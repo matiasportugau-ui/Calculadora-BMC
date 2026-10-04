@@ -52,14 +52,23 @@ router.post("/ml", mlWebhookLimiter, async (req, res, next) => {
       req.log?.info({ peerIp: decision.peerIp }, "ML webhook: accepted from published notification IP");
     }
 
-    const event = mlWebhookProcessor.handleWebhook({
+    // Await before ack — Cloud Run kills fire-and-forget after 200 (min-instances=0).
+    const outcome = await mlWebhookProcessor.handleWebhook({
       body: req.body,
       query: req.query,
       headers: req.headers,
       autoMode: { fullAuto: false },
     });
 
-    res.status(200).json({ ok: true, eventId: event.id });
+    if (!outcome.ok) {
+      return res.status(503).json({
+        ok: false,
+        error: "pipeline_failed",
+        eventId: outcome.event.id,
+      });
+    }
+
+    res.status(200).json({ ok: true, eventId: outcome.event.id });
   } catch (err) {
     next(err);
   }

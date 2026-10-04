@@ -101,5 +101,43 @@ await (async () => {
   assert("redelivery does not double-run auto-answer", autoCalls === 1);
 })();
 
+// handleWebhook must await the pipeline (Cloud Run kills work after early 200).
+await (async () => {
+  let syncDone = false;
+  const processor = createMlWebhookProcessor({
+    ml: {},
+    config: { bmcSheetId: "sheet-1", omniMlShadowWrite: false },
+    syncMLCRM: async () => {
+      await new Promise((r) => setTimeout(r, 40));
+      syncDone = true;
+      return { synced: 1, rows: [] };
+    },
+  });
+  const outcome = await processor.handleWebhook({
+    body: notification,
+    headers: { "x-topic": "questions" },
+  });
+  assert("handleWebhook awaits CRM sync before returning", syncDone === true && outcome.ok === true);
+  assert("handleWebhook success carries event id", Boolean(outcome.event?.id));
+})();
+
+// Pipeline throw → ok:false so the route can 503 (ML retries).
+await (async () => {
+  const processor = createMlWebhookProcessor({
+    ml: {},
+    config: { bmcSheetId: "sheet-1", omniMlShadowWrite: false },
+    syncMLCRM: async () => {
+      throw new Error("sheets_unavailable");
+    },
+  });
+  const outcome = await processor.handleWebhook({
+    body: notification,
+    headers: { "x-topic": "questions" },
+  });
+  assert("handleWebhook surfaces pipeline failure", outcome.ok === false);
+  assert("failed handleWebhook still buffers the event", Boolean(outcome.event?.id));
+  assert("failed handleWebhook keeps error text", /sheets_unavailable/.test(String(outcome.error || "")));
+})();
+
 console.log(`\nmlWebhookOmni (offline): ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -640,14 +640,24 @@ app.post("/webhooks/ml", mlWebhookLimiter, asyncHandler(async (req, res) => {
     req.log.info({ peerIp: decision.peerIp }, "ML webhook: accepted from published notification IP");
   }
 
-  const event = mlWebhookProcessor.handleWebhook({
+  // Await pipeline before ack: detached work after 200 is killed on Cloud Run
+  // scale-to-zero / CPU throttle (min-instances=0). Same class as Meta #1314.
+  const outcome = await mlWebhookProcessor.handleWebhook({
     body: req.body,
     query: req.query,
     headers: req.headers,
     autoMode,
   });
 
-  res.status(200).json({ ok: true, eventId: event.id });
+  if (!outcome.ok) {
+    return res.status(503).json({
+      ok: false,
+      error: "pipeline_failed",
+      eventId: outcome.event.id,
+    });
+  }
+
+  res.status(200).json({ ok: true, eventId: outcome.event.id });
 }));
 
 app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
