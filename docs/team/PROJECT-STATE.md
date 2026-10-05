@@ -1,6 +1,6 @@
 # Project State — BMC/Panelin
 
-**Última actualización:** 2026-09-11 (feat — Meta inbox Slack operator notify wiring)
+**Última actualización:** 2026-10-05 (fix — ML webhook events auth)
 
 Fuente única de estado para que todos los agentes estén actualizados. Ver [PROJECT-TEAM-FULL-COVERAGE.md](./PROJECT-TEAM-FULL-COVERAGE.md) para el protocolo de sincronización.
 
@@ -13,6 +13,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 ---
 
 ## Cambios recientes
+
+**2026-10-05 (fix — gate ML webhook events debug dump):** `GET /webhooks/ml/events` returned the in-memory Mercado Libre webhook buffer (full notification bodies) with no auth. Cloud Run prod confirmed HTTP 200 anonymously. Now requires the same `requireServiceOrUser({ authOnly: true })` bar as `/ml/*`. `POST /api/ml/auto-mode` uses the same guard (no longer open when `API_AUTH_TOKEN` is unset). Test: `tests/mlWebhookEventsAuth.test.js`.
 
 **2026-10-04 (ops — bot autónomo `bmc-crm-golive` registrado):** Definido el agente Grok `bmc-crm-golive` (`~/.grok/agents/bmc-crm-golive.md`, máquina de Matías) para cerrar lo que queda del go-live del dashboard: tab `CONTACTOS` en Pagos, conversión Ventas .xlsx→Sheet autorizada + propagación de ID, Script Properties del digest, `VentasConsolidar.gs` + triggers. Reglas duras: binding-check por paso (spreadsheet↔proyecto↔función vs [`AUTOMATIONS-BY-WORKBOOK.md`](../google-sheets-module/AUTOMATIONS-BY-WORKBOOK.md) §10), nunca ejecuta funciones Apps Script, OAuth = gate humano, dry-run default con `APPLY=1`, merge solo checks verdes. Quedan humanos: 3.3 `runInitialSetup` y UAT 6.1–6.7.
 

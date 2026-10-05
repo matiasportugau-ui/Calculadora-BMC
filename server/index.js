@@ -650,7 +650,10 @@ app.post("/webhooks/ml", mlWebhookLimiter, asyncHandler(async (req, res) => {
   res.status(200).json({ ok: true, eventId: event.id });
 }));
 
-app.get("/webhooks/ml/events", asyncHandler(async (req, res) => {
+// Debug ring of recent ML webhook payloads (resource paths, ids, buyer hints).
+// Same auth bar as /ml/* — never public; Cloud Run instances that just took
+// notifications keep up to 250 events in memory.
+app.get("/webhooks/ml/events", requireMlAuth, asyncHandler(async (req, res) => {
   res.json({ ok: true, count: mlWebhookBuffer.count(), events: mlWebhookBuffer.list() });
 }));
 
@@ -659,13 +662,7 @@ app.get("/api/ml/auto-mode", (_req, res) => {
   res.json({ ok: true, autoMode });
 });
 
-app.post("/api/ml/auto-mode", asyncHandler(async (req, res) => {
-  const tkn = config.apiAuthToken;
-  if (tkn) {
-    const auth = req.headers.authorization || "";
-    const bearer = auth.startsWith("Bearer ") ? auth.slice(7) : auth;
-    if (bearer !== tkn) return res.status(401).json({ ok: false, error: "Unauthorized" });
-  }
+app.post("/api/ml/auto-mode", requireMlAuth, asyncHandler(async (req, res) => {
   const { enabled } = req.body || {};
   if (typeof enabled !== "boolean") return res.status(400).json({ ok: false, error: "body.enabled must be boolean" });
   autoMode = { fullAuto: enabled };
