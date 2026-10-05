@@ -41,12 +41,108 @@ function daysSince(iso) {
 }
 
 const tooltipStyle = {
-  background: "#18181b",
-  border: "1px solid #3f3f46",
-  borderRadius: 8,
-  color: "#fafafa",
+  background: "#0c1220",
+  border: "1px solid #334155",
+  borderRadius: 10,
+  color: "#f1f5f9",
   fontSize: 12,
+  boxShadow: "0 8px 24px rgba(0,0,0,0.45)",
+  padding: "8px 12px",
 };
+
+const CFO_ACTIONS = [
+  { id: "brief", icon: "📊", title: "Brief de liquidez 30d", desc: "Resumen ejecutivo del gap, caja y presión de obligaciones" },
+  { id: "risks", icon: "⚠️", title: "Riesgos y alertas", desc: "Meses rojos, deuda crítica y pipeline en riesgo" },
+  { id: "actions", icon: "✅", title: "Plan de acciones prioritarias", desc: "Qué hacer esta semana para mejorar el bridge" },
+  { id: "report", icon: "📄", title: "Generar reporte (export)", desc: "Texto listo para copiar / pegar a WhatsApp o email" },
+  { id: "export-csv", icon: "⬇️", title: "Export CSV del snapshot", desc: "KPIs + waterfall + pipeline para Excel" },
+];
+
+const QUICK_PROMPTS = [
+  "¿Cuánto runway tenemos en USD?",
+  "Priorizá cobros del pipeline",
+  "¿Qué deuda atacar primero?",
+  "Escenario si cobramos 50% del pipeline",
+];
+
+function buildLocalAnalysis(actionId, snap, meta) {
+  const k = snap?.kpi || {};
+  const asOf = snap?.as_of || meta?.as_of || "—";
+  const lines = [];
+  if (actionId === "brief") {
+    lines.push(`📋 BRIEF LIQUIDEZ · as-of ${asOf}`, "");
+    lines.push(`• Caja USD: ${fmtMoney(k.cash_usd, "USD")}`);
+    lines.push(`• Caja UYU: ${fmtMoney(k.cash_uyu, "UYU")}`);
+    lines.push(`• Gap 30d proxy: ${fmtMoney(k.gap_30d_usd_proxy, "USD")}`);
+    lines.push(`• Pipeline firmes: ${fmtMoney(k.pipeline_usd, "USD")}`);
+    lines.push(`• Deuda bancos (capital): ${k.debt_bank_capital == null ? "SIN_DATO" : fmtMoney(k.debt_bank_capital, "USD")}`);
+    lines.push(`• Deuda proveedores: ${k.debt_ap == null ? "SIN_DATO" : fmtMoney(k.debt_ap)}`, "");
+    if (k.gap_30d_usd_proxy != null && k.gap_30d_usd_proxy < 0) {
+      lines.push("🔴 Gap negativo → priorizar cobros y postergar no-esenciales.");
+    } else {
+      lines.push("🟢 Gap 30d no negativo en el proxy actual. Mantener disciplina de cobro.");
+    }
+  } else if (actionId === "risks") {
+    lines.push(`⚠️ RIESGOS · ${asOf}`, "");
+    if (k.cash_usd != null && k.cash_usd < 1000) lines.push("• Caja USD baja (<1k) — stress inmediato.");
+    if (k.gap_30d_usd_proxy != null && k.gap_30d_usd_proxy < 0) lines.push("• Gap 30d negativo — riesgo de iliquidez.");
+    if (k.debt_bank_capital == null) lines.push("• Deuda bancaria SIN_DATO — completar snapshot.");
+    if (k.debt_ap == null) lines.push("• AP proveedores SIN_DATO.");
+    const pipe = snap?.pipeline || [];
+    const draft = pipe.filter((p) => p.estado === "borrador").length;
+    if (draft) lines.push(`• ${draft} cotización(es) en borrador en pipeline — no son caja.`);
+    if (lines.length === 2) lines.push("• Sin alertas críticas en el snapshot actual.");
+  } else if (actionId === "actions") {
+    lines.push(`✅ ACCIONES PRIORITARIAS · ${asOf}`, "");
+    lines.push("1. Cobrar pipeline listo_hitl esta semana (máximo impacto caja).");
+    lines.push("2. Confirmar montos de cuotas bancarias y AP overdue.");
+    lines.push("3. Publicar snapshot fresco si >7 días de antigüedad.");
+    lines.push("4. Revisar fijos / capex no esencial si gap < 0.");
+    lines.push("5. Coordinar con ventas para acelerar SEND-PACKs firmes.");
+  } else if (actionId === "report") {
+    lines.push(`── BMC RECUPERACIÓN · REPORTE ──`);
+    lines.push(`Fecha snapshot: ${asOf}`);
+    lines.push(`Entidad: ${snap?.entity || "METALOG SAS"}`, "");
+    lines.push("KPIs");
+    lines.push(`  Bancos UYU: ${fmtMoney(k.cash_uyu, "UYU")}`);
+    lines.push(`  Bancos USD: ${fmtMoney(k.cash_usd, "USD")}`);
+    lines.push(`  Pipeline firmes: ${fmtMoney(k.pipeline_usd, "USD")}`);
+    lines.push(`  Gap 30d: ${fmtMoney(k.gap_30d_usd_proxy, "USD")}`, "");
+    lines.push("Notas: vista gerencial, no declaración fiscal.");
+    lines.push("Generado por Panelin CFO · Calculadora BMC");
+  } else {
+    lines.push("Acción no reconocida.");
+  }
+  return lines.join("\n");
+}
+
+function exportSnapshotCsv(snap, meta) {
+  const k = snap?.kpi || {};
+  const rows = [
+    ["section", "key", "value", "currency", "note"],
+    ["kpi", "cash_uyu", k.cash_uyu ?? "", "UYU", ""],
+    ["kpi", "cash_usd", k.cash_usd ?? "", "USD", ""],
+    ["kpi", "debt_bank_capital", k.debt_bank_capital ?? "", "USD", k.debt_bank_capital_note || ""],
+    ["kpi", "debt_ap", k.debt_ap ?? "", "", k.debt_ap_note || ""],
+    ["kpi", "pipeline_usd", k.pipeline_usd ?? "", "USD", ""],
+    ["kpi", "gap_30d_usd_proxy", k.gap_30d_usd_proxy ?? "", "USD", ""],
+    ["meta", "as_of", snap?.as_of || meta?.as_of || "", "", ""],
+    ["meta", "entity", snap?.entity || "", "", ""],
+  ];
+  (snap?.waterfall_usd || []).forEach((s, i) => {
+    rows.push(["waterfall", s.name || `step_${i}`, s.value ?? "", "USD", ""]);
+  });
+  (snap?.pipeline || []).forEach((p) => {
+    rows.push(["pipeline", p.cliente || "", p.amount_usd ?? "", "USD", p.estado || ""]);
+  });
+  const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `BMC_Recuperacion_${(snap?.as_of || "snapshot").slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 export default function RecuperacionModule() {
   const auth = useBmcAuth();
@@ -55,6 +151,9 @@ export default function RecuperacionModule() {
   const [error, setError] = useState(null);
   const [meta, setMeta] = useState(null);
   const [snap, setSnap] = useState(null);
+  const [cfoOpen, setCfoOpen] = useState(false);
+  const [cfoBusy, setCfoBusy] = useState(false);
+  const [cfoResult, setCfoResult] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -146,11 +245,7 @@ export default function RecuperacionModule() {
     const rows = [];
     for (const o of snap?.obligations || []) {
       if (o.amount == null) {
-        rows.push({
-          name: `${o.bucket} (SIN_DATO)`,
-          amount: 0,
-          fill: "#3f3f46",
-        });
+        rows.push({ name: `${o.bucket} (SIN_DATO)`, amount: 0, fill: "#3f3f46" });
       } else {
         rows.push({
           name: `${o.bucket} (${o.currency || ""})`,
@@ -168,6 +263,24 @@ export default function RecuperacionModule() {
     }
     return rows;
   }, [snap]);
+
+  const runCfo = useCallback(
+    (actionId) => {
+      if (actionId === "export-csv") {
+        if (!snap) return;
+        exportSnapshotCsv(snap, meta);
+        setCfoResult("✓ CSV descargado.");
+        return;
+      }
+      setCfoBusy(true);
+      setCfoResult("");
+      window.setTimeout(() => {
+        setCfoResult(buildLocalAnalysis(actionId, snap, meta));
+        setCfoBusy(false);
+      }, 420);
+    },
+    [snap, meta],
+  );
 
   if (loading) {
     return (
@@ -204,42 +317,12 @@ export default function RecuperacionModule() {
 
   const k = snap.kpi || {};
   const kpis = [
-    {
-      label: "Bancos UYU",
-      value: fmtMoney(k.cash_uyu, "UYU"),
-      hint: `bank as-of ${snap.bank_period_end || "—"}`,
-      cls: "",
-    },
-    {
-      label: "Bancos USD",
-      value: fmtMoney(k.cash_usd, "USD"),
-      hint: `bank as-of ${snap.bank_period_end || "—"}`,
-      cls: k.cash_usd != null && k.cash_usd < 1000 ? "warn" : "",
-    },
-    {
-      label: "Deuda bancos (capital)",
-      value: k.debt_bank_capital == null ? "SIN_DATO" : fmtMoney(k.debt_bank_capital, "USD"),
-      hint: k.debt_bank_capital_note || "",
-      cls: "warn",
-    },
-    {
-      label: "Deuda proveedores",
-      value: k.debt_ap == null ? "SIN_DATO" : fmtMoney(k.debt_ap),
-      hint: k.debt_ap_note || "",
-      cls: "warn",
-    },
-    {
-      label: "Pipeline firmes",
-      value: fmtMoney(k.pipeline_usd, "USD"),
-      hint: "SEND-PACKs · no es caja",
-      cls: "good",
-    },
-    {
-      label: "Gap 30d USD proxy",
-      value: fmtMoney(k.gap_30d_usd_proxy, "USD"),
-      hint: "caja USD − cuotas conocidas",
-      cls: k.gap_30d_usd_proxy != null && k.gap_30d_usd_proxy < 0 ? "bad" : "good",
-    },
+    { label: "Bancos UYU", value: fmtMoney(k.cash_uyu, "UYU"), hint: `bank as-of ${snap.bank_period_end || "—"} · hover para más`, cls: "" },
+    { label: "Bancos USD", value: fmtMoney(k.cash_usd, "USD"), hint: `bank as-of ${snap.bank_period_end || "—"} · buffer crítico si <1k`, cls: k.cash_usd != null && k.cash_usd < 1000 ? "warn" : "" },
+    { label: "Deuda bancos (capital)", value: k.debt_bank_capital == null ? "SIN_DATO" : fmtMoney(k.debt_bank_capital, "USD"), hint: k.debt_bank_capital_note || "Capital pendiente préstamos", cls: "warn" },
+    { label: "Deuda proveedores", value: k.debt_ap == null ? "SIN_DATO" : fmtMoney(k.debt_ap), hint: k.debt_ap_note || "AP / facturas vencidas", cls: "warn" },
+    { label: "Pipeline firmes", value: fmtMoney(k.pipeline_usd, "USD"), hint: "SEND-PACKs · no es caja aún", cls: "good" },
+    { label: "Gap 30d USD proxy", value: fmtMoney(k.gap_30d_usd_proxy, "USD"), hint: "caja USD − cuotas conocidas · hover = detalle", cls: k.gap_30d_usd_proxy != null && k.gap_30d_usd_proxy < 0 ? "bad" : "good" },
   ];
 
   return (
@@ -261,23 +344,16 @@ export default function RecuperacionModule() {
 
       <div className="fr-chips">
         <span className="fr-chip active">Recuperación</span>
-        <Link to="/hub/finanzas/banco" className="fr-chip">
-          Banco
-        </Link>
-        <Link to="/hub/finanzas/cash-flow" className="fr-chip">
-          Cash Flow
-        </Link>
-        <Link to="/hub/finanzas/proyeccion" className="fr-chip">
-          Proyección
-        </Link>
-        <button type="button" className="fr-chip" onClick={load}>
-          Refrescar
-        </button>
+        <Link to="/hub/finanzas/banco" className="fr-chip">Banco</Link>
+        <Link to="/hub/finanzas/cash-flow" className="fr-chip">Cash Flow</Link>
+        <Link to="/hub/finanzas/proyeccion" className="fr-chip">Proyección</Link>
+        <button type="button" className="fr-chip" onClick={load}>Refrescar</button>
+        <button type="button" className="fr-chip" onClick={() => setCfoOpen(true)} title="Abrir Panelin CFO">🤖 Panelin CFO</button>
       </div>
 
-      <section className="fr-kpis">
+      <section className="fr-kpis" aria-label="KPIs de recuperación">
         {kpis.map((c) => (
-          <div key={c.label} className={`fr-kpi ${c.cls}`}>
+          <div key={c.label} className={`fr-kpi ${c.cls}`} tabIndex={0} title={c.hint}>
             <div className="label">{c.label}</div>
             <div className="value">{c.value}</div>
             {c.hint ? <div className="hint">{c.hint}</div> : null}
@@ -287,15 +363,15 @@ export default function RecuperacionModule() {
 
       <section className="fr-grid">
         <div className="fr-card">
-          <h3>Bridge 30 días (USD)</h3>
-          <div className="sub">Disponible → cuotas · AP/cobros SIN_DATO = 0 en snapshot</div>
+          <h3><span className="dot" aria-hidden /> Bridge 30 días (USD)</h3>
+          <div className="sub">Disponible → cuotas · AP/cobros SIN_DATO = 0 · hover barras = valor</div>
           <div className="fr-chart">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={waterfallData} margin={{ top: 8, right: 8, left: 0, bottom: 32 }}>
-                <CartesianGrid stroke="#27272a" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: "#a1a1aa", fontSize: 10 }} interval={0} angle={-18} textAnchor="end" height={50} />
-                <YAxis tick={{ fill: "#71717a", fontSize: 11 }} />
-                <Tooltip contentStyle={tooltipStyle} />
+                <CartesianGrid stroke="#1e293b" vertical={false} />
+                <XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 10 }} interval={0} angle={-18} textAnchor="end" height={50} />
+                <YAxis tick={{ fill: "#64748b", fontSize: 11 }} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtMoney(v, "USD")} />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                   {waterfallData.map((e, i) => (
                     <Cell key={i} fill={e.fill} />
@@ -307,14 +383,14 @@ export default function RecuperacionModule() {
         </div>
 
         <div className="fr-card">
-          <h3>Pipeline cotizaciones</h3>
-          <div className="sub">Solo montos firmes en SEND-PACK</div>
+          <h3><span className="dot" aria-hidden /> Pipeline cotizaciones</h3>
+          <div className="sub">Solo montos firmes en SEND-PACK · azul = listo_hitl</div>
           <div className="fr-chart">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={pipelineData} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 8 }}>
-                <CartesianGrid stroke="#27272a" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "#71717a", fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" width={120} tick={{ fill: "#d4d4d8", fontSize: 11 }} />
+                <CartesianGrid stroke="#1e293b" horizontal={false} />
+                <XAxis type="number" tick={{ fill: "#64748b", fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={120} tick={{ fill: "#cbd5e1", fontSize: 11 }} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v) => fmtMoney(v, "USD")} />
                 <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
                   {pipelineData.map((e, i) => (
@@ -327,33 +403,33 @@ export default function RecuperacionModule() {
         </div>
 
         <div className="fr-card">
-          <h3>Cobros ingreso_venta (6 meses)</h3>
+          <h3><span className="dot" aria-hidden /> Cobros ingreso_venta (6 meses)</h3>
           <div className="sub">Proxy bancario · no es facturación DGI · ejes USD / UYU</div>
           <div className="fr-chart">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={salesData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-                <CartesianGrid stroke="#27272a" vertical={false} />
-                <XAxis dataKey="month" tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                <YAxis yAxisId="usd" tick={{ fill: "#71717a", fontSize: 11 }} />
-                <YAxis yAxisId="uyu" orientation="right" tick={{ fill: "#71717a", fontSize: 11 }} />
+                <CartesianGrid stroke="#1e293b" vertical={false} />
+                <XAxis dataKey="month" tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                <YAxis yAxisId="usd" tick={{ fill: "#64748b", fontSize: 11 }} />
+                <YAxis yAxisId="uyu" orientation="right" tick={{ fill: "#64748b", fontSize: 11 }} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Legend wrapperStyle={{ color: "#a1a1aa", fontSize: 12 }} />
+                <Legend wrapperStyle={{ color: "#94a3b8", fontSize: 12 }} />
                 <Bar yAxisId="usd" dataKey="usd" name="USD cobros" fill="#3b82f6" radius={[3, 3, 0, 0]} maxBarSize={28} />
-                <Line yAxisId="uyu" type="monotone" dataKey="uyu" name="UYU cobros" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                <Line yAxisId="uyu" type="monotone" dataKey="uyu" name="UYU cobros" stroke="#22d3ee" strokeWidth={2} dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="fr-card">
-          <h3>Presión de obligaciones</h3>
+          <h3><span className="dot" aria-hidden /> Presión de obligaciones</h3>
           <div className="sub">Capital préstamos + fijos overdue · pipeline no es deuda</div>
           <div className="fr-chart">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={obligationsData} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
-                <CartesianGrid stroke="#27272a" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "#71717a", fontSize: 11 }} />
-                <YAxis type="category" dataKey="name" width={150} tick={{ fill: "#d4d4d8", fontSize: 10 }} />
+                <CartesianGrid stroke="#1e293b" horizontal={false} />
+                <XAxis type="number" tick={{ fill: "#64748b", fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" width={150} tick={{ fill: "#cbd5e1", fontSize: 10 }} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
                   {obligationsData.map((e, i) => (
@@ -382,7 +458,102 @@ export default function RecuperacionModule() {
         <br />
         <br />
         Single SoT: API snapshot · publish: <code>scripts/publish-recovery-snapshot.mjs</code>
+        {" · "}
+        <button type="button" className="fr-chip" style={{ marginLeft: 4 }} onClick={() => setCfoOpen(true)}>
+          Abrir Panelin CFO AI
+        </button>
       </footer>
+
+      <button
+        type="button"
+        className={`fr-cfo-fab${cfoOpen ? " open" : ""}`}
+        aria-label="Abrir Panelin CFO AI"
+        title="Panelin CFO — análisis y reportes"
+        onClick={() => setCfoOpen((v) => !v)}
+      >
+        {!cfoOpen && <span className="pulse" />}
+        🤖
+      </button>
+
+      <div
+        className={`fr-cfo-backdrop${cfoOpen ? " open" : ""}`}
+        onClick={() => setCfoOpen(false)}
+        aria-hidden={!cfoOpen}
+      />
+
+      <aside className={`fr-cfo-drawer${cfoOpen ? " open" : ""}`} aria-label="Panelin CFO AI" role="dialog" aria-modal={cfoOpen}>
+        <div className="fr-cfo-header">
+          <div className="fr-cfo-avatar" aria-hidden>🤖</div>
+          <div>
+            <h3>Panelin CFO</h3>
+            <div className="role">Agente IA · Finanzas / Recuperación</div>
+          </div>
+          <button type="button" className="fr-cfo-close" onClick={() => setCfoOpen(false)} aria-label="Cerrar">×</button>
+        </div>
+
+        <div className="fr-cfo-body">
+          <div className="fr-cfo-intro">
+            Hola — soy el agente CFO de Panelin. Puedo armarte un brief de liquidez, listar riesgos, proponer acciones y exportar reportes a partir del snapshot actual de recuperación.
+          </div>
+
+          <div className="fr-cfo-prompts">
+            {QUICK_PROMPTS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                className="fr-cfo-prompt"
+                onClick={() => {
+                  setCfoBusy(true);
+                  setCfoResult("");
+                  window.setTimeout(() => {
+                    setCfoResult(
+                      `Pregunta: "${p}"\n\n` +
+                        buildLocalAnalysis("brief", snap, meta) +
+                        "\n\n(Respuesta local basada en snapshot. Para análisis LLM más profundo, conectar endpoint /cfo-fi.)",
+                    );
+                    setCfoBusy(false);
+                  }, 380);
+                }}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          <div className="fr-cfo-actions">
+            {CFO_ACTIONS.map((a) => (
+              <button key={a.id} type="button" className="fr-cfo-btn" onClick={() => runCfo(a.id)} disabled={cfoBusy}>
+                <span className="icon">{a.icon}</span>
+                <span>
+                  <div className="title">{a.title}</div>
+                  <div className="desc">{a.desc}</div>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {cfoBusy && (
+            <div className="fr-cfo-status">
+              <span className="spin" /> Analizando snapshot…
+            </div>
+          )}
+
+          <div className={`fr-cfo-result${cfoResult ? "" : " empty"}`}>
+            {cfoResult || "Elegí una acción o prompt para generar análisis / export."}
+          </div>
+
+          {cfoResult && !cfoBusy && (
+            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+              <button type="button" className="fr-chip" onClick={() => navigator.clipboard?.writeText(cfoResult)}>
+                Copiar
+              </button>
+              <button type="button" className="fr-chip" onClick={() => runCfo("export-csv")}>
+                CSV
+              </button>
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }
