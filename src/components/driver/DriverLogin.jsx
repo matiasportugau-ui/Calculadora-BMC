@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function DriverLogin({ onLogin, status, offlineHint }) {
+export default function DriverLogin({ onLogin, onGuest, status, offlineHint }) {
   const [name, setName] = useState("");
   const [secret, setSecret] = useState("");
 
@@ -43,9 +43,17 @@ export default function DriverLogin({ onLogin, status, offlineHint }) {
         <button
           type="button"
           className="drv-cta drv-cta--navy"
-          onClick={() => onLogin(name, secret || localStorage.getItem("transportista_driver_token"))}
+          onClick={() => {
+            const saved = localStorage.getItem("transportista_driver_token");
+            if (saved) {
+              onLogin(name, secret || saved);
+              return;
+            }
+            if (typeof onGuest === "function") onGuest();
+            else onLogin(name, secret);
+          }}
         >
-          Trabajá sin conexión
+          Entrar a la app
         </button>
         {offlineHint ? <p className="drv-muted">{offlineHint}</p> : null}
       </div>

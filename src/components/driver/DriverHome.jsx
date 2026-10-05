@@ -12,7 +12,9 @@ export default function DriverHome({
   status,
   onSync,
   onGoCarga,
+  onLogin,
   onEvidence,
+  guest,
 }) {
   const remitosRef = useRef(null);
   const name = profile.name || plan.info?.chofer_name || "chofer";
@@ -26,7 +28,17 @@ export default function DriverHome({
       <p className="drv-kicker">BMC DRIVER</p>
       <h1 className="drv-h1">Hola, {name}</h1>
       <p className="drv-sub">Tu viaje de hoy, en un solo lugar.</p>
-      {online && pendingCount === 0 ? (
+      {guest ? (
+        <div className="drv-banner">
+          Sin sesión · la app abre igual.
+          <div>El viaje asignado llega con el enlace del operador o al ingresar.</div>
+          {onLogin ? (
+            <button type="button" className="drv-cta drv-cta--navy" onClick={onLogin}>
+              Ingresar con email o enlace
+            </button>
+          ) : null}
+        </div>
+      ) : online && pendingCount === 0 ? (
         <div className="drv-banner drv-banner--ok">En línea · Todo sincronizado</div>
       ) : (
         <div className="drv-banner">
