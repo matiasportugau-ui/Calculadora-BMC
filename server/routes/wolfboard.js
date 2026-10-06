@@ -1,24 +1,51 @@
 /**
  * Wolfboard routes — Admin 2.0 ↔ CRM_Operativo cotizaciones management.
  *
- * Admin 2.0 column layout (A=0, range A2:M):
- *   A(0)=ID correlación (canal / ML / o generado WBK-* por API)
- *   B(1)=Fecha  C(2)=?  D(3)=Telefono  E(4)=Cliente
- *   F(5)=Origen(WA/EM/CL/LO/LL)  G(6)=?  H(7)=Zona
- *   I(8)=Consulta  J(9)=RespuestaAI  K(10)=LinkDrive  L(11)=Estado
- *   M(12)=ReplaySnapshotUrl (GCS JSON — IA batch calc o pegado manualmente)
+ * Admin. column layout — LIVE sheet header (see server/lib/adminSheetSchema.js
+ * for the SoT; realigned 2026-10-06 after `admin-bloque-columnas-corridas`
+ * caught every writer here, in adminInboundRow.js and in hitlAdminBoard.js
+ * silently stealing Interpretación AI / Respuesta AI / Datos Faltantes /
+ * PRESUPUESTO on real human rows):
+ *
+ *   A(0)=ID / link           (humans leave empty; API writes MAN-/WBK-)
+ *   B(1)=Asig.               (operator initials; writers leave empty)
+ *   C(2)=Estado              (Pendiente / Cotizable / Aprobado / Enviado / …)
+ *   D(3)=Fecha
+ *   E(4)=Cliente
+ *   F(5)=Origen              (short codes: WA/ML/FB/IG/VW/EM/CL/LO/LL)
+ *   G(6)=Teléfono-Contacto
+ *   H(7)=Dirección / Zona
+ *   I(8)=Consulta
+ *   J(9)=Interpretación AI
+ *   K(10)=Respuesta AI
+ *   L(11)=Datos Faltantes
+ *   M(12)=PRESUPUESTO        (PDF hyperlink; also GCS HTML link)
+ *   N(13)=Enviado            (checkbox; default FALSE on create)
  *
  * Routes:
- *   GET  /pendientes?scope=consulta|admin — filas Admin 2.0 (default: scope=consulta = col I no vacía; admin = cualquier dato en A–M)
- *   POST /sync          — Admin.J → CRM AF (match por ID col A si existe, si no por texto G/W)
- *   POST /row           — save respuesta/link/replaySnapshotUrl or approve a specific row
+ *   GET  /pendientes?scope=consulta|admin — filas Admin. (default: scope=consulta = col I no vacía; admin = cualquier dato en A–N)
+ *   POST /sync          — Admin.K (Respuesta AI) → CRM AF (match por ID col A si existe, si no por texto G/W)
+ *   POST /row           — save respuesta/link/aprobado for a specific row (writes K/M/C per the live header)
+ *   POST /row-create    — append a new row aligned to the live header (A..N, Estado=Pendiente, Enviado=FALSE)
  *   POST /enviados      — move row to Enviados tab, delete from Admin
  *   GET  /export?scope=… — CSV (mismo criterio que /pendientes)
- *   POST /quote-batch   — batch AI quote generation (existing)
+ *   POST /quote-batch   — batch AI quote generation (writes Respuesta AI → K, PDF/HTML link → M)
  */
 import { Router } from "express";
 import { callAgentOnce } from "../lib/agentCore.js";
 import { getSheetsClient, redactGoogleError } from "../lib/googleSheetsAuth.js";
+import {
+  ADMIN_COL_INDEX,
+  ADMIN_ESTADO_APROBADO,
+  ADMIN_ESTADO_PENDIENTE,
+  ADMIN_RANGE_END,
+  ADMIN_RANGE_START,
+  ADMIN_RANGE_WIDTH,
+  adminOrigenShort,
+  buildAdminRow,
+  readAdminCell,
+  validateAdminHeader,
+} from "../lib/adminSheetSchema.js";
 import { calcTechoCompleto, calcParedCompleto, calcTotalesSinIVA, mergeZonaResults } from "../../src/utils/calculations.js";
 import { setListaPrecios } from "../../src/data/constants.js";
 import { bomToGroups, fmtPrice, generatePrintHTML } from "../../src/utils/helpers.js";
@@ -42,8 +69,34 @@ const ERROR_MARKER = "⚠ Requiere atención manual";
 const RED_BG = { red: 1.0, green: 0.267, blue: 0.267 };
 const WHITE_BG = { red: 1.0, green: 1.0, blue: 1.0 };
 
-// Column J = index 9 (A=0)
-const COL_J = 9;
+// Live Admin header: Respuesta AI lives in column K (not J). Used to colour the
+// cell that holds the AI reply red when a batch call failed.
+const COL_RESPUESTA_AI = ADMIN_COL_INDEX.K;
+
+/**
+ * Read the LIVE Admin. row 1 and fail closed when the header no longer
+ * matches ADMIN_COLUMNS. Writers MUST stop before touching cells when
+ * the header has drifted — the previous bug corrupted data silently
+ * because nobody validated the live header.
+ */
+async function ensureAdminHeader(sheets, sheetId, tab) {
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `'${tab}'!1:1`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  const row = resp?.data?.values?.[0] || [];
+  return validateAdminHeader(row);
+}
+
+function adminHeaderMismatch503(res, mismatches) {
+  return res.status(503).json({
+    ok: false,
+    code: "ADMIN_HEADER_MISMATCH",
+    error: "La fila 1 de Admin. no coincide con el esquema esperado; writer en pausa.",
+    mismatches,
+  });
+}
 
 const QUOTE_SYSTEM_PROMPT = `Sos Panelin, el asistente experto de ventas de BMC Uruguay (METALOG SAS), empresa fabricante y distribuidora de paneles de aislamiento térmico para techos, paredes, fachadas y cámaras frigoríficas.
 
@@ -297,25 +350,33 @@ function logRoleHint(req, config) {
   );
 }
 
-/** Mapa de fila Admin 2.0 (A2:M) → objeto unificado (índices según comentario de cabecera). */
+/**
+ * Mapa de fila Admin. (A2:N) → objeto unificado.
+ * Column indices follow the LIVE header (adminSheetSchema.js), NOT the old
+ * pre-realignment comment-block layout.
+ */
 function mapAdminSheetRow(row, idx, adminSheetId) {
   const sheetBase = `https://docs.google.com/spreadsheets/d/${adminSheetId}/edit`;
-  const estado = String(row[11] ?? "").trim();
+  const estado = String(readAdminCell(row, "C") ?? "").trim();
+  const enviadoRaw = String(readAdminCell(row, "N") ?? "").trim();
   return {
     rowNum: idx + 2,
-    id: String(row[0] ?? "").trim(),
-    fecha: String(row[1] ?? "").trim(),
-    telefono: String(row[3] ?? "").trim(),
-    cliente: String(row[4] ?? "").trim(),
-    canal: String(row[5] ?? "").trim(),
-    origen: String(row[5] ?? "").trim(),
-    zona: String(row[7] ?? "").trim(),
-    consulta: String(row[8] ?? "").trim(),
-    respuesta: String(row[9] ?? "").trim(),
-    link: String(row[10] ?? "").trim(),
+    id: String(readAdminCell(row, "A") ?? "").trim(),
+    asig: String(readAdminCell(row, "B") ?? "").trim(),
     estado,
+    fecha: String(readAdminCell(row, "D") ?? "").trim(),
+    cliente: String(readAdminCell(row, "E") ?? "").trim(),
+    canal: String(readAdminCell(row, "F") ?? "").trim(),
+    origen: String(readAdminCell(row, "F") ?? "").trim(),
+    telefono: String(readAdminCell(row, "G") ?? "").trim(),
+    zona: String(readAdminCell(row, "H") ?? "").trim(),
+    consulta: String(readAdminCell(row, "I") ?? "").trim(),
+    interpretacionAi: String(readAdminCell(row, "J") ?? "").trim(),
+    respuesta: String(readAdminCell(row, "K") ?? "").trim(),
+    datosFaltantes: String(readAdminCell(row, "L") ?? "").trim(),
+    link: String(readAdminCell(row, "M") ?? "").trim(),
+    enviado: /^(true|1|sí|si|yes)$/i.test(enviadoRaw),
     outcome: deriveOutcome(estado),
-    replaySnapshotUrl: String(row[12] ?? "").trim(),
     sheetUrl: sheetBase,
   };
 }
@@ -323,16 +384,18 @@ function mapAdminSheetRow(row, idx, adminSheetId) {
 function adminRowHasAnyData(r) {
   return [
     r.id,
+    r.asig,
+    r.estado,
     r.fecha,
-    r.telefono,
     r.cliente,
     r.canal,
+    r.telefono,
     r.zona,
     r.consulta,
+    r.interpretacionAi,
     r.respuesta,
+    r.datosFaltantes,
     r.link,
-    r.estado,
-    r.replaySnapshotUrl,
   ].some((x) => String(x ?? "").trim() !== "");
 }
 
@@ -370,7 +433,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:M`,
+        range: `'${adminTab}'!${ADMIN_RANGE_START}2:${ADMIN_RANGE_END}`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       rawRows = resp.data.values || [];
@@ -408,14 +471,18 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:M`,
+        range: `'${adminTab}'!${ADMIN_RANGE_START}2:${ADMIN_RANGE_END}`,
         valueRenderOption: "FORMATTED_VALUE",
       });
+      // Respuesta AI is column K on the LIVE header (not J — see
+      // adminSheetSchema.js). Pre-realignment this read J, which is now
+      // Interpretación AI, so the propagation to CRM.AF would push the
+      // wrong text.
       adminRows = (resp.data.values || []).map((row, idx) => ({
         rowNum: idx + 2,
-        id: String(row[0] ?? "").trim(),
-        consulta: String(row[8] ?? "").trim(),
-        respuesta: String(row[9] ?? "").trim(),
+        id: String(readAdminCell(row, "A") ?? "").trim(),
+        consulta: String(readAdminCell(row, "I") ?? "").trim(),
+        respuesta: String(readAdminCell(row, "K") ?? "").trim(),
       })).filter(r => r.consulta && r.respuesta && !r.respuesta.startsWith("⚠"));
     } catch (e) {
       // Top-30 run 2026-05-12 (#A9): log estructurado antes del 503 para visibilizar el origen.
@@ -475,7 +542,16 @@ export function createWolfboardRouter(config) {
   router.post("/row", requireWolfboardWrite, async (req, res) => {
     logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
-    const { adminRow, respuesta, link, aprobado, replaySnapshotUrl } = req.body || {};
+    const {
+      adminRow,
+      respuesta,
+      link,
+      aprobado,
+      interpretacion,
+      interpretacion_ai: interpretacionAi,
+      datos_faltantes: datosFaltantes,
+      replaySnapshotUrl, // accepted for compat but intentionally dropped (see below)
+    } = req.body || {};
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
 
     const adminSheetId = config.wolfbAdminSheetId;
@@ -488,21 +564,52 @@ export function createWolfboardRouter(config) {
     try { sheets = await getSheetsClient(); }
     catch (e) { return sheetsAuthFail(res, e); }
 
+    if (!dryRun) {
+      try {
+        const headerCheck = await ensureAdminHeader(sheets, adminSheetId, adminTab);
+        if (!headerCheck.ok) return adminHeaderMismatch503(res, headerCheck.mismatches);
+      } catch (e) {
+        return res.status(503).json({ ok: false, error: "Error al leer header Admin: " + e.message });
+      }
+    }
+
     // CSV/formula injection guard — see server/lib/sheetsCsvGuard.js. Sheets
     // writes use USER_ENTERED so any leading =/+/-/@/tab/CR is interpreted as
-    // a formula. Operator-supplied respuesta/link and the M-column snapshot
-    // URL are all attacker-controllable in principle.
+    // a formula.
     const safeRespuesta = respuesta !== undefined ? sanitizeCellValue(respuesta) : undefined;
     const safeLink = link !== undefined ? sanitizeCellValue(link) : undefined;
-    const safeReplay = replaySnapshotUrl !== undefined ? sanitizeCellValue(replaySnapshotUrl) : undefined;
+    const safeInterpretacion = (interpretacion ?? interpretacionAi) !== undefined
+      ? sanitizeCellValue(interpretacion ?? interpretacionAi)
+      : undefined;
+    const safeDatosFaltantes = datosFaltantes !== undefined ? sanitizeCellValue(datosFaltantes) : undefined;
 
+    // Map writes to the LIVE header letters:
+    //   respuesta       → K (Respuesta AI)   [was J, overwrote Interpretación AI]
+    //   link            → M (PRESUPUESTO)    [was K, overwrote Respuesta AI]
+    //   aprobado        → C (Estado)         [was L, overwrote Datos Faltantes]
+    //   interpretacion  → J (Interpretación AI, new patchable field)
+    //   datos_faltantes → L (Datos Faltantes, new patchable field)
+    //
+    // replaySnapshotUrl is INTENTIONALLY DROPPED: it used to write to M which
+    // is now PRESUPUESTO / PDF link — writing a JSON replay URL there would
+    // clobber the PDF link that the HITL team maintains. The field is still
+    // accepted so existing callers don't 400; it is simply logged and ignored.
     const adminUpdates = [];
-    if (safeRespuesta !== undefined) adminUpdates.push({ range: `'${adminTab}'!J${adminRow}`, values: [[safeRespuesta]] });
-    if (safeLink !== undefined) adminUpdates.push({ range: `'${adminTab}'!K${adminRow}`, values: [[safeLink]] });
-    if (safeReplay !== undefined) {
-      adminUpdates.push({ range: `'${adminTab}'!M${adminRow}`, values: [[safeReplay]] });
+    if (safeRespuesta !== undefined) adminUpdates.push({ range: `'${adminTab}'!K${adminRow}`, values: [[safeRespuesta]] });
+    if (safeLink !== undefined) adminUpdates.push({ range: `'${adminTab}'!M${adminRow}`, values: [[safeLink]] });
+    if (safeInterpretacion !== undefined) {
+      adminUpdates.push({ range: `'${adminTab}'!J${adminRow}`, values: [[safeInterpretacion]] });
     }
-    if (aprobado) adminUpdates.push({ range: `'${adminTab}'!L${adminRow}`, values: [["Aprobado"]] });
+    if (safeDatosFaltantes !== undefined) {
+      adminUpdates.push({ range: `'${adminTab}'!L${adminRow}`, values: [[safeDatosFaltantes]] });
+    }
+    if (aprobado) adminUpdates.push({ range: `'${adminTab}'!C${adminRow}`, values: [[ADMIN_ESTADO_APROBADO]] });
+    if (replaySnapshotUrl !== undefined && req.log) {
+      req.log.warn(
+        { adminRow, haveReplay: true },
+        "wolfboard /row — replaySnapshotUrl dropped (no live Admin column; see adminSheetSchema.js)",
+      );
+    }
 
     if (!dryRun && adminUpdates.length > 0) {
       try {
@@ -587,37 +694,59 @@ export function createWolfboardRouter(config) {
     const now = new Date();
     const fecha = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
 
-    // Schema (A2:M): A=id, B=fecha, C=?, D=telefono, E=cliente, F=origen,
-    // G=?, H=zona, I=consulta, J=respuesta, K=link, L=estado, M=replay
-    const safeRow = [
-      id,
-      fecha,
-      "",
-      sanitizeCellValue(String(body.telefono ?? "")),
-      sanitizeCellValue(String(body.cliente ?? "")),
-      sanitizeCellValue(String(body.origen ?? "")),
-      "",
-      sanitizeCellValue(String(body.zona ?? "")),
-      sanitizeCellValue(consulta),
-      sanitizeCellValue(String(body.notas ?? "")),
-      sanitizeCellValue(String(body.link ?? body.linkDrive ?? "")),
-      "Pendiente",
-      "",
-    ];
+    // Append `notas` (chat transcript, VW context, operator notes) INSIDE the
+    // Consulta cell (I) rather than into J (Interpretación AI). Pre-realignment
+    // this went to J and silently overwrote the AI interpretation on real
+    // human rows. See evidence pack `admin-bloque-columnas-corridas.md` §2.
+    let consultaFinal = consulta;
+    const notas = sanitizeCellValue(String(body.notas ?? "")).trim();
+    if (notas) consultaFinal = `${consulta}\n\n[notas] ${notas}`;
+    const link = sanitizeCellValue(String(body.link ?? body.linkDrive ?? "")).trim();
+    if (link) consultaFinal = `${consultaFinal}\n[link] ${link}`;
+
+    // Build the row aligned to the LIVE header (adminSheetSchema.js). J/K/L/M
+    // intentionally left empty — those belong to Interpretación AI, Respuesta
+    // AI, Datos Faltantes and PRESUPUESTO and must only be set by the HITL
+    // operator (or by the AI batch pipeline for J/K). N is set to FALSE so the
+    // Enviado checkbox is explicit instead of inheriting the pre-existing
+    // sheet-wide FALSE sentinel that caused appends to land at row ~3836.
+    const safeRow = buildAdminRow({
+      A: id,
+      B: "", // Asig. (operator initials) — writer never fills this.
+      C: ADMIN_ESTADO_PENDIENTE,
+      D: fecha,
+      E: sanitizeCellValue(String(body.cliente ?? "")),
+      F: adminOrigenShort(String(body.origen ?? "")),
+      G: sanitizeCellValue(String(body.telefono ?? "")),
+      H: sanitizeCellValue(String(body.zona ?? "")),
+      I: sanitizeCellValue(consultaFinal),
+      J: "",
+      K: "",
+      L: "",
+      M: "",
+      N: "FALSE",
+    });
 
     if (dryRun) {
       return res.json({ ok: true, dryRun: true, id, fecha });
     }
 
     try {
+      const headerCheck = await ensureAdminHeader(sheets, adminSheetId, adminTab);
+      if (!headerCheck.ok) return adminHeaderMismatch503(res, headerCheck.mismatches);
+    } catch (e) {
+      return res.status(503).json({ ok: false, error: "Error al leer header Admin: " + e.message });
+    }
+
+    try {
       const result = await sheets.spreadsheets.values.append({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A:M`,
+        range: `'${adminTab}'!${ADMIN_RANGE_START}:${ADMIN_RANGE_END}`,
         valueInputOption: "USER_ENTERED",
         insertDataOption: "INSERT_ROWS",
         requestBody: { values: [safeRow] },
       });
-      // Append result has updatedRange like "Admin 2.0!A42:M42" — extract rowNum
+      // Append result has updatedRange like "Admin.!A42:N42" — extract rowNum
       const updatedRange = String(result.data?.updates?.updatedRange || "");
       const m = updatedRange.match(/![A-Z]+(\d+):/);
       const adminRow = m ? Number(m[1]) : null;
@@ -648,7 +777,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A${adminRow}:M${adminRow}`,
+        range: `'${adminTab}'!${ADMIN_RANGE_START}${adminRow}:${ADMIN_RANGE_END}${adminRow}`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       rowData = resp.data.values?.[0] || [];
@@ -657,15 +786,17 @@ export function createWolfboardRouter(config) {
     }
 
     if (!dryRun) {
-      // Append to Enviados tab (best-effort)
+      // Append to Enviados tab (best-effort). Keep the full A:N range so the
+      // Enviado checkbox state travels with the row — pre-realignment this was
+      // A:M which dropped the checkbox silently.
       if (crmSheetId && enviadosTab && rowData.length > 0) {
         try {
-          // CSV/formula injection guard — Admin row cells are operator-controlled
-          // and we re-write them into Enviados with USER_ENTERED.
-          const safeRow = rowData.map(sanitizeCellValue);
+          const safeRow = rowData
+            .slice(0, ADMIN_RANGE_WIDTH)
+            .map(sanitizeCellValue);
           await sheets.spreadsheets.values.append({
             spreadsheetId: crmSheetId,
-            range: `'${enviadosTab}'!A:M`,
+            range: `'${enviadosTab}'!${ADMIN_RANGE_START}:${ADMIN_RANGE_END}`,
             valueInputOption: "USER_ENTERED",
             insertDataOption: "INSERT_ROWS",
             requestBody: { values: [safeRow] },
@@ -729,7 +860,7 @@ export function createWolfboardRouter(config) {
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:M`,
+        range: `'${adminTab}'!${ADMIN_RANGE_START}2:${ADMIN_RANGE_END}`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       rawRows = resp.data.values || [];
@@ -741,10 +872,10 @@ export function createWolfboardRouter(config) {
     const rows = filterAdminRowsByScope(mapped, scope);
 
     const escape = v => `"${String(v).replace(/"/g, '""')}"`;
-    const header = ["#", "ID", "Fecha", "Telefono", "Cliente", "Canal", "Zona", "Consulta", "Respuesta IA", "Link", "Estado", "Replay JSON"];
+    const header = ["#", "ID", "Asig.", "Estado", "Fecha", "Cliente", "Origen", "Telefono", "Zona", "Consulta", "Interpretación AI", "Respuesta AI", "Datos Faltantes", "PRESUPUESTO", "Enviado"];
     const lines = [
       header.map(escape).join(","),
-      ...rows.map(r => [r.rowNum, r.id, r.fecha, r.telefono, r.cliente, r.canal, r.zona, r.consulta, r.respuesta, r.link, r.estado, r.replaySnapshotUrl].map(escape).join(",")),
+      ...rows.map(r => [r.rowNum, r.id, r.asig, r.estado, r.fecha, r.cliente, r.canal, r.telefono, r.zona, r.consulta, r.interpretacionAi, r.respuesta, r.datosFaltantes, r.link, r.enviado ? "TRUE" : "FALSE"].map(escape).join(",")),
     ];
 
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -795,30 +926,40 @@ export function createWolfboardRouter(config) {
       return res.status(503).json({ ok: false, error: "Error al leer metadata del sheet: " + e.message });
     }
 
-    // Read Admin rows A2:L (A=ID, E=Cliente, H=Zona, I=Consulta, J=Respuesta AI)
+    // Validate LIVE header before touching any cell (fail-closed; see
+    // adminSheetSchema.js).
+    try {
+      const headerCheck = await ensureAdminHeader(sheets, adminSheetId, adminTab);
+      if (!headerCheck.ok) return adminHeaderMismatch503(res, headerCheck.mismatches);
+    } catch (e) {
+      return res.status(503).json({ ok: false, error: "Error al leer header Admin: " + e.message });
+    }
+
+    // Read Admin rows A2:N using the live letters (A=ID, E=Cliente, G=Tel,
+    // H=Zona, I=Consulta, K=Respuesta AI, M=PRESUPUESTO).
     let rawRows;
     try {
       const resp = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:M`,
+        range: `'${adminTab}'!${ADMIN_RANGE_START}2:${ADMIN_RANGE_END}`,
         valueRenderOption: "FORMATTED_VALUE",
       });
       rawRows = resp.data.values || [];
     } catch (e) {
-      return res.status(503).json({ ok: false, error: "Error al leer Admin 2.0: " + e.message });
+      return res.status(503).json({ ok: false, error: "Error al leer Admin.: " + e.message });
     }
 
     const pendingRows = rawRows
       .map((row, idx) => ({
         rowNum: idx + 2,
-        adminId: String(row[0] ?? "").trim(),
-        telefono: String(row[3] ?? "").trim(), // D
-        cliente: String(row[4] ?? "").trim(),  // E
-        canal: String(row[5] ?? "").trim(),    // F
-        zona: String(row[7] ?? "").trim(),     // H
-        consulta: String(row[8] ?? "").trim(),  // I
-        respuesta: String(row[9] ?? "").trim(), // J
-        link: String(row[10] ?? "").trim(),     // K
+        adminId: String(readAdminCell(row, "A") ?? "").trim(),
+        telefono: String(readAdminCell(row, "G") ?? "").trim(),
+        cliente: String(readAdminCell(row, "E") ?? "").trim(),
+        canal: String(readAdminCell(row, "F") ?? "").trim(),
+        zona: String(readAdminCell(row, "H") ?? "").trim(),
+        consulta: String(readAdminCell(row, "I") ?? "").trim(),
+        respuesta: String(readAdminCell(row, "K") ?? "").trim(),
+        link: String(readAdminCell(row, "M") ?? "").trim(),
       }))
       .filter((r) => {
         if (!r.consulta) return false;
@@ -964,8 +1105,10 @@ export function createWolfboardRouter(config) {
       // writing to Sheets with USER_ENTERED.
       const safeResponse = sanitizeCellValue(response);
 
+      // Respuesta AI → column K on the LIVE header. Pre-realignment this
+      // went to J, which is Interpretación AI.
       valueUpdates.push({
-        range: `'${adminTab}'!J${row.rowNum}`,
+        range: `'${adminTab}'!K${row.rowNum}`,
         values: [[safeResponse]],
       });
 
@@ -1006,13 +1149,21 @@ export function createWolfboardRouter(config) {
           const gcsUrl = gcsRes.status === "fulfilled" ? gcsRes.value : null;
           if (gcsUrl) {
             quoteLink = String(gcsUrl || "").trim();
-            valueUpdates.push({ range: `'${adminTab}'!K${row.rowNum}`, values: [[sanitizeCellValue(quoteLink)]] });
+            // PRESUPUESTO / PDF link → column M on the LIVE header.
+            // Pre-realignment this went to K, which is Respuesta AI.
+            valueUpdates.push({ range: `'${adminTab}'!M${row.rowNum}`, values: [[sanitizeCellValue(quoteLink)]] });
           }
         } catch {
           // upload pipeline is non-critical; proceed without link
         }
 
         try {
+          // Build the replay snapshot for debugging/observability but do NOT
+          // write the URL back into the sheet. The pre-realignment code wrote
+          // it into column M, which is PRESUPUESTO (PDF hyperlink) on the live
+          // header — doing that would clobber the quote link we just wrote
+          // above. The snapshot is still uploaded to GCS so operators can
+          // retrieve it from logs if they need to debug a quote.
           const snap = buildWolfboardQuoteReplaySnapshot({
             adminRow: row.rowNum,
             cliente: row.cliente,
@@ -1023,10 +1174,7 @@ export function createWolfboardRouter(config) {
             listaPrecios: "web",
           });
           const jsonName = `Cotizacion-WB${row.rowNum}-replay-${new Date().toISOString().slice(0, 10)}-${Date.now()}.json`;
-          const jsonUrl = await uploadQuoteJsonToGcs(snap, jsonName, config.gcsQuotesBucket);
-          if (jsonUrl) {
-            valueUpdates.push({ range: `'${adminTab}'!M${row.rowNum}`, values: [[jsonUrl]] });
-          }
+          await uploadQuoteJsonToGcs(snap, jsonName, config.gcsQuotesBucket);
         } catch {
           // JSON snapshot is non-critical
         }
@@ -1086,14 +1234,16 @@ export function createWolfboardRouter(config) {
       }
 
       if (numericSheetId !== undefined) {
+        // Colour the Respuesta AI cell (K on the live header) red when the
+        // batch call failed; green/white otherwise.
         formatRequests.push({
           repeatCell: {
             range: {
               sheetId: numericSheetId,
               startRowIndex: row.rowNum - 1,
               endRowIndex: row.rowNum,
-              startColumnIndex: COL_J,
-              endColumnIndex: COL_J + 1,
+              startColumnIndex: COL_RESPUESTA_AI,
+              endColumnIndex: COL_RESPUESTA_AI + 1,
             },
             cell: {
               userEnteredFormat: { backgroundColor: isError ? RED_BG : WHITE_BG },
