@@ -102,6 +102,22 @@ export const config = {
    * email message appends its own Admin row. Default off. Do not enable here.
    */
   adminInboundRows: bool(process.env.ADMIN_INBOUND_ROWS, false),
+  /**
+   * Targeted kill-switch for POST /api/wolfboard/row-create (storefront VW
+   * widget → `wa_lead_to_admin` → row-create → one Admin row per chat).
+   *
+   * Default **off** (empty / false / 0): row-create keeps appending rows,
+   * so an existing Cloud Run deploy is NOT broken by shipping this flag.
+   * Set to 1 / true / yes to make the endpoint return 200
+   * `{ ok: true, skipped: "row_create_disabled" }` without touching Sheets.
+   *
+   * Scope note: ADMIN_INBOUND_ROWS gates `appendAdminInboundRow` (WA/ML/FB/IG/EM
+   * webhook ingest) — it does NOT gate row-create. Use this flag when the
+   * storefront chat is the source of corrupted rows and you want to pause
+   * it without pausing HITL triage writes (WOLFB_DRY_RUN pauses everything,
+   * including /row and /enviados).
+   */
+  wolfbRowCreateDisabled: bool(process.env.WOLFB_ROW_CREATE_DISABLED, false),
   wolfbRitualLog: process.env.WOLFB_RITUAL_LOG === "1",
   wolfbCalcApiBase: process.env.WOLFB_CALC_API_BASE || "",
   /** Primera fila de datos H:K en Admin 2.0 (default 2). */

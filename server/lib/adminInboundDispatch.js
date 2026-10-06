@@ -19,6 +19,11 @@ export async function dispatchAdminInbound(config, fields = {}, { getSheets = ge
 
   const ids = adminInboundIds(fields.channel, fields.messageId);
   if (!ids.ok) return ids;
+  // ML questions already answered on Mercado Libre: skip the Admin append.
+  // The CRM sync still runs in parallel (handled by the caller).
+  if (fields.channel === "ML" && String(fields.questionStatus || "").toUpperCase() === "ANSWERED") {
+    return { ok: true, skipped: "ml_question_answered", id: `${ids.rowId}` };
+  }
   const body = clip(String(fields.consulta ?? "").trim() || buildInboundConsulta(fields));
   if (!body) return { ok: false, error: "consulta_required" };
   if (!config.wolfbAdminSheetId) return { ok: false, error: "sheet_missing" };
@@ -76,6 +81,13 @@ export function mercadoLibreQuestionFields({ notification, question } = {}) {
   const q = question || {};
   const qid = String(q.id || resourceId || "").trim();
   const fromId = q.from?.id ?? q.user_id;
+  // ML notifies `questions` when a buyer asks AND when the seller answers.
+  // Rows for already-ANSWERED questions were piling duplicates up at the
+  // bottom of the live Admin sheet (QIDs 13668673214 / 13668896176 on
+  // 2026-10-05, both already Respondida en ML on the HITL cola).
+  // Suppress by returning the "answered_skip" sentinel so the dispatch
+  // layer can early-return without writing a row.
+  const status = String(q.status || "").trim().toUpperCase();
   return {
     channel: "ML",
     messageId: qid,
@@ -85,6 +97,7 @@ export function mercadoLibreQuestionFields({ notification, question } = {}) {
     questionId: qid,
     listingId: String(q.item_id || q.item?.id || "").trim(),
     listingUrl: String(q.permalink || q.item?.permalink || "").trim(),
+    questionStatus: status || null,
   };
 }
 

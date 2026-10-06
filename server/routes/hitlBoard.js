@@ -36,6 +36,11 @@ import { getSheetsClient, redactGoogleError } from "../lib/googleSheetsAuth.js";
 import { requireServiceOrUser } from "../middleware/requireServiceOrUser.js";
 import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
 import {
+  ADMIN_RANGE_END,
+  ADMIN_RANGE_START,
+  validateAdminHeader,
+} from "../lib/adminSheetSchema.js";
+import {
   buildHitlBoardSnapshot,
   projectBoardJsonCompat,
   validateRowUpdate,
@@ -84,10 +89,19 @@ function envMissing503(res, envVar) {
 async function readAdminRows({ sheets, sheetId, tab }) {
   const resp = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `'${tab}'!A2:M`,
+    range: `'${tab}'!${ADMIN_RANGE_START}2:${ADMIN_RANGE_END}`,
     valueRenderOption: "FORMATTED_VALUE",
   });
   return resp.data.values || [];
+}
+
+async function readAdminHeader({ sheets, sheetId, tab }) {
+  const resp = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `'${tab}'!1:1`,
+    valueRenderOption: "FORMATTED_VALUE",
+  });
+  return resp.data.values?.[0] || [];
 }
 
 export function createHitlBoardRouter(cfg = config) {
@@ -196,21 +210,28 @@ export function createHitlBoardRouter(cfg = config) {
     const tab = cfg.wolfbAdminTab || "Admin.";
     if (!sheetId) return envMissing503(res, "WOLFB_ADMIN_SHEET_ID");
 
-    const { admin_row: adminRow, patch } = validated;
+    const { admin_row: adminRow, patch, dropped } = validated;
     const dryRun = Boolean(cfg.wolfbDryRun) || /^(1|true|yes)$/i.test(String(req.query.dry_run || ""));
 
+    // Writes mapped to the LIVE Admin header (see server/lib/adminSheetSchema.js).
+    // Pre-realignment this wrote estado→L, respuesta→J, link→K and replay→M,
+    // which stole Interpretación AI, Respuesta AI, Datos Faltantes and
+    // PRESUPUESTO on real human rows.
     const updates = [];
     if (patch.estado !== undefined) {
-      updates.push({ range: `'${tab}'!L${adminRow}`, values: [[sanitizeCellValue(patch.estado)]] });
+      updates.push({ range: `'${tab}'!C${adminRow}`, values: [[sanitizeCellValue(patch.estado)]] });
+    }
+    if (patch.interpretacion !== undefined) {
+      updates.push({ range: `'${tab}'!J${adminRow}`, values: [[sanitizeCellValue(patch.interpretacion)]] });
     }
     if (patch.respuesta !== undefined) {
-      updates.push({ range: `'${tab}'!J${adminRow}`, values: [[sanitizeCellValue(patch.respuesta)]] });
+      updates.push({ range: `'${tab}'!K${adminRow}`, values: [[sanitizeCellValue(patch.respuesta)]] });
+    }
+    if (patch.datos_faltantes !== undefined) {
+      updates.push({ range: `'${tab}'!L${adminRow}`, values: [[sanitizeCellValue(patch.datos_faltantes)]] });
     }
     if (patch.link !== undefined) {
-      updates.push({ range: `'${tab}'!K${adminRow}`, values: [[sanitizeCellValue(patch.link)]] });
-    }
-    if (patch.replay_snapshot_url !== undefined) {
-      updates.push({ range: `'${tab}'!M${adminRow}`, values: [[sanitizeCellValue(patch.replay_snapshot_url)]] });
+      updates.push({ range: `'${tab}'!M${adminRow}`, values: [[sanitizeCellValue(patch.link)]] });
     }
 
     if (dryRun) {
@@ -219,6 +240,7 @@ export function createHitlBoardRouter(cfg = config) {
         admin_row: adminRow,
         dry_run: true,
         updates: updates.map((u) => u.range),
+        ...(dropped?.length ? { dropped } : {}),
       });
     }
 
@@ -230,6 +252,24 @@ export function createHitlBoardRouter(cfg = config) {
         ok: false,
         error: "Sheets auth error: " + redactGoogleError(e?.message || e),
       });
+    }
+
+    // Fail closed if the live header no longer matches ADMIN_COLUMNS: the
+    // whole point of this PR is that writers must never guess positions.
+    try {
+      const header = await readAdminHeader({ sheets, sheetId, tab });
+      const headerCheck = validateAdminHeader(header);
+      if (!headerCheck.ok) {
+        if (req.log) req.log.error({ sheetId, tab, mismatches: headerCheck.mismatches }, "hitl row update — admin header mismatch");
+        return res.status(503).json({
+          ok: false,
+          code: "ADMIN_HEADER_MISMATCH",
+          error: "La fila 1 de Admin. no coincide con el esquema esperado; writer en pausa.",
+          mismatches: headerCheck.mismatches,
+        });
+      }
+    } catch (e) {
+      return res.status(503).json({ ok: false, error: "Error al leer header Admin: " + (e?.message || e) });
     }
 
     try {
@@ -252,6 +292,7 @@ export function createHitlBoardRouter(cfg = config) {
       admin_row: adminRow,
       updated_fields: Object.keys(patch),
       updates: updates.map((u) => u.range),
+      ...(dropped?.length ? { dropped } : {}),
     });
   });
 
