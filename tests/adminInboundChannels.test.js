@@ -21,6 +21,12 @@ function assert(name, condition) {
   }
 }
 
+import { ADMIN_COLUMNS } from "../server/lib/adminSheetSchema.js";
+
+/** Live sheet header; A1 intentionally keeps the accidental Drive URL. */
+const LIVE_HEADER = ADMIN_COLUMNS.map((c) => c.header);
+LIVE_HEADER[0] = "https://drive.google.com/file/d/accidental-url/view";
+
 function fakeSheets() {
   const calls = { gets: 0, appends: 0, rows: [] };
   return {
@@ -29,16 +35,20 @@ function fakeSheets() {
       return {
         spreadsheets: {
           values: {
-            get: async () => {
+            get: async ({ range }) => {
               calls.gets += 1;
-              return { data: { values: calls.rows.map((row) => [row[2]]) } };
+              if (/!1:1$/.test(String(range || ""))) {
+                return { data: { values: [LIVE_HEADER] } };
+              }
+              // dedup read of A2:I — return the first 9 cells of each stored row
+              return { data: { values: calls.rows.map((row) => row.slice(0, 9)) } };
             },
             append: async ({ requestBody }) => {
               calls.appends += 1;
               const row = requestBody.values[0];
               calls.rows.push(row);
-              const n = calls.rows.length;
-              return { data: { updates: { updatedRange: `'Admin.'!A${n}:M${n}` } } };
+              const n = calls.rows.length + 1; // row 1 is header
+              return { data: { updates: { updatedRange: `'Admin.'!A${n}:N${n}` } } };
             },
           },
         },
@@ -75,7 +85,24 @@ const waImage = await recordWhatsAppAdminInbound({
 });
 const waRow = waSheets.calls.rows[0];
 assert("WhatsApp image appends one Pendiente row", waImage.ok === true && waImage.duplicate !== true && waSheets.calls.appends === 1);
-assert("WhatsApp image row uses the message id and an empty reply", waRow[0] === "WA-wamid.img" && waRow[2] === "WA:wamid.img" && waRow[3] === "59899111222" && waRow[4] === "Ana" && waRow[5] === "WhatsApp" && waRow[8] === "[imagen]" && waRow[9] === "" && waRow[11] === "Pendiente" && waRow[1] === "03/10/2026");
+// Live Admin header: A=id, B=Asig., C=Estado, D=Fecha, E=Cliente, F=Origen,
+// G=Tel, H=Zona, I=Consulta, J/K/L/M=AI columns (empty), N=Enviado.
+assert(
+  "WhatsApp image row writes to the LIVE header letters",
+  waRow[0] === "WA-wamid.img" &&
+    waRow[1] === "" &&
+    waRow[2] === "Pendiente" &&
+    waRow[3] === "03/10/2026" &&
+    waRow[4] === "Ana" &&
+    waRow[5] === "WA" &&
+    waRow[6] === "59899111222" &&
+    waRow[8] === "[imagen]" &&
+    waRow[9] === "" &&
+    waRow[10] === "" &&
+    waRow[11] === "" &&
+    waRow[12] === "" &&
+    waRow[13] === "FALSE",
+);
 
 const waAgain = await recordWhatsAppAdminInbound({
   config: sheetConfig,
@@ -94,7 +121,7 @@ await recordWhatsAppAdminInbound({
   getSheets: waFormula.client,
   now,
 });
-assert("WhatsApp text neutralizes a formula cell", waFormula.calls.rows[0][8] === "'=CMD()");
+assert("WhatsApp text neutralizes a formula cell in column I", waFormula.calls.rows[0][8] === "'=CMD()");
 
 const notification = {
   topic: "questions",
@@ -134,8 +161,35 @@ const mlFirst = await mlProcessor.processNotification({ body: notification, head
 const mlSecond = await mlProcessor.processNotification({ body: notification, headers: {} });
 const mlRow = mlSheets.calls.rows[0];
 assert("Mercado Libre question appends one row and a retry does not", mlFirst.admin?.duplicate !== true && mlSecond.admin?.duplicate === true && mlSheets.calls.appends === 1);
-assert("Mercado Libre consulta keeps the question trailer", mlRow[5] === "Mercado Libre" && mlRow[4] === "paneles.uy" && mlRow[8] === "tienen isodec 50mm? — Q:13667120509 · MLU757318280 · https://articulo.mercadolibre.com.uy/MLU-757318280");
+assert(
+  "Mercado Libre row uses the short origen code and keeps the trailer in I",
+  mlRow[5] === "ML" &&
+    mlRow[4] === "paneles.uy" &&
+    mlRow[8] === "tienen isodec 50mm? — Q:13667120509 · MLU757318280 · https://articulo.mercadolibre.com.uy/MLU-757318280",
+);
 assert("Mercado Libre CRM sync still runs on each delivery", syncCalls === 2 && fetches === 2);
+
+// ML question already ANSWERED on Mercado Libre must not append a row.
+const answeredSheets = fakeSheets();
+let answeredFetches = 0;
+let answeredSyncCalls = 0;
+const answeredProcessor = createMlWebhookProcessor({
+  ml: {},
+  config: { ...sheetConfig, bmcSheetId: "crm-sheet", omniMlShadowWrite: false },
+  fetchResource: async () => { answeredFetches += 1; return { ...question, id: 13699999999, status: "ANSWERED" }; },
+  syncMLCRM: async () => { answeredSyncCalls += 1; return { rows: [{ questionId: "13699999999" }] }; },
+  getSheets: answeredSheets.client,
+});
+const answeredResult = await answeredProcessor.processNotification({
+  body: { ...notification, resource: "/questions/13699999999" },
+  headers: {},
+});
+assert(
+  "ML answered-question webhook skips the Admin row but keeps the CRM sync",
+  answeredResult.admin?.skipped === "ml_question_answered" &&
+    answeredSheets.calls.appends === 0 &&
+    answeredSyncCalls === 1,
+);
 
 const mlMessage = await createMlWebhookProcessor({
   ml: {},
@@ -174,7 +228,7 @@ const ig = handleMetaMessagingWebhook({
   getSheets: igSheets.client,
 });
 await ig.processing;
-assert("Instagram image writes a row while omni persist stays off", ig.status === 200 && igPersists === 0 && igSheets.calls.rows[0][0] === "IG-ig.mid.1" && igSheets.calls.rows[0][5] === "Instagram" && igSheets.calls.rows[0][8] === "[imagen]" && igSheets.calls.rows[0][4] === "IGSID_1");
+assert("Instagram image writes a row while omni persist stays off", ig.status === 200 && igPersists === 0 && igSheets.calls.rows[0][0] === "IG-ig.mid.1" && igSheets.calls.rows[0][5] === "IG" && igSheets.calls.rows[0][8] === "[imagen]" && igSheets.calls.rows[0][4] === "IGSID_1");
 
 const echoBody = {
   entry: [{ messaging: [{ sender: { id: "PSID_1", name: "BMC" }, message: { mid: "echo.1", text: "respuesta nuestra", is_echo: true } }] }],
@@ -225,7 +279,7 @@ const both = handleMetaMessagingWebhook({
   getSheets: bothSheets.client,
 });
 await both.processing;
-assert("Messenger keeps omni persist and adds one Facebook row", bothPersists === 1 && bothSheets.calls.rows[0][5] === "Facebook" && bothSheets.calls.rows[0][8] === "precio?" && bothSheets.calls.rows[0][4] === "Cliente");
+assert("Messenger keeps omni persist and adds one Facebook row", bothPersists === 1 && bothSheets.calls.rows[0][5] === "FB" && bothSheets.calls.rows[0][8] === "precio?" && bothSheets.calls.rows[0][4] === "Cliente");
 
 const mailOff = await recordEmailAdminInbound({
   config: {},
@@ -248,7 +302,17 @@ const mail = await recordEmailAdminInbound({
   now,
 });
 const mailRow = mailSheets.calls.rows[0];
-assert("Email appends one row keyed by the full message id", mail.ok === true && mailRow[0] === "EM-<a@b>" && mailRow[2] === "EM:<a@b>" && mailRow[4] === "ana@cliente.com" && mailRow[5] === "Email" && mailRow[8] === "Cotización\n\nNecesito 50mm" && mailRow[9] === "");
+assert(
+  "Email appends one row keyed by the full message id and the short EM code in F",
+  mail.ok === true &&
+    mailRow[0] === "EM-<a@b>" &&
+    mailRow[2] === "Pendiente" &&
+    mailRow[4] === "ana@cliente.com" &&
+    mailRow[5] === "EM" &&
+    mailRow[8] === "Cotización\n\nNecesito 50mm" &&
+    mailRow[9] === "" &&
+    mailRow[13] === "FALSE",
+);
 const mailDup = await recordEmailAdminInbound({
   config: sheetConfig,
   messageId: "<a@b>",
