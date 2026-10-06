@@ -106,17 +106,31 @@ const BEARER = { Authorization: "Bearer static_service_token_hitl" };
   const r = await fetchJson(srv, "/api/hitl/row/update", {
     method: "POST",
     headers: BEARER,
-    body: { admin_row: 42, estado: "Cotizable", respuesta: "ok", link: "https://x" },
+    body: {
+      admin_row: 42,
+      estado: "Cotizable",
+      respuesta: "ok",
+      link: "https://x",
+      interpretacion: "escenario=solo_techo",
+      datos_faltantes: "faltan medidas",
+      replay_snapshot_url: "gs://x/replay.json",
+    },
   });
   assert.equal(r.status, 200);
   assert.equal(r.json.ok, true);
   assert.equal(r.json.dry_run, true);
   assert.equal(r.json.admin_row, 42);
+  // LIVE Admin header mapping:
+  //   estado → C, interpretacion → J, respuesta → K, datos_faltantes → L, link → M
   assert.deepEqual(r.json.updates, [
-    "'Admin.'!L42",
+    "'Admin.'!C42",
     "'Admin.'!J42",
     "'Admin.'!K42",
+    "'Admin.'!L42",
+    "'Admin.'!M42",
   ]);
+  // replay_snapshot_url must be dropped (no column for it on the live header).
+  assert.deepEqual(r.json.dropped, ["replay_snapshot_url"]);
   srv.close();
 }
 

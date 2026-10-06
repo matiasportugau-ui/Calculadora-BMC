@@ -1,22 +1,32 @@
 /**
  * hitlAdminBoard.js — pure helpers for the HITL (cola) live board.
  *
- * Projects the Admin 2.0 sheet (SoT: WOLFB_ADMIN_SHEET_ID, tab Admin.) into
- * a stable "actionable pendings" shape that the HITL dashboard (bmc-cola-hitl
- * on Vercel) can consume as a drop-in replacement for the limited
- * board.json ML-only feed.
+ * Projects the Admin. sheet (SoT: WOLFB_ADMIN_SHEET_ID) into a stable
+ * "actionable pendings" shape that the HITL dashboard (bmc-cola-hitl on
+ * Vercel) can consume as a drop-in replacement for the limited board.json
+ * ML-only feed.
  *
  * Pure functions only: NO googleapis / NO network / NO config imports.
  * This file is unit-tested standalone; route wiring lives in
  * server/routes/hitlBoard.js.
  *
- * Admin. column layout (A2:M, shared with server/routes/wolfboard.js):
- *   A=ID  B=Fecha  C=?  D=Telefono  E=Cliente  F=Origen
- *   G=?  H=Zona  I=Consulta  J=RespuestaIA  K=LinkDrive
- *   L=Estado  M=ReplaySnapshotUrl
+ * Admin. column layout — LIVE header (SoT: server/lib/adminSheetSchema.js):
+ *   A=ID            B=Asig.         C=Estado           D=Fecha
+ *   E=Cliente       F=Origen        G=Teléfono         H=Dirección/Zona
+ *   I=Consulta      J=Interpretación AI
+ *   K=Respuesta AI  L=Datos Faltantes
+ *   M=PRESUPUESTO   N=Enviado
+ *
+ * Pre-realignment (2026-10-06) this module read estado from L, respuesta
+ * from J, link from K and replay from M — ALL stolen from the live header
+ * (that layout was Interpretación AI / Datos Faltantes / Respuesta AI /
+ * PRESUPUESTO). Reading from the wrong columns made the board show
+ * "Pendiente" for every human row (because L actually holds Datos Faltantes
+ * notes) and the write-back path overwrote the AI columns on triage.
  */
 
 import crypto from "node:crypto";
+import { ADMIN_COL_INDEX, readAdminCell } from "./adminSheetSchema.js";
 
 /**
  * Estado values recognised as "actionable" for the HITL cola.
@@ -106,8 +116,9 @@ export function estadoPriority(raw) {
 export function mapAdminRowToHitlCard(row, rowIndex, { sheetId, tab } = {}) {
   const r = Array.isArray(row) ? row : [];
   const adminRow = Number(rowIndex) + 2;
-  const estadoRaw = String(r[11] ?? "").trim();
-  const consulta = String(r[8] ?? "").trim();
+  const estadoRaw = String(readAdminCell(r, "C") ?? "").trim();
+  const consulta = String(readAdminCell(r, "I") ?? "").trim();
+  const enviadoRaw = String(readAdminCell(r, "N") ?? "").trim();
   const markers = parseConsultaMarkers(consulta);
   const base = sheetId
     ? `https://docs.google.com/spreadsheets/d/${sheetId}/edit`
@@ -116,21 +127,28 @@ export function mapAdminRowToHitlCard(row, rowIndex, { sheetId, tab } = {}) {
     admin_row: adminRow,
     admin_sheet_url: base,
     admin_tab: tab || "",
-    id: String(r[0] ?? "").trim(),
-    fecha: String(r[1] ?? "").trim(),
-    telefono: String(r[3] ?? "").trim(),
-    cliente: String(r[4] ?? "").trim(),
-    canal: String(r[5] ?? "").trim(),
-    zona: String(r[7] ?? "").trim(),
+    id: String(readAdminCell(r, "A") ?? "").trim(),
+    asig: String(readAdminCell(r, "B") ?? "").trim(),
+    fecha: String(readAdminCell(r, "D") ?? "").trim(),
+    cliente: String(readAdminCell(r, "E") ?? "").trim(),
+    canal: String(readAdminCell(r, "F") ?? "").trim(),
+    telefono: String(readAdminCell(r, "G") ?? "").trim(),
+    zona: String(readAdminCell(r, "H") ?? "").trim(),
     consulta,
     title: deriveTitle(consulta),
-    respuesta_ai: String(r[9] ?? "").trim(),
-    link: String(r[10] ?? "").trim(),
+    interpretacion_ai: String(readAdminCell(r, "J") ?? "").trim(),
+    respuesta_ai: String(readAdminCell(r, "K") ?? "").trim(),
+    datos_faltantes: String(readAdminCell(r, "L") ?? "").trim(),
+    link: String(readAdminCell(r, "M") ?? "").trim(),
+    enviado: /^(true|1|sí|si|yes)$/i.test(enviadoRaw),
     estado: estadoRaw,
     estado_normalized: normalizeEstado(estadoRaw),
     actionable: isActionableEstado(estadoRaw),
     priority: estadoPriority(estadoRaw),
-    replay_snapshot_url: String(r[12] ?? "").trim(),
+    // Deprecated: there is no "replay snapshot" column on the live Admin
+    // header. Kept in the response shape (empty string) so legacy consumers
+    // don't crash on a missing key; writers no longer populate it.
+    replay_snapshot_url: "",
     ml_qid: markers.ml_qid || "",
     ml_mlu: markers.ml_mlu || "",
     listing_url: markers.listing_url || "",
@@ -225,13 +243,31 @@ export function projectBoardJsonCompat(snapshot) {
  * a `{ ok, patch, error }` shape so the route can issue a clean 400 with
  * a stable message and the lib can be unit-tested without a sheets client.
  */
+/**
+ * Patchable fields → LIVE header columns.
+ *   estado             → C
+ *   interpretacion     → J (Interpretación AI, new patchable field)
+ *   respuesta          → K (Respuesta AI)
+ *   datos_faltantes    → L (Datos Faltantes, new patchable field)
+ *   link / presupuesto → M (PRESUPUESTO)
+ *
+ * `replay_snapshot_url` is NOT patchable: the Admin. header has no column
+ * for the GCS JSON replay URL. Accepting it would re-create the pre-
+ * realignment bug (writing it into M would overwrite PRESUPUESTO).
+ */
 const PATCHABLE_FIELDS = Object.freeze({
-  estado: { col: "L", maxLen: 80 },
-  respuesta: { col: "J", maxLen: 4000 },
-  respuesta_ai: { col: "J", maxLen: 4000 },
-  link: { col: "K", maxLen: 2048 },
-  replay_snapshot_url: { col: "M", maxLen: 2048 },
+  estado: { col: "C", maxLen: 80 },
+  interpretacion: { col: "J", maxLen: 4000 },
+  interpretacion_ai: { col: "J", maxLen: 4000 },
+  respuesta: { col: "K", maxLen: 4000 },
+  respuesta_ai: { col: "K", maxLen: 4000 },
+  datos_faltantes: { col: "L", maxLen: 2000 },
+  link: { col: "M", maxLen: 2048 },
+  presupuesto: { col: "M", maxLen: 2048 },
 });
+
+/** Deprecated fields silently accepted (and dropped) so legacy callers don't 400. */
+const DROPPED_FIELDS = Object.freeze(["replay_snapshot_url"]);
 
 export function validateRowUpdate(body) {
   const b = body && typeof body === "object" ? body : {};
@@ -240,7 +276,14 @@ export function validateRowUpdate(body) {
     return { ok: false, error: "admin_row debe ser un entero >= 2" };
   }
   const patch = {};
+  const dropped = [];
   for (const key of Object.keys(b)) {
+    if (DROPPED_FIELDS.includes(key)) {
+      if (b[key] !== undefined && b[key] !== null && String(b[key]).length > 0) {
+        dropped.push(key);
+      }
+      continue;
+    }
     if (!Object.prototype.hasOwnProperty.call(PATCHABLE_FIELDS, key)) continue;
     const spec = PATCHABLE_FIELDS[key];
     const v = b[key];
@@ -249,14 +292,19 @@ export function validateRowUpdate(body) {
     if (s.length > spec.maxLen) {
       return { ok: false, error: `${key} supera ${spec.maxLen} chars` };
     }
-    // Normalise aliases.
-    const canonical = key === "respuesta_ai" ? "respuesta" : key;
+    // Normalise aliases to the canonical patch key.
+    let canonical = key;
+    if (key === "respuesta_ai") canonical = "respuesta";
+    else if (key === "interpretacion_ai") canonical = "interpretacion";
+    else if (key === "presupuesto") canonical = "link";
     patch[canonical] = s;
   }
   if (Object.keys(patch).length === 0) {
-    return { ok: false, error: "Nada para actualizar (estado/respuesta/link/replay_snapshot_url)" };
+    return { ok: false, error: "Nada para actualizar (estado/respuesta/link/interpretacion/datos_faltantes)" };
   }
-  return { ok: true, admin_row: row, patch };
+  const out = { ok: true, admin_row: row, patch };
+  if (dropped.length > 0) out.dropped = dropped;
+  return out;
 }
 
-export const _internals = { PATCHABLE_FIELDS, ESTADO_PRIORITY, ACTIONABLE_SET };
+export const _internals = { PATCHABLE_FIELDS, DROPPED_FIELDS, ESTADO_PRIORITY, ACTIONABLE_SET, ADMIN_COL_INDEX };
