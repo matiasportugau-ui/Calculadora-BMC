@@ -61,6 +61,20 @@ export function mlWebhookRateKey(req) {
 }
 
 /**
+ * Token the ML webhook route compares with WEBHOOK_VERIFY_TOKEN.
+ * Query wins, then `x-webhook-token`, then the raw Authorization value.
+ * An empty string falls through. A whitespace query value does not.
+ * `Bearer ` is not stripped.
+ */
+export function mlWebhookReceivedToken(req) {
+  return (
+    req?.query?.verify_token ||
+    req?.headers?.["x-webhook-token"] ||
+    req?.headers?.authorization
+  );
+}
+
+/**
  * @param {{ mlSigVerified?: { ok?: boolean, skipped?: boolean, reason?: string }, peerIp?: string, webhookVerifyToken?: string, receivedToken?: string }} opts
  * @returns {{ accept: boolean, via: string, reason?: string, peerIp: string }}
  */
