@@ -149,6 +149,12 @@ for (const ip of ML_NOTIFICATION_IPS) {
   assert.equal(cloudRunPeerIp(req), ML_IP);
   assert.equal(mlWebhookRateKey({ headers: { "x-forwarded-for": `9.9.9.9, ${ML_IP}` } }), ML_IP);
   assert.equal(mlWebhookRateKey({ headers: {} }), "unknown");
+  // Instagram/Messenger limiters reuse this helper. Rotating spoofed prefixes
+  // must collapse onto the Cloud Run-observed peer, not open a new bucket.
+  const peer = "203.0.113.50";
+  assert.equal(mlWebhookRateKey({ headers: { "x-forwarded-for": `1.1.1.1, ${peer}` } }), peer);
+  assert.equal(mlWebhookRateKey({ headers: { "x-forwarded-for": `8.8.8.8, ${peer}` } }), peer);
+  assert.equal(mlWebhookRateKey({ headers: { "x-forwarded-for": peer } }), peer);
 }
 
 {

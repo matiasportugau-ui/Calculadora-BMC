@@ -697,18 +697,16 @@ app.get("/webhooks/whatsapp", (req, res) => {
   res.status(403).send("Forbidden");
 });
 
-function metaWebhookClientKey(req) {
-  const xf = req.headers["x-forwarded-for"];
-  if (typeof xf === "string" && xf.trim()) return xf.split(",")[0].trim();
-  return req.ip || req.socket?.remoteAddress || "unknown";
-}
-
+// Same peer key as POST /webhooks/ml: Cloud Run appends the connecting address
+// as the rightmost X-Forwarded-For hop. The leftmost hop is client-controlled and
+// must not be the rate-limit bucket (spoofed prefixes would bypass the 120/min
+// cap, or share Meta's observed IP and starve real Instagram/Messenger deliveries).
 const metaWebhookLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: metaWebhookClientKey,
+  keyGenerator: mlWebhookRateKey,
   message: { ok: false, error: "rate_limited" },
 });
 
