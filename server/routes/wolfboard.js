@@ -677,6 +677,22 @@ export function createWolfboardRouter(config) {
   router.post("/row-create", requireWolfboardWrite, async (req, res) => {
     const dryRun = config.wolfbDryRun;
     const body = req.body || {};
+
+    // Targeted kill-switch for the storefront VW path (see server/config.js →
+    // wolfbRowCreateDisabled). Default off so this ships without breaking
+    // existing deploys. When ON, we return 200 with a soft skip so the
+    // storefront voice chat does not surface an error to the end user; the
+    // operator can see it in logs and in the response payload.
+    if (config.wolfbRowCreateDisabled) {
+      if (req.log) {
+        req.log.warn(
+          { origen: body?.origen || null },
+          "wolfboard /row-create — WOLFB_ROW_CREATE_DISABLED=1, append skipped",
+        );
+      }
+      return res.json({ ok: true, skipped: "row_create_disabled" });
+    }
+
     const consulta = String(body.consulta ?? "").trim();
     if (!consulta) {
       return res.status(400).json({ ok: false, error: "consulta requerida (no vacía)" });
