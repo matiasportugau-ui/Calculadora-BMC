@@ -1,0 +1,82 @@
+# Preguntas Frecuentes — Versión Agente Nativo (sin precios)
+
+> Curado de `data/knowledge/preguntas-frecuentes-clientes.md`. Las preguntas comerciales/de precio originales fueron **removidas o reescritas** para derivar al equipo — este agente no cotiza. Ver `10-SOURCING-MAP.md` para el original completo.
+
+## Preguntas comerciales (reescritas para derivar)
+
+**P: ¿Cuánto cuesta el panel / cuál es el precio?**
+R: El precio depende del proyecto (familia, espesor, cantidad, color, flete). Pasame tipo de obra, m² aproximados y ubicación, y te conecto con el equipo comercial para la cotización exacta.
+
+**P: ¿Cuánto tiempo tarda la entrega?**
+R: El plazo depende de la producción, el espesor y el color elegido — algunos colores tienen plazo adicional. El equipo comercial te confirma la fecha exacta al hacer el pedido.
+
+**P: ¿Tienen stock disponible?**
+R: BMC trabaja principalmente bajo pedido de fabricación; puede haber stock puntual en algunos espesores. Te confirma disponibilidad el equipo comercial.
+
+**P: ¿Cómo es la forma de pago?**
+R: Eso te lo confirma el equipo comercial al armar la cotización — cada proyecto puede tener condiciones distintas.
+
+**P: ¿El flete está incluido?**
+R: No, el flete se cotiza aparte según destino y cantidad. Decime tu ubicación y el equipo te lo cotiza junto con el panel.
+
+**P: ¿Hacen instalación?**
+R: BMC no instala directamente, pero podemos recomendar instaladores habilitados que trabajan con nuestros productos. La garantía del panel aplica igual, siempre que se sigan los procedimientos constructivos.
+
+**P: ¿Puedo retirar en fábrica?**
+R: Sí, desde la planta en Maldonado, Uruguay. La fecha y horario se coordina con el equipo comercial.
+
+## Preguntas técnicas — selección de producto
+
+**P: ¿Diferencia entre ISODEC EPS e ISODEC PIR?**
+R: El núcleo: EPS es poliestireno expandido, PIR es poliisocianurato (mejor aislación con menos espesor, y mejor comportamiento ante el fuego). El PIR es la opción más premium.
+
+**P: ¿Diferencia entre ISOROOF e ISODEC?**
+R: ISODEC usa núcleo EPS o PIR con chapa lisa. ISOROOF usa núcleo de lana de vidrio (no combustible) con chapa de onda larga — mejor para exigencias de resistencia al fuego.
+
+**P: ¿Qué panel me recomendás para una vivienda?**
+R: En general, para techo: ISODEC EPS o ISODEC PIR. Para fachadas: ISOPANEL EPS. Si buscás estética de teja: ISOROOF COLONIAL. La recomendación final depende del proyecto — te conecto con el equipo técnico para confirmar.
+
+**P: ¿Qué panel uso para una cámara frigorífica?**
+R: Generalmente ISOPANEL EPS o ISODEC PIR según la temperatura requerida — cuanto más fría la cámara, más conviene PIR. El equipo técnico confirma el espesor exacto con los datos del proyecto.
+
+**P: ¿Qué espesor necesito para cumplir la normativa uruguaya de aislación?**
+R: Depende de la zona climática y el tipo de edificio (normativa MVOTMA). Te recomiendo confirmarlo con el equipo técnico o un arquitecto para tu caso puntual.
+
+**P: ¿Puedo usar panel de pared en el techo?**
+R: No es recomendable — tienen ancho útil, perfiles y sistemas de fijación distintos. Panel de techo para techo, panel de pared para pared.
+
+**P: ¿Qué pendiente mínima necesita el techo?**
+R: Mínimo técnico 3% para escurrimiento; se recomienda 10–15% para la mayoría de las obras. Para ISOROOF COLONIAL, mínimo recomendado 15%.
+
+**P: ¿Cuánto pesa un metro cuadrado de panel?**
+R: Aproximadamente 9–12 kg/m² según familia y espesor — livianísimo comparado con teja u hormigón. Para cálculo estructural exacto, lo confirma el equipo técnico.
+
+## Preguntas de instalación
+
+**P: ¿Necesito mano de obra especializada?**
+R: La instalación es relativamente sencilla pero requiere conocimiento básico de construcción metálica y herramientas específicas. Para techos grandes o de altura, se recomienda un instalador con experiencia.
+
+**P: ¿Se pueden cortar los paneles en obra?**
+R: Sí, con sierra circular y disco de metal fino (nunca disco abrasivo). Después de cortar hay que limpiar la viruta metálica para evitar oxidación.
+
+**P: ¿Los paneles resisten el granizo?**
+R: La chapa estándar resiste granizo hasta cierto calibre. Para zonas con granizo frecuente, consultar con el equipo si conviene chapa de mayor calibre.
+
+**P: ¿Cuánto tiempo dura la instalación?**
+R: Con 2 operarios, el rendimiento típico ronda los 80–120 m²/día de techo. Son valores orientativos — depende de la obra.
+
+## Garantía y post-venta
+
+**P: ¿Qué garantía tienen los paneles?**
+R: En general: 10 años de garantía térmica en el núcleo, y garantía anticorrosión de 10 años en ambiente urbano/rural (5 años en zonas costeras o industriales). No aplica si hubo instalación incorrecta o exposición a solventes. Para reclamos puntuales, siempre derivar al equipo BMC.
+
+**P: ¿Tienen servicio técnico?**
+R: Sí — para consultas post-venta y soporte técnico, contactar directamente al equipo BMC (092 663 245 o bmcuruguay.com.uy).
+
+## Sustentabilidad
+
+**P: ¿Los paneles son reciclables?**
+R: La chapa de acero es 100% reciclable. El núcleo EPS puede reciclarse como relleno/granulado. PIR y lana de vidrio tienen opciones de reciclaje más limitadas hoy.
+
+**P: ¿El EPS es perjudicial para la salud?**
+R: No — instalado y encapsulado entre chapas no libera partículas, y no contiene CFC ni HCFC.
