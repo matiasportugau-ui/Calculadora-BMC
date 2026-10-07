@@ -100,7 +100,7 @@ create table if not exists clientes.customer_events (
   event_type  text not null,                     -- 'message'|'quote'|'purchase'|'visit'|'call'|'login'|'status_change'|'sla_breach'
   payload     jsonb not null default '{}'::jsonb,
   occurred_at timestamptz not null,
-  source_ref  text not null,                     -- ingestor must provide a stable per-channel ref (deterministic when source has no native ID); NOT NULL so UNIQUE actually enforces idempotency (Postgres allows multiple NULLs in UNIQUE otherwise)
+  source_ref  text not null,                     -- ingestor must provide a stable per-channel ref; NOT NULL so UNIQUE actually enforces idempotency (Postgres allows multiple NULLs in UNIQUE otherwise)
   ingested_at timestamptz not null default now(),
   primary key (id, occurred_at),
   unique (channel, source_ref, occurred_at)      -- includes occurred_at because partition key must be in unique
@@ -118,6 +118,8 @@ create table if not exists clientes.customer_events_2026_05 partition of cliente
   for values from ('2026-05-01') to ('2026-06-01');
 create table if not exists clientes.customer_events_2026_06 partition of clientes.customer_events
   for values from ('2026-06-01') to ('2026-07-01');
+create table if not exists clientes.customer_events_2026_07 partition of clientes.customer_events
+  for values from ('2026-07-01') to ('2026-08-01');
 
 -- ───────────────────────────────────────────────────────────────────────────
 -- customer_quotes — link to identity.quotes + commercial status

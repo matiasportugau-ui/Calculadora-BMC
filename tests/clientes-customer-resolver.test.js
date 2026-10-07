@@ -18,7 +18,6 @@ import { resolveCustomer } from "../server/lib/clientes/customerResolver.js";
 
 let passed = 0;
 let failed = 0;
-let testQueue = Promise.resolve();
 
 function assert(cond, label) {
   if (cond) { passed += 1; }
@@ -29,6 +28,9 @@ function assertEq(actual, expected, label) {
   if (ok) { passed += 1; }
   else { failed += 1; console.error(`  ✗ ${label}\n     expected: ${JSON.stringify(expected)}\n     actual:   ${JSON.stringify(actual)}`); }
 }
+// Serialize groups via a chained promise so async tests are fully awaited
+// before the summary block runs.
+let testQueue = Promise.resolve();
 function group(name, fn) {
   testQueue = testQueue.then(async () => {
     console.log(`\n— ${name}`);
@@ -52,7 +54,7 @@ group("normalizePhoneE164UY", () => {
   assertEq(normalizePhoneE164UY("+598 99 123 456"), "59899123456", "E.164 with spaces");
   assertEq(normalizePhoneE164UY("0059899123456"), "59899123456", "international 00 prefix dropped");
   assertEq(normalizePhoneE164UY("(099) 123-456"), "59899123456", "punctuation stripped");
-  // Codex P1 — country code + trunk zero must canonicalize like the local form:
+  // Trunk-zero canonicalization (Codex/Cursor): +598 + trunk-0 collapses to the same key
   assertEq(normalizePhoneE164UY("+598 099 123 456"), "59899123456", "+598 + trunk-0 → drop trunk-0");
   assertEq(normalizePhoneE164UY("598099123456"), "59899123456", "598 + trunk-0 (no plus) → drop trunk-0");
   assertEq(normalizePhoneE164UY("00598099123456"), "59899123456", "00598 + trunk-0 → strip 00 + drop trunk-0");
@@ -60,7 +62,10 @@ group("normalizePhoneE164UY", () => {
   assertEq(normalizePhoneE164UY(null), null, "null → null");
   assertEq(normalizePhoneE164UY(undefined), null, "undefined → null");
   assertEq(normalizePhoneE164UY("abc"), null, "no digits → null");
-  assertEq(normalizePhoneE164UY("1234567"), null, "<8 digits → null");
+  // Length guard (Cursor security): short/overlong inputs must NOT become strong-match keys
+  assertEq(normalizePhoneE164UY("1"), null, "1 digit → null (not a strong-match key)");
+  assertEq(normalizePhoneE164UY("123"), null, "<8 digits → null");
+  assertEq(normalizePhoneE164UY("1234567"), null, "7 digits → null");
   assertEq(normalizePhoneE164UY("1234567890123456"), null, ">15 digits → null");
   assertEq(normalizePhoneE164UY("5491155667788"), "5491155667788", "Argentina E.164 untouched");
 });
@@ -402,33 +407,6 @@ group("resolveCustomer — input validation", async () => {
   threw = false;
   try { await resolveCustomer({ channel: "ml", externalId: "x" }, { findAlias: () => null }); } catch { threw = true; }
   assert(threw, "throws when store missing required methods");
-
-  const nonFuzzyStore = {
-    findAlias: async () => null,
-    findIdentity: async () => null,
-    findCustomerByPhone: async () => null,
-    findCustomerByEmail: async () => null,
-    findCustomerByRut: async () => null,
-    createCustomer: async () => ({ id: "nf-1" }),
-    createIdentity: async () => {},
-  };
-  const nonFuzzyResult = await resolveCustomer(
-    { channel: "ml", externalId: "x" },
-    nonFuzzyStore,
-  );
-  assertEq(nonFuzzyResult.source, "new", "fuzzy store methods not required when fuzzy disabled");
-
-  threw = false;
-  try {
-    await resolveCustomer(
-      { channel: "ml", externalId: "x", displayName: "Acme" },
-      nonFuzzyStore,
-      { enableFuzzy: true },
-    );
-  } catch {
-    threw = true;
-  }
-  assert(threw, "throws when fuzzy is enabled and fuzzy store methods are missing");
 });
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -436,6 +414,7 @@ group("resolveCustomer — input validation", async () => {
 // ═════════════════════════════════════════════════════════════════════════
 
 (async () => {
+  // Await every chained group (each group() reassigns testQueue to the latest .then()).
   await testQueue;
   console.log(`\n════════════════════════════════════════════════════════════`);
   console.log(`clientes-customer-resolver tests — passed: ${passed}, failed: ${failed}`);

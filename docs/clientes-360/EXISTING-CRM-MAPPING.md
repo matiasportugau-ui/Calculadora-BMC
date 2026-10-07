@@ -15,7 +15,7 @@ El repo tiene **mucho más CRM ya construido** de lo que asumía v1 del brief. L
 1. **Reusar `identity.quotes`** como fuente de cotizaciones (no crear duplicado en `clientes.customer_quotes` con datos completos — solo links + estado comercial).
 2. **Reusar `wa-package` schema** como fuente de eventos WhatsApp.
 3. **Reusar `requireServiceOrUser`** middleware con módulo nuevo `clientes` (siguiendo el patrón de `wa`, `ml`, `crm-personal`).
-4. **Extraer helper compartido de normalización** (`phone`/`rut`/`email`) y reutilizarlo desde `crmSearch` + `agent-resolver` (hoy `normalizePhone` en `crmSearch` es interno, no exportado).
+4. **Reusar `crmSearch.normalizePhone`** y agregar `normalizeRut`/`normalizeEmail` al mismo lib.
 5. **Reusar `clientQuotesSheetSync`** como referencia de patrón sync→Sheets, no reinventar.
 6. **Migrar `followUpStore` JSON → `clientes.customer_followups`** (ver §9.5 del v2 brief).
 7. **Reusar `quoteRegistry` (GCS)** como fuente para timeline de cotizaciones públicas (anónimas).
@@ -28,7 +28,7 @@ El repo tiene **mucho más CRM ya construido** de lo que asumía v1 del brief. L
 |---|---|---|---|---|
 | `followups` route | `server/routes/followups.js` | JSON file | Legacy followups CLI/API | **Migrar** datos a `clientes.customer_followups`; mantener legacy con `Deprecation` header |
 | `followUpStore` | `server/lib/followUpStore.js` | `.followup/store.json` | Almacén legacy | Script de migración one-shot a Postgres |
-| `crmSearch` | `server/lib/crmSearch.js` | Google Sheets `CRM_Operativo` (B4:AH500) | Búsqueda de clientes en CRM externo | **Reusar lógica** de normalización moviéndola a helper compartido (o export explícito) para usarla desde `agent-resolver` como source secundario. |
+| `crmSearch` | `server/lib/crmSearch.js` | Google Sheets `CRM_Operativo` (B4:AH500) | Búsqueda de clientes en CRM externo | **Reusar** `normalizePhone`. Wrap en `agent-resolver` para usar como source secundario. |
 | `crmTaxonomy` | `server/lib/crmTaxonomy.js` | (logic only) | Categorización de eventos CRM | **Reusar** para `event_type` mapping |
 | `identity.quotes` | Postgres schema `identity` | Postgres | Cotizaciones autenticadas | **Reusar como source of truth**; `clientes.customer_quotes` solo link + status |
 | `quoteStore` | `server/lib/quoteStore.js` | Postgres `identity.quotes` | Persistence layer | **Reusar APIs** (`listMyQuotes`, `getMyQuote`, `claimAnonymousQuotes`) |
@@ -99,7 +99,7 @@ JSON store actual:
   "version": 1,
   "items": [
     {
-      "id": "fu_9f2a4b6c8d0e1234",
+      "id": "uuid",
       "title": "...",
       "detail": "...",
       "tags": [...],
@@ -113,7 +113,7 @@ JSON store actual:
 
 Mapeo a Postgres:
 ```
-items[].id          → customer_followups.legacy_id (text UNIQUE)
+items[].id          → customer_followups.id
 items[].title       → customer_followups.reason
 items[].nextFollowUpAt → customer_followups.due_date
 items[].status      → customer_followups.status (open→pending, done→done)
@@ -126,9 +126,9 @@ items[].detail      → customer_followups.detail text (campo nuevo no en v2 bri
 
 ### 3.4 `crmSearch` (Sheets reader) → resolver helper
 
-`crmSearch.normalizePhone(s) = s.replace(/\D/g, "")` hoy es función interna (no exportada). Para reuso real: mover a helper compartido o exportarla explícitamente.
+`crmSearch.normalizePhone(s) = s.replace(/\D/g, "")` — reusar tal cual.
 
-Phase 1 agrega un helper compartido (p.ej. `server/lib/clientes/normalizeContact.js`) y hace que `crmSearch` + `agent-resolver` lo consuman:
+Phase 1 agrega a `server/lib/crmSearch.js` (o crea sibling `customerResolverNormalize.js`):
 ```js
 export function normalizePhoneE164UY(s) { /* prepend 598 if 8-9 digits */ }
 export function normalizeEmail(s) { return String(s||"").toLowerCase().trim(); }
@@ -149,11 +149,11 @@ export function normalizeRut(s) { return String(s||"").replace(/\D/g, ""); }
 
 ### 4.2 Mapeo del v2 brief
 
-| v2 brief grant | identity.module_grants record |
+| v2 brief grant | identity.role_grants record |
 |---|---|
 | `clientes.admin` | `(user_id, module='clientes', level='admin')` |
-| `clientes.write` | `(user_id, module='clientes', level='write')` |
-| `clientes.read` | `(user_id, module='clientes', level='read')` |
+| `clientes.operator` | `(user_id, module='clientes', level='write')` |
+| `clientes.field` | `(user_id, module='clientes', level='read')` |
 
 **Decisión:** En lugar de inventar 3 niveles nominales (`admin/operator/field`), reusar los 4 niveles existentes (`admin/write/read/none`):
 - `admin` = todo (Matias)
@@ -166,14 +166,8 @@ Los routers de `clientes` usan `requireUser({ module: 'clientes', minLevel: 'adm
 
 ```sql
 -- Asume identity.users ya tiene a los 3 usuarios.
--- Asume infraestructura identity ya aplicada (incluye tabla identity.modules).
-INSERT INTO identity.modules (module, display_name, category)
-VALUES ('clientes', 'Clientes 360', 'crm')
-ON CONFLICT (module) DO NOTHING;
-
-INSERT INTO identity.module_grants (user_id, module, level)
--- Reemplazar <admin-email-interno> por el email real antes de ejecutar en deploy.
-SELECT user_id, 'clientes', 'admin' FROM identity.users WHERE email = '<admin-email-interno>';
+INSERT INTO identity.role_grants (user_id, module, level)
+SELECT user_id, 'clientes', 'admin' FROM identity.users WHERE email = 'matias@bmc...';
 -- repetir para sandra (write), ramiro (read).
 ```
 
@@ -208,7 +202,7 @@ Los 11 agentes de Clientes 360 (sec 8.1 del v2 brief) deben seguir este patrón:
 - `BmcAuthProvider` + `useBmcAuth`
 - `quoteStore.listMyQuotes`, `getMyQuote`, `claimAnonymousQuotes`
 - `quoteRegistry` (cotizaciones anónimas vía Panelin)
-- helper compartido de normalización de contacto (`phone`/`rut`/`email`) usado por `crmSearch` + `agent-resolver`
+- `crmSearch.normalizePhone`
 - `wa-package` schema (lectura directa)
 - `getWaPool` (pool Postgres compartido)
 
