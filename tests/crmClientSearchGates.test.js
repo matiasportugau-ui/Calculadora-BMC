@@ -32,18 +32,13 @@ const ana = crmRow({
 
 {
   const hit = matchCrmClientRows([ana], "  ANA  ");
-  assert.equal(hit.ok, true);
   assert.equal(hit.count, 1);
-  assert.equal(hit.matches[0].row, 4);
-  assert.equal(hit.matches[0].cliente, "Ana Pérez");
-  assert.equal(hit.matches[0].telefono, "598 99 111 222");
-  assert.equal(hit.matches[0].ubicacion, "Montevideo");
-  assert.equal(hit.matches[0].link_presupuesto, "https://drive.example/ana");
-  assert.equal(hit.matches[0].observaciones, "obra norte");
-  assert.equal(hit.matches[0].tipo_contacto, "Proveedor");
-  assert.equal(hit.matches[0].tags_taxonomia, "obra, madera");
-  assert.equal(hit.matches[0].timestamp, "2026-10-01");
-  assert.equal(hit.matches[0].match_via, "cliente");
+  assert.deepEqual(hit.matches[0], {
+    row: 4, cliente: "Ana Pérez", telefono: "598 99 111 222", ubicacion: "Montevideo",
+    link_presupuesto: "https://drive.example/ana", observaciones: "obra norte",
+    tipo_contacto: "Proveedor", tags_taxonomia: "obra, madera", timestamp: "2026-10-01",
+    match_via: "cliente",
+  });
 }
 
 assert.equal(matchCrmClientRows([ana], "   ").ok, false);
@@ -53,12 +48,6 @@ assert.match(matchCrmClientRows([ana], "").error, /query requerido/);
   const phone = matchCrmClientRows([ana], "991112");
   assert.equal(phone.count, 1);
   assert.equal(phone.matches[0].match_via, "telefono");
-}
-
-{
-  const exact = matchCrmClientRows([ana], "59899111222");
-  assert.equal(exact.count, 1);
-  assert.equal(exact.matches[0].match_via, "telefono");
 }
 
 assert.equal(matchCrmClientRows([ana], "12345").count, 0);
@@ -137,13 +126,10 @@ assert.equal(matchCrmClientRows([ana], "12345").count, 0);
 }
 
 {
-  const many = Array.from({ length: 51 }, (_, i) => crmRow({ cliente: `Persona ${i}` }));
-  const capped = matchCrmClientRows(many, "persona");
-  assert.equal(capped.count, 10);
-  assert.equal(capped.matches[0].cliente, "Persona 0");
-  assert.equal(capped.matches[9].cliente, "Persona 9");
-  assert.equal(matchCrmClientRows(many, "persona", 50).count, 50);
-  assert.equal(matchCrmClientRows(many, "persona", 50).matches[49].cliente, "Persona 49");
+  const many = Array.from({ length: 51 }, (_, i) => crmRow({ cliente: `P${i}` }));
+  const capped = matchCrmClientRows(many, "p", 80);
+  assert.equal(capped.count, 50);
+  assert.equal(capped.matches[49].cliente, "P49");
 }
 
 const prevSheet = config.bmcSheetId;

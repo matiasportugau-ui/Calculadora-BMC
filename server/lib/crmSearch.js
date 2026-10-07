@@ -28,15 +28,7 @@ function normalizePhone(s) {
   return String(s || "").replace(/\D/g, "");
 }
 
-/**
- * Match CRM_Operativo data rows (range B4:AN) against a name, phone, or RUT query.
- * Row numbers are sheet rows (index 0 → row 4). Phone lookup is 6–11 digits and
- * does not read the phone column as text. A 12+ digit query is a RUT lookup
- * against cliente + observaciones only.
- * @param {unknown[][]} rows
- * @param {string} query
- * @param {number} [limite]
- */
+/** Match B4:AN rows. Sheet row = index + 4. Phone is 6–11 digits; 12+ is a RUT lookup. */
 export function matchCrmClientRows(rows, query, limite = 10) {
   const q = String(query || "").trim();
   if (!q) return { ok: false, error: "query requerido (nombre, teléfono o RUT)" };

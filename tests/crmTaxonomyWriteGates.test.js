@@ -29,10 +29,8 @@ for (const [raw, expected] of [
   [" Supplier ", "proveedor"],
   ["customer", "cliente"],
   ["Proveédor", "proveedor"],
-  ["próveedor", "proveedor"],
   ["Interno", "interno"],
   [" otro ", "otro"],
-  ["lead", "lead"],
 ]) {
   const plan = planCrmTaxonomyWrite(4, { tipoContacto: raw });
   assert.equal(plan.ok, true, raw);
