@@ -83,12 +83,11 @@ export async function readCrmRowTaxonomy(rowNum) {
 }
 
 /**
+ * Plan AL–AN taxonomy writes. Does not touch Sheets.
  * @param {number} rowNum
  * @param {{ tipoContacto?: string, tags?: string|string[], notas?: string }} fields — solo se escriben los definidos
  */
-export async function writeCrmRowTaxonomy(rowNum, fields = {}) {
-  const sheetId = config.bmcSheetId;
-  if (!sheetId) return { ok: false, error: "BMC_SHEET_ID no configurado" };
+export function planCrmTaxonomyWrite(rowNum, fields = {}) {
   const row = Number(rowNum);
   if (!row || row < 4) return { ok: false, error: "row debe ser >= 4" };
 
@@ -123,27 +122,49 @@ export async function writeCrmRowTaxonomy(rowNum, fields = {}) {
     return { ok: false, error: "Nada que escribir — pasá tipoContacto, tags y/o notas" };
   }
 
-  let sheets;
-  try {
-    sheets = await getSheetsClient();
-  } catch (err) {
-    return { ok: false, error: `Google auth falló: ${err.message}` };
+  return {
+    ok: true,
+    row,
+    updates,
+    written: {
+      tipoContacto: fields.tipoContacto !== undefined,
+      tags: fields.tags !== undefined,
+      notas: fields.notas !== undefined,
+    },
+    columnLetters: { tipo: "AL", tags: "AM", notas: "AN" },
+  };
+}
+
+/**
+ * @param {number} rowNum
+ * @param {{ tipoContacto?: string, tags?: string|string[], notas?: string }} fields — solo se escriben los definidos
+ * @param {object} [sheetsOverride] — test seam; production callers omit it
+ */
+export async function writeCrmRowTaxonomy(rowNum, fields = {}, sheetsOverride) {
+  const sheetId = config.bmcSheetId;
+  if (!sheetId) return { ok: false, error: "BMC_SHEET_ID no configurado" };
+  const plan = planCrmTaxonomyWrite(rowNum, fields);
+  if (!plan.ok) return plan;
+
+  let sheets = sheetsOverride;
+  if (!sheets) {
+    try {
+      sheets = await getSheetsClient();
+    } catch (err) {
+      return { ok: false, error: `Google auth falló: ${err.message}` };
+    }
   }
 
   try {
     await sheets.spreadsheets.values.batchUpdate({
       spreadsheetId: sheetId,
-      requestBody: { valueInputOption: "USER_ENTERED", data: updates },
+      requestBody: { valueInputOption: "USER_ENTERED", data: plan.updates },
     });
     return {
       ok: true,
-      row,
-      written: {
-        tipoContacto: fields.tipoContacto !== undefined,
-        tags: fields.tags !== undefined,
-        notas: fields.notas !== undefined,
-      },
-      columnLetters: { tipo: "AL", tags: "AM", notas: "AN" },
+      row: plan.row,
+      written: plan.written,
+      columnLetters: plan.columnLetters,
     };
   } catch (e) {
     return { ok: false, error: e.message || "Error al escribir CRM" };
