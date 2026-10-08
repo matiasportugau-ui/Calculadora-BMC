@@ -41,6 +41,7 @@ import {
   buildCanonicalAdminUpdates,
   formatAdminFecha,
   evaluateStorefrontConsulta,
+  rowHasLeadData,
   ADMIN_LEAD_ORIGEN_VW,
 } from "../lib/adminLeadLayout.js";
 
@@ -610,28 +611,65 @@ export function createWolfboardRouter(config) {
 
     const id = `MAN-${Date.now()}`;
     const fecha = formatAdminFecha(new Date());
-    const origen = sanitizeCellValue(String(body.origen ?? "").trim() || ADMIN_LEAD_ORIGEN_VW);
-    const evald = evaluateStorefrontConsulta({
-      consulta,
-      zona: body.zona,
-      cliente: body.cliente,
-    });
+    // Do not coerce blank origen → VW: Admin UI / WA tools omit or send WA/CL/….
+    // Only explicit VW (storefront) gets storefront evaluate/filter heuristics.
+    const origenRaw = String(body.origen ?? "").trim();
+    const origen = sanitizeCellValue(origenRaw);
+    const isVw = origenRaw.toUpperCase() === ADMIN_LEAD_ORIGEN_VW;
+    const evald = isVw
+      ? evaluateStorefrontConsulta({
+          consulta,
+          zona: body.zona,
+          cliente: body.cliente,
+        })
+      : {
+          stub: false,
+          estado: "Pendiente",
+          interpretacion: "",
+          respuesta: "",
+          faltantes: "",
+          quotable: false,
+        };
     const notas = String(body.notas ?? "").trim();
-    const interpretacion = notas
-      ? `${evald.interpretacion} · ${notas}`.slice(0, 8000)
-      : evald.interpretacion;
+    const interpretacion = isVw
+      ? (notas ? `${evald.interpretacion} · ${notas}`.slice(0, 8000) : evald.interpretacion)
+      : notas;
 
     if (dryRun) {
       return res.json({ ok: true, dryRun: true, id, fecha, layout: "canonical" });
     }
 
     try {
-      const existing = await sheets.spreadsheets.values.get({
-        spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A2:M200`,
-        valueRenderOption: "FORMATTED_VALUE",
-      });
-      const adminRow = findNextWorkingSetRow(existing.data.values || []);
+      const pickEmptyWorkingSetRow = async () => {
+        const existing = await sheets.spreadsheets.values.get({
+          spreadsheetId: adminSheetId,
+          range: `'${adminTab}'!A2:M200`,
+          valueRenderOption: "FORMATTED_VALUE",
+        });
+        const candidate = findNextWorkingSetRow(existing.data.values || []);
+        if (candidate == null) return { adminRow: null, full: true };
+        // TOCTOU: re-read the target row before batchUpdate so a concurrent
+        // create cannot silently overwrite another lead.
+        const probe = await sheets.spreadsheets.values.get({
+          spreadsheetId: adminSheetId,
+          range: `'${adminTab}'!A${candidate}:M${candidate}`,
+          valueRenderOption: "FORMATTED_VALUE",
+        });
+        if (rowHasLeadData(probe.data.values?.[0] || [])) {
+          return { adminRow: null, conflict: true };
+        }
+        return { adminRow: candidate };
+      };
+
+      let picked = await pickEmptyWorkingSetRow();
+      if (picked.conflict) picked = await pickEmptyWorkingSetRow();
+      if (picked.full || picked.adminRow == null) {
+        return res.status(503).json({
+          ok: false,
+          error: "Admin working set lleno (filas 2–200); no se sobrescribe una fila existente.",
+        });
+      }
+      const adminRow = picked.adminRow;
       const data = buildCanonicalAdminUpdates(
         adminTab,
         adminRow,

@@ -42,6 +42,15 @@ assert.equal(findNextWorkingSetRow(grid), 81, "insert after row 80, skip 3713 du
 assert.equal(findNextWorkingSetRow([]), 2);
 assert.equal(findNextWorkingSetRow(Array.from({ length: 10 }, occupiedRow)), 12);
 
+// Saturated working set (rows 2–200 inclusive) must NOT return an occupied row.
+const fullSet = Array.from({ length: 199 }, occupiedRow);
+assert.equal(findNextWorkingSetRow(fullSet), null, "full A2:M200 → null, never overwrite");
+
+// Row 200 empty, 2–199 full → claim 200.
+const almostFull = Array.from({ length: 198 }, occupiedRow);
+almostFull.push([]);
+assert.equal(findNextWorkingSetRow(almostFull), 200, "last empty slot in working set");
+
 assert.equal(isStubStorefrontConsulta(STOREFRONT_STUB_CONSULTA), true);
 assert.equal(isStubStorefrontConsulta("IsoDec 100 12x4 gris"), false);
 
