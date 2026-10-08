@@ -72,30 +72,38 @@ export function rowHasLeadData(row) {
 /**
  * Next empty row in the operator working set (after last occupied, before the
  * giant empty gap / dump cluster). valueRows[0] = sheet row 2.
+ *
+ * Returns null when the working set is saturated — callers must NOT write to a
+ * guessed row (batchUpdate would silently overwrite an existing lead).
+ * maxRow is inclusive (default 200 for range A2:M200).
  */
 export function findNextWorkingSetRow(valueRows, opts = {}) {
   const startRow = Number(opts.startRow) || 2;
   const gap = Number(opts.gap) || WORKING_SET_EMPTY_GAP;
-  const dumpFloor = Number(opts.dumpFloor) || WORKING_SET_DUMP_FLOOR;
+  const maxRow = Number(opts.maxRow ?? opts.dumpFloor) || WORKING_SET_DUMP_FLOOR;
   const rows = Array.isArray(valueRows) ? valueRows : [];
   let lastOccupied = startRow - 1;
   let empty = 0;
   for (let i = 0; i < rows.length; i++) {
     const rowNum = startRow + i;
-    if (rowNum >= dumpFloor && lastOccupied >= startRow) {
-      return lastOccupied + 1;
-    }
+    if (rowNum > maxRow) break;
     if (rowHasLeadData(rows[i])) {
       lastOccupied = rowNum;
       empty = 0;
     } else {
       empty += 1;
       if (empty >= gap && lastOccupied >= startRow) {
-        return lastOccupied + 1;
+        break;
       }
     }
   }
-  return Math.max(lastOccupied + 1, startRow);
+  const next = Math.max(lastOccupied + 1, startRow);
+  if (next > maxRow) return null;
+  const nextIdx = next - startRow;
+  if (nextIdx >= 0 && nextIdx < rows.length && rowHasLeadData(rows[nextIdx])) {
+    return null;
+  }
+  return next;
 }
 
 /** Prefer canonical (C=Estado) when the row looks like the live operator sheet. */

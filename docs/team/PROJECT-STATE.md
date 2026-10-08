@@ -14,6 +14,8 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-10-08 (fix — Admin working-set row-create no overwrite):** `findNextWorkingSetRow` returns `null` when A2:M200 is full (previously returned row 200 and `batchUpdate` silently overwrote the lead). `POST /wolfboard/row-create` probes the target row before write (TOCTOU), 503 if saturated; VW-only storefront evaluate — WA/CL/manual stay `Pendiente`, blank origen no longer coerced to VW.
+
 **2026-10-08 (feat — Panelin VW Admin working set, not row 3713):** `POST /wolfboard/row-create` no longer `values.append` (that followed the sheet used-range into the dump at 3713+). Writes the next empty row in A2:M200 with canonical columns (C Estado, D Fecha, E Cliente, F Origen, G Tel, I Consulta, J interpretación, K respuesta, L faltantes). Stub «Chat tienda Panelin — inicio» → Falta info; real chat is evaluated/assumed (no firm prices). `/chat` persist uses the same layout. Tests `adminLeadLayout.test.js`. Existing dump 3713–3798 migrated HITL to working set.
 
 **2026-10-04 (ops — bot autónomo `bmc-crm-golive` registrado):** Definido el agente Grok `bmc-crm-golive` (`~/.grok/agents/bmc-crm-golive.md`, máquina de Matías) para cerrar lo que queda del go-live del dashboard: tab `CONTACTOS` en Pagos, conversión Ventas .xlsx→Sheet autorizada + propagación de ID, Script Properties del digest, `VentasConsolidar.gs` + triggers. Reglas duras: binding-check por paso (spreadsheet↔proyecto↔función vs [`AUTOMATIONS-BY-WORKBOOK.md`](../google-sheets-module/AUTOMATIONS-BY-WORKBOOK.md) §10), nunca ejecuta funciones Apps Script, OAuth = gate humano, dry-run default con `APPLY=1`, merge solo checks verdes. Quedan humanos: 3.3 `runInitialSetup` y UAT 6.1–6.7.
