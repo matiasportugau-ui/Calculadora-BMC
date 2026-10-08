@@ -23,9 +23,10 @@ function colIndexToLetter(index) {
 /**
  * Push deal fields to CRM row when properties.crm_row_id is set.
  * @param {object} deal — omni_deals row
+ * @param {object} [sheetsClient] — optional Sheets client. Production callers omit it.
  * @returns {Promise<{ ok: boolean, skipped?: boolean, error?: string }>}
  */
-export async function syncDealToCrm(deal) {
+export async function syncDealToCrm(deal, sheetsClient) {
   if (!config.bmcSheetId) {
     return { ok: false, error: "bmc_sheet_id_missing" };
   }
@@ -40,8 +41,11 @@ export async function syncDealToCrm(deal) {
   }
 
   try {
-    const authClient = await getGoogleAuthClient(SCOPE_WRITE);
-    const sheets = google.sheets({ version: "v4", auth: authClient });
+    let sheets = sheetsClient;
+    if (!sheets) {
+      const authClient = await getGoogleAuthClient(SCOPE_WRITE);
+      sheets = google.sheets({ version: "v4", auth: authClient });
+    }
     const tab = config.wolfbCrmMainTab || "CRM_Operativo";
 
     const headerRes = await sheets.spreadsheets.values.get({
