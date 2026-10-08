@@ -937,7 +937,7 @@ await group("wa_lead_to_admin — loopback row-create returns adminRow", async (
     assert(String(url).includes("127.0.0.1"), "loopback host");
     const body = JSON.parse(init.body);
     assert(body.origen === "VW", "storefront origen");
-    assert(String(body.notas || "").includes("origen voz web"), "storefront notas reach col J");
+    assert(String(body.notas || "").includes("origen voz web"), "storefront notas reach interpretacion");
     return { ok: true, id: "MAN-1", fecha: "28/08/2026", adminRow: 31 };
   });
   const { parsed } = await run("wa_lead_to_admin", {

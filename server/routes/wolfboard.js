@@ -35,6 +35,14 @@ import {
 } from "../middleware/requireWolfboardAuth.js";
 import crypto from "node:crypto";
 import { getAvailableProviders } from "../lib/aiProviderConfig.js";
+import {
+  findNextWorkingSetRow,
+  mapAdminRowCanonical,
+  buildCanonicalAdminUpdates,
+  formatAdminFecha,
+  evaluateStorefrontConsulta,
+  ADMIN_LEAD_ORIGEN_VW,
+} from "../lib/adminLeadLayout.js";
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 const MIN_CONSULTA_LEN = 20;
@@ -297,26 +305,13 @@ function logRoleHint(req, config) {
   );
 }
 
-/** Mapa de fila Admin 2.0 (A2:M) → objeto unificado (índices según comentario de cabecera). */
+/** Mapa de fila Admin 2.0 → objeto unificado (canonical C–L, fallback dump A:M). */
 function mapAdminSheetRow(row, idx, adminSheetId) {
-  const sheetBase = `https://docs.google.com/spreadsheets/d/${adminSheetId}/edit`;
-  const estado = String(row[11] ?? "").trim();
+  const mapped = mapAdminRowCanonical(row, idx, adminSheetId);
+  const estado = mapped.estado;
   return {
-    rowNum: idx + 2,
-    id: String(row[0] ?? "").trim(),
-    fecha: String(row[1] ?? "").trim(),
-    telefono: String(row[3] ?? "").trim(),
-    cliente: String(row[4] ?? "").trim(),
-    canal: String(row[5] ?? "").trim(),
-    origen: String(row[5] ?? "").trim(),
-    zona: String(row[7] ?? "").trim(),
-    consulta: String(row[8] ?? "").trim(),
-    respuesta: String(row[9] ?? "").trim(),
-    link: String(row[10] ?? "").trim(),
-    estado,
+    ...mapped,
     outcome: deriveOutcome(estado),
-    replaySnapshotUrl: String(row[12] ?? "").trim(),
-    sheetUrl: sheetBase,
   };
 }
 
@@ -475,7 +470,19 @@ export function createWolfboardRouter(config) {
   router.post("/row", requireWolfboardWrite, async (req, res) => {
     logRoleHint(req, config);
     const dryRun = config.wolfbDryRun;
-    const { adminRow, respuesta, link, aprobado, replaySnapshotUrl } = req.body || {};
+    const {
+      adminRow,
+      respuesta,
+      link,
+      aprobado,
+      replaySnapshotUrl,
+      canonical,
+      consulta,
+      interpretacion,
+      respuestaAi,
+      faltantes,
+      estado,
+    } = req.body || {};
     if (!adminRow) return res.status(400).json({ ok: false, error: "adminRow requerido" });
 
     const adminSheetId = config.wolfbAdminSheetId;
@@ -497,12 +504,30 @@ export function createWolfboardRouter(config) {
     const safeReplay = replaySnapshotUrl !== undefined ? sanitizeCellValue(replaySnapshotUrl) : undefined;
 
     const adminUpdates = [];
-    if (safeRespuesta !== undefined) adminUpdates.push({ range: `'${adminTab}'!J${adminRow}`, values: [[safeRespuesta]] });
-    if (safeLink !== undefined) adminUpdates.push({ range: `'${adminTab}'!K${adminRow}`, values: [[safeLink]] });
-    if (safeReplay !== undefined) {
-      adminUpdates.push({ range: `'${adminTab}'!M${adminRow}`, values: [[safeReplay]] });
+    if (canonical) {
+      adminUpdates.push(
+        ...buildCanonicalAdminUpdates(
+          adminTab,
+          adminRow,
+          {
+            consulta,
+            interpretacion: interpretacion != null ? interpretacion : respuesta,
+            respuesta: respuestaAi,
+            faltantes,
+            estado,
+            link: link ?? replaySnapshotUrl,
+          },
+          sanitizeCellValue,
+        ),
+      );
+    } else {
+      if (safeRespuesta !== undefined) adminUpdates.push({ range: `'${adminTab}'!J${adminRow}`, values: [[safeRespuesta]] });
+      if (safeLink !== undefined) adminUpdates.push({ range: `'${adminTab}'!K${adminRow}`, values: [[safeLink]] });
+      if (safeReplay !== undefined) {
+        adminUpdates.push({ range: `'${adminTab}'!M${adminRow}`, values: [[safeReplay]] });
+      }
+      if (aprobado) adminUpdates.push({ range: `'${adminTab}'!L${adminRow}`, values: [["Aprobado"]] });
     }
-    if (aprobado) adminUpdates.push({ range: `'${adminTab}'!L${adminRow}`, values: [["Aprobado"]] });
 
     if (!dryRun && adminUpdates.length > 0) {
       try {
@@ -584,44 +609,61 @@ export function createWolfboardRouter(config) {
     catch (e) { return sheetsAuthFail(res, e); }
 
     const id = `MAN-${Date.now()}`;
-    const now = new Date();
-    const fecha = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
-
-    // Schema (A2:M): A=id, B=fecha, C=?, D=telefono, E=cliente, F=origen,
-    // G=?, H=zona, I=consulta, J=respuesta, K=link, L=estado, M=replay
-    const safeRow = [
-      id,
-      fecha,
-      "",
-      sanitizeCellValue(String(body.telefono ?? "")),
-      sanitizeCellValue(String(body.cliente ?? "")),
-      sanitizeCellValue(String(body.origen ?? "")),
-      "",
-      sanitizeCellValue(String(body.zona ?? "")),
-      sanitizeCellValue(consulta),
-      sanitizeCellValue(String(body.notas ?? "")),
-      sanitizeCellValue(String(body.link ?? body.linkDrive ?? "")),
-      "Pendiente",
-      "",
-    ];
+    const fecha = formatAdminFecha(new Date());
+    const origen = sanitizeCellValue(String(body.origen ?? "").trim() || ADMIN_LEAD_ORIGEN_VW);
+    const evald = evaluateStorefrontConsulta({
+      consulta,
+      zona: body.zona,
+      cliente: body.cliente,
+    });
+    const notas = String(body.notas ?? "").trim();
+    const interpretacion = notas
+      ? `${evald.interpretacion} · ${notas}`.slice(0, 8000)
+      : evald.interpretacion;
 
     if (dryRun) {
-      return res.json({ ok: true, dryRun: true, id, fecha });
+      return res.json({ ok: true, dryRun: true, id, fecha, layout: "canonical" });
     }
 
     try {
-      const result = await sheets.spreadsheets.values.append({
+      const existing = await sheets.spreadsheets.values.get({
         spreadsheetId: adminSheetId,
-        range: `'${adminTab}'!A:M`,
-        valueInputOption: "USER_ENTERED",
-        insertDataOption: "INSERT_ROWS",
-        requestBody: { values: [safeRow] },
+        range: `'${adminTab}'!A2:M200`,
+        valueRenderOption: "FORMATTED_VALUE",
       });
-      // Append result has updatedRange like "Admin 2.0!A42:M42" — extract rowNum
-      const updatedRange = String(result.data?.updates?.updatedRange || "");
-      const m = updatedRange.match(/![A-Z]+(\d+):/);
-      const adminRow = m ? Number(m[1]) : null;
-      return res.json({ ok: true, id, fecha, adminRow });
+      const adminRow = findNextWorkingSetRow(existing.data.values || []);
+      const data = buildCanonicalAdminUpdates(
+        adminTab,
+        adminRow,
+        {
+          id,
+          estado: evald.estado,
+          fecha,
+          cliente: body.cliente,
+          origen,
+          telefono: body.telefono,
+          zona: body.zona,
+          consulta,
+          interpretacion,
+          respuesta: evald.respuesta,
+          faltantes: evald.faltantes,
+          link: body.link || body.linkDrive,
+        },
+        sanitizeCellValue,
+      );
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId: adminSheetId,
+        requestBody: { valueInputOption: "USER_ENTERED", data },
+      });
+      return res.json({
+        ok: true,
+        id,
+        fecha,
+        adminRow,
+        layout: "canonical",
+        stub: evald.stub,
+        quotable: evald.quotable,
+      });
     } catch (e) {
       return res.status(503).json({ ok: false, error: "Error al crear fila: " + e.message });
     }
