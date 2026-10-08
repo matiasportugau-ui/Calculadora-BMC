@@ -298,6 +298,12 @@ export const TOOLS_REQUIRING_AUTH = new Set([
   "wolfboard_actualizar_fila",
   "wolfboard_marcar_enviado",
   "wolfboard_quote_batch",
+  // Admin PDF icons + Drive archive — mutate Admin col M / company Drive.
+  // user_confirmed alone is not auth: anonymous exec-tool callers can set it.
+  "admin_cargar_pdfs_fila",
+  "archivar_pdfs_drive",
+  // Bug reports — internal logs, routes, screenshot URLs via bugsForward token.
+  "list_bug_reports",
   // Email cockpit + Omni (list/read/classify/draft/send — send is HITL)
   "email_panelsim_resumen",
   "email_borrador_saliente",
