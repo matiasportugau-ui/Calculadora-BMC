@@ -37,6 +37,7 @@ import { shopperTextForBrain, storefrontBrainStatus } from "../lib/voice/storefr
 import { postCotizar } from "../lib/calcLoopbackClient.js";
 import { bomToCartLines, quotePayloadToCotizarBody } from "../lib/voice/storefrontQuoteCart.js";
 import { appendStorefrontTurn } from "../lib/voice/storefrontConversationLog.js";
+import { evaluateStorefrontConsulta } from "../lib/adminLeadLayout.js";
 import {
   pingLiveSession,
   addLiveTurn,
@@ -77,7 +78,7 @@ export function shouldAttemptAdminColJ(adminRow) {
   return Number.isFinite(n) && n >= 2;
 }
 
-/** Rolling chat text for Admin 2.0 col J (tab Admin. of WOLFB_ADMIN_SHEET_ID). */
+/** Rolling chat text for Admin 2.0 col I (Consulta). */
 export function formatStorefrontAdminTranscript({
   cliente = "",
   telefono = "",
@@ -105,13 +106,27 @@ export function formatStorefrontAdminTranscript({
   return lines.join("\n").slice(0, 8000);
 }
 
-export async function persistStorefrontAdminTranscript(adminRow, transcript) {
+export async function persistStorefrontAdminTranscript(adminRow, transcript, extra = {}) {
   if (!shouldAttemptAdminColJ(adminRow)) return { ok: false, skipped: true };
   const text = String(transcript || "").trim();
   if (!text) return { ok: false, skipped: true };
+  const evald = evaluateStorefrontConsulta({
+    consulta: text,
+    zona: extra.zona,
+    cliente: extra.cliente,
+  });
   const raw = await executeTool(
     "wolfboard_actualizar_fila",
-    { rowNum: Number(adminRow), respuesta: text, user_confirmed: true },
+    {
+      rowNum: Number(adminRow),
+      canonical: true,
+      consulta: text,
+      interpretacion: evald.interpretacion,
+      respuestaAi: evald.respuesta,
+      faltantes: evald.faltantes,
+      estado: evald.estado,
+      user_confirmed: true,
+    },
     {},
     { source: "storefront-voice" },
   );
@@ -119,7 +134,7 @@ export async function persistStorefrontAdminTranscript(adminRow, transcript) {
   if (parsed.ok !== true) {
     return { ok: false, error: parsed.error || "No se pudo guardar el chat." };
   }
-  return { ok: true, adminRow: Number(adminRow) };
+  return { ok: true, adminRow: Number(adminRow), stub: evald.stub, quotable: evald.quotable };
 }
 
 function clientIp(req) {
@@ -561,7 +576,9 @@ export default function createPublicVoiceRouter() {
       return res.status(400).json({ ok: false, error: "adminRow requerido." });
     }
     try {
-      const saved = await persistStorefrontAdminTranscript(adminRow, transcript);
+      const saved = await persistStorefrontAdminTranscript(adminRow, transcript, {
+        cliente: String(req.body?.cliente || "").trim(),
+      });
       if (!saved.ok) {
         return res.status(502).json({ ok: false, error: saved.error || "No se pudo guardar el chat." });
       }
@@ -620,7 +637,9 @@ export default function createPublicVoiceRouter() {
       });
       if (shouldAttemptAdminColJ(adminRow)) {
         try {
-          const saved = await persistStorefrontAdminTranscript(adminRow, transcript);
+          const saved = await persistStorefrontAdminTranscript(adminRow, transcript, {
+            cliente,
+          });
           if (saved.ok) {
             recordVoiceEvent({
               kind: "storefront_chat_log",

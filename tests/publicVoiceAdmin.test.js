@@ -111,8 +111,9 @@ assert.match(transcript, /Chat Panelin \(VW\) · Ana/);
 assert.match(transcript, /Vos: quiero techo/);
 assert.match(transcript, /Vos: IsoDec 100/);
 assert.match(transcript, /Te armo la aproximación/);
-assert.match(actionSrc, /persistStorefrontAdminTranscript/, "every /chat writes Admin col J");
+assert.match(actionSrc, /persistStorefrontAdminTranscript/, "every /chat writes Admin Consulta");
 assert.match(actionSrc, /formatStorefrontAdminTranscript/, "chat transcript for the sheet");
+assert.match(actionSrc, /canonical: true/, "storefront persist uses canonical Admin columns");
 
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.match(widget, /adminRow: state\.adminRow/, "widget sends adminRow on /chat");
