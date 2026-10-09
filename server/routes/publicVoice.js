@@ -37,7 +37,6 @@ import { shopperTextForBrain, storefrontBrainStatus } from "../lib/voice/storefr
 import { postCotizar } from "../lib/calcLoopbackClient.js";
 import { bomToCartLines, quotePayloadToCotizarBody } from "../lib/voice/storefrontQuoteCart.js";
 import { appendStorefrontTurn } from "../lib/voice/storefrontConversationLog.js";
-import { evaluateStorefrontConsulta } from "../lib/adminLeadLayout.js";
 import {
   pingLiveSession,
   addLiveTurn,
@@ -106,25 +105,22 @@ export function formatStorefrontAdminTranscript({
   return lines.join("\n").slice(0, 8000);
 }
 
-export async function persistStorefrontAdminTranscript(adminRow, transcript, extra = {}) {
+/**
+ * Rolling shopper chat → Admin col I (Consulta) only.
+ * Estado / J–L are set once at identify (`row-create` + evaluateStorefrontConsulta).
+ * Re-writing them on every /chat turn would clobber operator triage (Asignado,
+ * Respuesta AI, Datos Faltantes) with a fresh heuristic.
+ */
+export async function persistStorefrontAdminTranscript(adminRow, transcript, _extra = {}) {
   if (!shouldAttemptAdminColJ(adminRow)) return { ok: false, skipped: true };
   const text = String(transcript || "").trim();
   if (!text) return { ok: false, skipped: true };
-  const evald = evaluateStorefrontConsulta({
-    consulta: text,
-    zona: extra.zona,
-    cliente: extra.cliente,
-  });
   const raw = await executeTool(
     "wolfboard_actualizar_fila",
     {
       rowNum: Number(adminRow),
       canonical: true,
       consulta: text,
-      interpretacion: evald.interpretacion,
-      respuestaAi: evald.respuesta,
-      faltantes: evald.faltantes,
-      estado: evald.estado,
       user_confirmed: true,
     },
     {},
@@ -134,7 +130,7 @@ export async function persistStorefrontAdminTranscript(adminRow, transcript, ext
   if (parsed.ok !== true) {
     return { ok: false, error: parsed.error || "No se pudo guardar el chat." };
   }
-  return { ok: true, adminRow: Number(adminRow), stub: evald.stub, quotable: evald.quotable };
+  return { ok: true, adminRow: Number(adminRow) };
 }
 
 function clientIp(req) {
