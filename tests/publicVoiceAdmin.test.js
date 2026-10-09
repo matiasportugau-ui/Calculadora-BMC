@@ -114,6 +114,21 @@ assert.match(transcript, /Te armo la aproximación/);
 assert.match(actionSrc, /persistStorefrontAdminTranscript/, "every /chat writes Admin Consulta");
 assert.match(actionSrc, /formatStorefrontAdminTranscript/, "chat transcript for the sheet");
 assert.match(actionSrc, /canonical: true/, "storefront persist uses canonical Admin columns");
+// Pin: chat persist must not re-evaluate Estado/J–L (operator triage wipe after #1340).
+const persistFn = actionSrc.match(
+  /export async function persistStorefrontAdminTranscript[\s\S]*?\n\}/,
+);
+assert.ok(persistFn, "persistStorefrontAdminTranscript export present");
+assert.match(persistFn[0], /consulta:\s*text/, "persist writes Consulta (I)");
+assert.doesNotMatch(persistFn[0], /\bestado\b/, "persist must not rewrite Estado");
+assert.doesNotMatch(persistFn[0], /respuestaAi/, "persist must not rewrite Respuesta AI");
+assert.doesNotMatch(persistFn[0], /faltantes/, "persist must not rewrite Datos Faltantes");
+assert.doesNotMatch(persistFn[0], /interpretacion/, "persist must not rewrite Interpretación AI");
+assert.doesNotMatch(
+  persistFn[0],
+  /evaluateStorefrontConsulta/,
+  "evaluate runs at identify/row-create, not every chat turn",
+);
 
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.match(widget, /adminRow: state\.adminRow/, "widget sends adminRow on /chat");
