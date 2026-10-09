@@ -746,6 +746,7 @@ await group("wolfboard_actualizar_fila — happy path", async () => {
     assert(init.method === "POST", "POST");
     const body = JSON.parse(init.body);
     assert(body.rowNum === 5 && body.adminRow === 5 && body.respuesta === "Texto OK", "rowNum + adminRow + respuesta in body");
+    assert(body.canonical === undefined, "legacy row update does not flip onto the canonical map");
     return { ok: true, rowNum: 5 };
   });
   const { parsed } = await run("wolfboard_actualizar_fila", {
@@ -1026,6 +1027,57 @@ await group("listar_cotizaciones_recientes — date filter", async () => {
     hasta: "2020-01-31",
   });
   assert(!otherMonth.some((e) => e.id === id), "other month excludes fixture");
+});
+
+await group("wolfboard_actualizar_fila — canonical Admin columns", async () => {
+  const { config } = await import("../server/config.js");
+  config.apiAuthToken = "test-wolfb-token";
+  setFetch(async (url, init) => {
+    assert(url.endsWith("/api/wolfboard/row"), "hits row endpoint");
+    const body = JSON.parse(init.body);
+    assert(body.canonical === true, "canonical flag forwarded as boolean");
+    assert(body.rowNum === 81 && body.adminRow === 81, "rowNum mirrored to adminRow");
+    assert(body.consulta === "IsoDec 100 12x4", "consulta forwarded");
+    assert(body.interpretacion === "lead_vw", "interpretacion forwarded");
+    assert(body.respuestaAi === "aprox", "respuestaAi forwarded to K, not legacy respuesta");
+    assert(body.faltantes === "color", "faltantes forwarded");
+    assert(body.estado === "Cotizable", "estado forwarded");
+    assert(body.respuesta === undefined, "canonical update does not invent legacy respuesta");
+    return { ok: true, adminRow: 81 };
+  });
+  const { parsed } = await run("wolfboard_actualizar_fila", {
+    rowNum: 81,
+    canonical: true,
+    consulta: "IsoDec 100 12x4",
+    interpretacion: "lead_vw",
+    respuestaAi: "aprox",
+    faltantes: "color",
+    estado: "Cotizable",
+    user_confirmed: true,
+  });
+  assert(parsed.ok === true, "ok true");
+
+  setFetch(async (_url, init) => {
+    const body = JSON.parse(init.body);
+    assert(body.canonical === true, "canonical still set when other fields are null");
+    assert(body.consulta === undefined, "null consulta is omitted so column I is not wiped");
+    assert(body.interpretacion === undefined, "null interpretacion is omitted");
+    assert(body.respuestaAi === undefined, "null respuestaAi is omitted");
+    assert(body.faltantes === undefined, "null faltantes is omitted");
+    assert(body.estado === "Falta info", "estado still forwarded");
+    return { ok: true, adminRow: 81 };
+  });
+  const omitted = await run("wolfboard_actualizar_fila", {
+    rowNum: 81,
+    canonical: true,
+    consulta: null,
+    interpretacion: null,
+    respuestaAi: null,
+    faltantes: null,
+    estado: "Falta info",
+    user_confirmed: true,
+  });
+  assert(omitted.parsed.ok === true, "ok true with omitted nulls");
 });
 
 // ── Summary ──────────────────────────────────────────────────────────────────
