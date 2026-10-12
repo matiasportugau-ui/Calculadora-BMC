@@ -38,6 +38,13 @@ import { postCotizar } from "../lib/calcLoopbackClient.js";
 import { bomToCartLines, quotePayloadToCotizarBody } from "../lib/voice/storefrontQuoteCart.js";
 import { appendStorefrontTurn } from "../lib/voice/storefrontConversationLog.js";
 import {
+  evaluateStorefrontConsulta,
+  isStubStorefrontConsulta,
+  buildCanonicalAdminUpdates,
+} from "../lib/adminLeadLayout.js";
+import { getSheetsClient, redactGoogleError } from "../lib/googleSheetsAuth.js";
+import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
+import {
   pingLiveSession,
   addLiveTurn,
   shopperLiveState,
@@ -77,7 +84,7 @@ export function shouldAttemptAdminColJ(adminRow) {
   return Number.isFinite(n) && n >= 2;
 }
 
-/** Rolling chat text for Admin 2.0 col J (tab Admin. of WOLFB_ADMIN_SHEET_ID). */
+/** Rolling chat text for Admin 2.0 col I (Consulta). */
 export function formatStorefrontAdminTranscript({
   cliente = "",
   telefono = "",
@@ -105,21 +112,82 @@ export function formatStorefrontAdminTranscript({
   return lines.join("\n").slice(0, 8000);
 }
 
-export async function persistStorefrontAdminTranscript(adminRow, transcript) {
-  if (!shouldAttemptAdminColJ(adminRow)) return { ok: false, skipped: true };
+/**
+ * Write storefront chat into Admin 2.0 (canonical C–M) via Sheets directly.
+ * Avoids wolfboard HTTP loopback so /chat 200 no longer hides auth/loopback misses.
+ * Respects WOLFB_DRY_RUN (returns ok:false + dryRun so callers can surface it).
+ */
+export async function persistStorefrontAdminTranscript(adminRow, transcript, extra = {}) {
+  if (!shouldAttemptAdminColJ(adminRow)) return { ok: false, skipped: true, reason: "adminRow" };
   const text = String(transcript || "").trim();
-  if (!text) return { ok: false, skipped: true };
-  const raw = await executeTool(
-    "wolfboard_actualizar_fila",
-    { rowNum: Number(adminRow), respuesta: text, user_confirmed: true },
-    {},
-    { source: "storefront-voice" },
-  );
-  const parsed = parseStorefrontToolJson(raw);
-  if (parsed.ok !== true) {
-    return { ok: false, error: parsed.error || "No se pudo guardar el chat." };
+  if (!text) return { ok: false, skipped: true, reason: "empty" };
+  const richness = (s) => ((String(s).match(/\bVos:/g) || []).length * 10000) + String(s).length;
+  const evald = evaluateStorefrontConsulta({
+    consulta: text,
+    zona: extra.zona,
+    cliente: extra.cliente,
+  });
+  const sheetId = config.wolfbAdminSheetId;
+  const tab = config.wolfbAdminTab || "Admin.";
+  if (!sheetId) {
+    return { ok: false, error: "WOLFB_ADMIN_SHEET_ID no configurado", adminRow: Number(adminRow) };
   }
-  return { ok: true, adminRow: Number(adminRow) };
+  if (config.wolfbDryRun) {
+    return {
+      ok: false,
+      dryRun: true,
+      error: "WOLFB_DRY_RUN=1 — Admin no se actualizó",
+      adminRow: Number(adminRow),
+      stub: evald.stub,
+      quotable: evald.quotable,
+    };
+  }
+  const updates = buildCanonicalAdminUpdates(
+    tab,
+    Number(adminRow),
+    {
+      consulta: text,
+      interpretacion: evald.interpretacion,
+      respuesta: evald.respuesta,
+      faltantes: evald.faltantes,
+      estado: evald.estado,
+    },
+    sanitizeCellValue,
+  );
+  if (!updates.length) {
+    return { ok: false, error: "Sin celdas para actualizar", adminRow: Number(adminRow) };
+  }
+  try {
+    const sheets = await getSheetsClient();
+    const current = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: `'${tab.replace(/'/g, "")}'!I${Number(adminRow)}`,
+    });
+    const existing = String(current.data.values?.[0]?.[0] || "");
+    if (richness(existing) > richness(text)) {
+      return {
+        ok: true,
+        kept: true,
+        adminRow: Number(adminRow),
+        reason: "existing log is richer",
+        stub: isStubStorefrontConsulta(text),
+      };
+    }
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: sheetId,
+      requestBody: { valueInputOption: "USER_ENTERED", data: updates },
+    });
+  } catch (err) {
+    const msg = redactGoogleError(err?.message || String(err) || "Sheets write failed");
+    return { ok: false, error: String(msg), adminRow: Number(adminRow) };
+  }
+  return {
+    ok: true,
+    adminRow: Number(adminRow),
+    stub: evald.stub,
+    quotable: evald.quotable,
+    path: "sheets-direct",
+  };
 }
 
 function clientIp(req) {
@@ -550,8 +618,9 @@ export default function createPublicVoiceRouter() {
       return res.status(400).json({ ok: false, error: "Teléfono requerido para loguear el chat." });
     }
     if (!transcript) return res.json({ ok: true, skipped: true });
+    const closeout = String(req.body?.closeout || "").trim().slice(0, 40);
     appendStorefrontTurn({
-      kind: "log",
+      kind: closeout ? "closeout" : "log",
       adminRow: shouldAttemptAdminColJ(adminRow) ? adminRow : null,
       telefono,
       pageUrl,
@@ -561,14 +630,44 @@ export default function createPublicVoiceRouter() {
       return res.status(400).json({ ok: false, error: "adminRow requerido." });
     }
     try {
-      const saved = await persistStorefrontAdminTranscript(adminRow, transcript);
+      const saved = await persistStorefrontAdminTranscript(adminRow, transcript, {
+        cliente: String(req.body?.cliente || "").trim(),
+      });
       if (!saved.ok) {
-        return res.status(502).json({ ok: false, error: saved.error || "No se pudo guardar el chat." });
+        recordVoiceError({
+          kind: "storefront_admin_persist",
+          message: saved.error || saved.reason || "persist failed",
+          status: 502,
+          detail: `log:${adminRow}${saved.dryRun ? ":dryRun" : ""}`,
+        });
+        return res.status(502).json({
+          ok: false,
+          error: saved.error || "No se pudo guardar el chat.",
+          dryRun: saved.dryRun || undefined,
+          adminRow,
+        });
       }
-      recordVoiceEvent({ kind: "storefront_chat_log", surface: "storefront", detail: String(adminRow) });
-      return res.json({ ok: true, adminRow });
+      recordVoiceEvent({
+        kind: closeout ? "storefront_chat_closeout" : "storefront_chat_log",
+        surface: "storefront",
+        detail: closeout ? `${adminRow}:${closeout}` : String(adminRow),
+      });
+      return res.json({
+        ok: true,
+        adminRow,
+        closeout: closeout || undefined,
+        stub: saved.stub,
+        quotable: saved.quotable,
+        path: saved.path,
+      });
     } catch (err) {
       req.log?.warn?.({ err }, "storefront chat log failed");
+      recordVoiceError({
+        kind: "storefront_admin_persist",
+        message: err?.message || "log failed",
+        status: 502,
+        detail: `log:${adminRow}`,
+      });
       return res.status(502).json({ ok: false, error: err?.message || "No se pudo guardar el chat." });
     }
   });
@@ -618,9 +717,23 @@ export default function createPublicVoiceRouter() {
         pageUrl,
         transcript,
       });
+      /** @type {{ ok: boolean, adminRow?: number, error?: string, skipped?: boolean, dryRun?: boolean, path?: string }} */
+      let adminPersist = { ok: false, skipped: true, reason: "no_adminRow" };
       if (shouldAttemptAdminColJ(adminRow)) {
         try {
-          const saved = await persistStorefrontAdminTranscript(adminRow, transcript);
+          const saved = await persistStorefrontAdminTranscript(adminRow, transcript, {
+            cliente,
+          });
+          adminPersist = {
+            ok: Boolean(saved.ok),
+            adminRow: Number(adminRow),
+            error: saved.error || undefined,
+            skipped: saved.skipped || undefined,
+            dryRun: saved.dryRun || undefined,
+            path: saved.path,
+            stub: saved.stub,
+            quotable: saved.quotable,
+          };
           if (saved.ok) {
             recordVoiceEvent({
               kind: "storefront_chat_log",
@@ -628,13 +741,33 @@ export default function createPublicVoiceRouter() {
               detail: String(adminRow),
             });
           } else {
-            req.log?.warn?.({ err: saved.error, adminRow }, "storefront chat admin persist skipped");
+            req.log?.warn?.(
+              { err: saved.error || saved.reason, adminRow, dryRun: saved.dryRun },
+              "storefront chat admin persist failed",
+            );
+            recordVoiceError({
+              kind: "storefront_admin_persist",
+              message: saved.error || saved.reason || "persist failed",
+              status: 502,
+              detail: `chat:${adminRow}${saved.dryRun ? ":dryRun" : ""}`,
+            });
           }
         } catch (err) {
+          adminPersist = {
+            ok: false,
+            adminRow: Number(adminRow),
+            error: err?.message || "persist threw",
+          };
           req.log?.warn?.({ err, adminRow }, "storefront chat admin persist failed");
+          recordVoiceError({
+            kind: "storefront_admin_persist",
+            message: err?.message || "persist threw",
+            status: 502,
+            detail: `chat:${adminRow}`,
+          });
         }
       }
-      return res.json(out);
+      return res.json({ ...out, adminPersist });
     } catch (err) {
       const status = Number(err?.status) || 500;
       req.log?.warn?.({ err }, "storefront text chat failed");

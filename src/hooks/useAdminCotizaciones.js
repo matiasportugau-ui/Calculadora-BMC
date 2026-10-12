@@ -2,6 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getCalcApiBase } from "../utils/calcApiBase.js";
 import { addBugLog, addErrorToBugLog } from "../utils/bugCapture.js";
 import { useCockpitOperatorAuth } from "./useCockpitOperatorAuth.js";
+import { ageDays } from "../utils/adminBandejaCriteria.js";
+
+export {
+  parseAdminFecha,
+  ageDays,
+  antiguedadDays,
+  antiguedadLabel,
+  healthLevel,
+  alertaLevel,
+  alertaLabel,
+  prioridadFromRow,
+  isWaCanal,
+} from "../utils/adminBandejaCriteria.js";
 
 // TODO refactor split (no behavior change, ~407 LOC today): three slice hooks
 //   useToken          — identity JWT via useCockpitOperatorAuth (S5 Phase B)
@@ -168,6 +181,7 @@ export function useAdminCotizaciones() {
       borradorPdf: p.borradorPdf || p["Borrador PDF"] || "",
       borradorExplicacion: p.borradorExplicacion || p["Borrador Explicación"] || "",
       responsable: p.responsable || p.ASIGNADO_A || p.asignado || "",
+      urgencia: p.urgencia || "",
       replaySnapshotUrl: "",
       sheetUrl: p.sheetUrl || "",
     };
@@ -211,7 +225,8 @@ export function useAdminCotizaciones() {
       ...r,
       borradorPdf: r.borradorPdf || r["Borrador PDF"] || r.borrador_pdf || "",
       borradorExplicacion: r.borradorExplicacion || r["Borrador Explicación"] || "",
-      responsable: r.responsable || r.ASIGNADO_A || r.asignado || r.responsable || "",
+      responsable: r.responsable || r.ASIGNADO_A || r.asignado || "",
+      urgencia: r.urgencia || r.URGENCIA || "",
     }));
 
     setRows([...enrichedAdminRows, ...mlRows]);
@@ -545,6 +560,7 @@ export function useAdminCotizaciones() {
 
     // selection
     selected,
+    setSelected,
     toggleSelect: (adminRow) => setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(adminRow)) next.delete(adminRow); else next.add(adminRow);
@@ -581,35 +597,6 @@ export function useAdminCotizaciones() {
     getBorradorInfo,
     openBorrador,
   };
-}
-
-/** Parse `DD/MM/YYYY` → Date or null. */
-export function parseAdminFecha(s) {
-  const m = String(s || "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-  if (!m) return null;
-  const day = Number(m[1]);
-  const mon = Number(m[2]) - 1;
-  let yr = Number(m[3]);
-  if (yr < 100) yr += 2000;
-  const d = new Date(yr, mon, day);
-  return Number.isFinite(d.getTime()) ? d : null;
-}
-
-/** Returns days since the parsed fecha (B); null if unparseable. */
-export function ageDays(fechaStr, now = new Date()) {
-  const d = parseAdminFecha(fechaStr);
-  if (!d) return null;
-  const ms = now.getTime() - d.getTime();
-  return Math.floor(ms / (1000 * 60 * 60 * 24));
-}
-
-export function healthLevel(fechaStr, estado) {
-  if (String(estado || "").toLowerCase() === "enviado") return "ok";
-  const age = ageDays(fechaStr);
-  if (age == null) return "none";
-  if (age >= 14) return "late";
-  if (age >= 7) return "warn";
-  return "ok";
 }
 
 export function computeStats(rows) {

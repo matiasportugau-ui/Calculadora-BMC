@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>WhatsApp · aviso live + absentee</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:#0b141a; font-family:Inter,system-ui,sans-serif; color:#e9edef; }
+    .phone { max-width:390px; margin:20px auto; min-height:844px; display:flex; flex-direction:column; }
+    .bar { background:#1f2c34; padding:10px 14px; display:flex; gap:10px; align-items:center; }
+    .av { width:36px; height:36px; border-radius:50%; background:#111; display:grid; place-items:center; font-size:11px; font-weight:800; }
+    .thread { flex:1; padding:16px 12px 80px; }
+    .bubble { background:#005c4b; padding:10px 12px; border-radius:8px 8px 2px 8px; max-width:94%; margin:0 0 10px auto; font-size:14.5px; line-height:1.45; }
+    .in { background:#1f2c34; margin:0 auto 10px 0; border-radius:8px 8px 8px 2px; }
+    .bubble img { width:100%; height:120px; object-fit:cover; border-radius:6px; margin:6px 0; }
+    .time { text-align:right; font-size:11px; color:#8696a0; margin-top:4px; }
+    .mock { text-align:center; font-size:11px; color:#8696a0; padding:8px; }
+    .composer { background:#1f2c34; padding:8px 8px calc(8px + env(safe-area-inset-bottom)); }
+    .composer div { background:#2a3942; border-radius:22px; padding:12px 14px; color:#8696a0; min-height:44px; }
+  </style>
+</head>
+<body>
+  <div class="mock">MOCK · no enviado · absentee + “estamos live”</div>
+  <div class="phone">
+    <div class="bar"><div class="av">BMC</div><div><b>Instaladores Maldonado</b><br /><span style="font-size:11px;color:#8696a0">broadcast</span></div></div>
+    <div class="thread">
+      <div class="bubble">
+        Sábado 10:00 — Outlet live en depósito. Mecánica tipo eBay: un tap, el próximo incremento. Si pujan en los últimos 5 s, se estira 5 s.
+        <img src="assets/bajadas.jpg" alt="" />
+        Lote 2 ahora: 25 bajadas 2,40 gris. Puja USD 95 · próxima 98. Reserva todavía no.
+        Lote 3 (babetas 2ª sel.) acepta máximo desde ya: salida 40, reserva 180.
+        Paneles ISODEC 43 m²: subasta 48 h, actual 1.180, incremento 25.
+        Ganador = retiro, no se cobra online. ¿Dejás máximo?
+        <div class="time">09:14</div>
+      </div>
+      <div class="bubble in">
+        Dejame 120 en las bajadas y 200 en las babetas
+        <div class="time">09:16</div>
+      </div>
+      <div class="bubble">
+        Listo. Máximo 120 lote 2 y 200 lote 3, ocultos. El sistema puja el incremento por vos. Te aviso si te superan.
+        <div class="time">09:16</div>
+      </div>
+    </div>
+    <div class="composer"><div>Mensaje</div></div>
+  </div>
+</body>
+</html>

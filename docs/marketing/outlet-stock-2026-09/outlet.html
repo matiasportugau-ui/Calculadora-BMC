@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Evento Outlet · subasta live · BMC URUGUAY</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg:#F9F8F6; --ink:#111; --muted:#5c5c5c; --line:#e4e1db; --live:#c1121f; --ok:#1f6b3a; --pad:24px; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--ink); font-family:"Red Hat Display",sans-serif; }
+    a { color:inherit; text-decoration:none; }
+    img { display:block; max-width:100%; }
+    .mockbar { background:#111; color:#f4f1ea; font-size:12px; text-align:center; padding:8px 16px; }
+    header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px var(--pad); border-bottom:1px solid var(--line); background:var(--bg);
+    }
+    .brand { font-weight:800; letter-spacing:.08em; font-size:15px; }
+    nav { display:flex; gap:20px; font-size:13.5px; }
+    nav a.current { text-decoration:underline; text-underline-offset:6px; }
+    .hero { max-width:1200px; margin:0 auto; padding:32px var(--pad) 8px; }
+    .kicker { font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+    h1 { font-size:40px; letter-spacing:-.03em; line-height:1.05; max-width:18ch; margin:8px 0 12px; }
+    .lede { max-width:68ch; line-height:1.45; color:#333; }
+    .rules { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:16px; font-size:13px; color:var(--muted); }
+    .rules b { color:var(--ink); }
+    .grid { display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:16px; max-width:1200px; margin:0 auto; padding:24px var(--pad) 64px; }
+    article { background:#fff; border:1px solid var(--line); display:flex; flex-direction:column; }
+    article.live { grid-row: span 2; outline:2px solid var(--live); }
+    .photo { position:relative; aspect-ratio:4/3; overflow:hidden; }
+    article.live .photo { aspect-ratio:auto; flex:1; min-height:260px; }
+    .photo img { width:100%; height:100%; object-fit:cover; }
+    .badge { position:absolute; top:10px; left:10px; background:#111; color:#fff; font-size:11px; font-weight:800; letter-spacing:.08em; padding:6px 8px; }
+    .badge.live { background:var(--live); }
+    .badge.ss { background:#7a2e24; }
+    .badge.timed { background:#fff; color:#111; border:1px solid #111; }
+    .body { padding:14px; display:flex; flex-direction:column; gap:6px; }
+    .title { font-size:14px; font-weight:700; text-transform:uppercase; line-height:1.25; }
+    .current { font-size:24px; font-weight:800; letter-spacing:-.03em; }
+    .row { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); }
+    .cta { display:block; text-align:center; background:#111; color:#fff; font-weight:700; padding:12px; min-height:44px; margin-top:8px; }
+    .cta.ghost { background:#fff; color:#111; border:1px solid #111; }
+    footer { max-width:1200px; margin:0 auto; padding:0 var(--pad) 40px; font-size:12px; color:var(--muted); }
+    @media (max-width:900px) {
+      nav { display:none; }
+      h1 { font-size:32px; }
+      .grid { grid-template-columns:1fr; }
+      article.live { grid-row:auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="mockbar">MOCK · catálogo del evento estilo eBay Live · no está en Shopify · incrementos oficiales eBay Live · soft-close +5 s</div>
+  <header>
+    <a class="brand" href="#">BMC URUGUAY</a>
+    <nav>
+      <a href="#">Tienda Online</a>
+      <a href="#">Paneles Aislantes</a>
+      <a href="#">Accesorios</a>
+      <a class="current" href="#">Outlet live</a>
+      <a href="#">Solicita tu Presupuesto</a>
+    </nav>
+    <a href="live.html">En el martillo ahora →</a>
+  </header>
+  <section class="hero">
+    <div class="kicker">Evento · sábado 06/09 · depósito Maldonado</div>
+    <h1>Outlet live. Un lote en el martillo.</h1>
+    <p class="lede">Mecánica eBay Live, piel BMC. Lotes 2–6 pasan ~2 min cada uno. Un tap = el próximo incremento. Si alguien puja en los últimos 5 s, se estiran 5 s. Los 7 paneles van en subasta timed 48 h (no caben en un martillo de 2 min). Reserva oculta hasta alcanzarla. Ganador: retiro en depósito, WhatsApp — no cobro online.</p>
+    <div class="rules">
+      <span>Incremento <b>USD 1 / 2 / 3 / 5 / 10</b> según franja eBay Live</span>
+      <span>Soft-close <b>+5 s</b></span>
+      <span>Puja en firme, no se retira</span>
+      <span>Absentee / máximo proxy antes del lote</span>
+    </div>
+  </section>
+  <section class="grid">
+    <article class="live">
+      <div class="photo">
+        <img src="assets/bajadas.jpg" alt="Bajadas" />
+        <div class="badge live">LIVE · LOTE 2</div>
+      </div>
+      <div class="body">
+        <div class="title">25 bajadas 2,40 m gris oscuro</div>
+        <div class="current">USD 95</div>
+        <div class="row"><span>8 pujas · 14 siguiendo</span><span>01:12</span></div>
+        <div class="row"><span>Próxima puja USD 98</span><span>reserva no alcanzada</span></div>
+        <a class="cta" href="live.html">Entrar al lote · pujar USD 98</a>
+      </div>
+    </article>
+    <article>
+      <div class="photo"><img src="assets/babetas.jpg" alt="" /><div class="badge ss">Lote 3 · 2ª sel.</div></div>
+      <div class="body">
+        <div class="title">50 babetas 3 m bordeaux</div>
+        <div class="current">Absentee USD 40</div>
+        <div class="row"><span>3 máximos ya</span><span>~2 min</span></div>
+        <a class="cta ghost" href="pdp-bajadas.html">Dejar puja máxima USD 43</a>
+      </div>
+    </article>
+    <article>
+      <div class="photo"><img src="assets/cumbreras-rojas.jpg" alt="" /><div class="badge ss">Lote 4 · 2ª sel.</div></div>
+      <div class="body">
+        <div class="title">12 cumbreras rojas 3 m</div>
+        <div class="current">Salida USD 20</div>
+        <div class="row"><span>0 pujas · reserva 70</span><span>próximo</span></div>
+        <a class="cta ghost" href="#">Absentee USD 20</a>
+      </div>
+    </article>
+    <article>
+      <div class="photo"><img src="assets/trapezoidales.jpg" alt="" /><div class="badge">Lote 5</div></div>
+      <div class="body">
+        <div class="title">6 trapezoidales 1 m gris</div>
+        <div class="current">Salida USD 18</div>
+        <div class="row"><span>reserva 55</span><span>próximo</span></div>
+        <a class="cta ghost" href="#">Absentee USD 18</a>
+      </div>
+    </article>
+    <article>
+      <div class="photo"><img src="assets/bajadas.jpg" alt="" /><div class="badge">Lote 6 · pack</div></div>
+      <div class="body">
+        <div class="title">Pack outlet (2+3+4+5)</div>
+        <div class="current">Salida USD 80</div>
+        <div class="row"><span>reserva 280 vs lista ~480</span><span>cierra el evento</span></div>
+        <a class="cta ghost" href="#">Absentee USD 80</a>
+      </div>
+    </article>
+    <article>
+      <div class="photo"><img src="assets/paneles.jpg" alt="" /><div class="badge timed">Timed 48 h</div></div>
+      <div class="body">
+        <div class="title">7 paneles ISODEC EPS 100 · 43,01 m²</div>
+        <div class="current">USD 1.180</div>
+        <div class="row"><span>4 pujas · inc. USD 25</span><span>46:11:08</span></div>
+        <div class="row"><span>reserva 1.450</span><span>lista 1.981</span></div>
+        <a class="cta ghost" href="ml-bajadas.html">Ver ficha timed</a>
+      </div>
+    </article>
+    <article>
+      <div class="photo"><img src="assets/laterales.jpg" alt="" /><div class="badge timed">Precio fijo</div></div>
+      <div class="body">
+        <div class="title">7 laterales blancos 2,60 m</div>
+        <div class="current">USD 20</div>
+        <div class="row"><span>No van a subasta</span><span>precio normal</span></div>
+        <a class="cta ghost" href="#">Solicitar presupuesto</a>
+      </div>
+    </article>
+  </section>
+  <footer>
+    Incrementos copiados de eBay Live FAQ (USD). Soft-close +5 s si hay puja en los últimos 5 s. No se usa la palabra remate. Laterales y cumbreras terracota 1 m fuera del evento.
+  </footer>
+</body>
+</html>

@@ -35,6 +35,7 @@ export const STOREFRONT_CLIENT_TOOLS = Object.freeze([
   "open_url",
   "share_link",
   "present_choices",
+  "shop_point",
 ]);
 
 export const STOREFRONT_TOOL_SET = new Set([
@@ -258,6 +259,24 @@ const SHARE_LINK_TOOL = Object.freeze({
   },
 });
 
+const SHOP_POINT_TOOL = Object.freeze({
+  type: "function",
+  name: "shop_point",
+  description:
+    "Apunta con el cursor de Panelin y resalta un producto, colección o bloque YA visible en la página. " +
+    "Usala después de shop_search / shop_product / navigate para que el comprador vea DÓNDE está en el escritorio. " +
+    "No abre otra pestaña. query = texto a buscar en títulos/links (IsoDec, tornillo, galpón).",
+  parameters: {
+    type: "object",
+    properties: {
+      query: { type: "string", description: "Texto a señalar, ej. IsoDec, Cardelino, tornillo" },
+      handle: { type: "string", description: "Handle Shopify si lo tenés" },
+      path: { type: "string", description: "Ruta /products/… o /collections/…" },
+    },
+    required: ["query"],
+  },
+});
+
 export const STOREFRONT_SHOP_TOOLS = Object.freeze([
   "shop_search",
   "shop_product",
@@ -267,6 +286,7 @@ export const STOREFRONT_SHOP_TOOLS = Object.freeze([
   "open_url",
   "share_link",
   "present_choices",
+  "shop_point",
 ]);
 
 export function isPublicStorefrontTool(name) {
@@ -416,6 +436,7 @@ export function buildStorefrontVoicePack(options = {}) {
     OPEN_URL_TOOL,
     SHARE_LINK_TOOL,
     PRESENT_CHOICES_TOOL,
+    SHOP_POINT_TOOL,
     ...AGENT_TOOLS.filter((t) => t.name === "generar_pdf").map(agentToolToRealtimeFunction),
     CAPTURE_LEAD_TOOL,
     HANDOFF_WHATSAPP_TOOL,

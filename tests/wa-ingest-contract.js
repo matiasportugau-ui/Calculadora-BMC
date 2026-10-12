@@ -4,7 +4,12 @@
 // Ejecutar: node tests/wa-ingest-contract.js
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { validateIngestBatch, validateIngestMessage } from "../server/lib/waValidate.js";
+import {
+  validateIngestBatch,
+  validateIngestMessage,
+  isIngestTsInWindow,
+  filterIngestMessagesSince,
+} from "../server/lib/waValidate.js";
 
 let passed = 0;
 let failed = 0;
@@ -151,6 +156,29 @@ function validMsg(extra = {}) {
     r.normalized?.phone,
     "+5491111111111",
   );
+}
+
+{
+  assert(
+    "window includes Friday 2026-08-27",
+    isIngestTsInWindow("2026-08-27T00:00:00.000Z", "2026-08-27T00:00:00.000Z"),
+    true,
+    true,
+  );
+  assert(
+    "window excludes 2026-08-04 stall",
+    !isIngestTsInWindow("2026-08-04T18:50:29.000Z", "2026-08-27T00:00:00.000Z"),
+    true,
+    true,
+  );
+  const kept = filterIngestMessagesSince(
+    [
+      { msg_id: "old", ts: "2026-08-04T00:00:00.000Z" },
+      { msg_id: "new", ts: "2026-09-10T15:00:00.000Z" },
+    ],
+    "2026-08-27T00:00:00.000Z",
+  );
+  assert("filter keeps only in-window msg_id", kept.length === 1 && kept[0].msg_id === "new", kept.map((m) => m.msg_id), ["new"]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

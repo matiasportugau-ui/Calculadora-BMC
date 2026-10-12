@@ -76,6 +76,11 @@ const AnalyticsModule = lazy(() => import("./components/admin/analytics/Analytic
 const AssistantsStatusPanel = lazy(() => import("./components/hub/admin/AssistantsStatusPanel.jsx"));
 const MlManagerModule = lazy(() => import("./components/hub/ml/MlManagerModule.jsx"));
 const PeaConsoleModule = lazy(() => import("./components/hub/pea/PeaConsoleModule.jsx"));
+// IAlfred Voice Dock (local-only): el chunk sólo se pide en localhost/127.0.0.1; nunca en el deploy público.
+const IAlfredVoiceDockLoader = lazy(() => import("./components/IAlfredVoiceDockLoader.jsx"));
+const IALFRED_DOCK_LOCAL = typeof window !== "undefined"
+  && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)
+  && import.meta.env.VITE_IALFRED_DOCK !== "0";
 
 const suspenseFallback = (
   <div
@@ -189,6 +194,11 @@ export default function App() {
       <BmcAuthProvider>
       <TutorialProvider>
       <ActivityTracker />
+      {IALFRED_DOCK_LOCAL && (
+        <Suspense fallback={null}>
+          <IAlfredVoiceDockLoader />
+        </Suspense>
+      )}
       <LegacyAppQueryRedirect />
       <AuthGateModal />
       <TutorialOverlay />

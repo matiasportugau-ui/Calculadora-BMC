@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ageDays, healthLevel } from "../../hooks/useAdminCotizaciones.js";
+import {
+  alertaLabel,
+  alertaLevel,
+  antiguedadLabel,
+  prioridadFromRow,
+} from "../../hooks/useAdminCotizaciones.js";
 
 function SelectAllCheckbox({ allSelected, someSelected, onToggle }) {
   const ref = useRef(null);
@@ -134,14 +139,6 @@ function Kebab({ row, onApprove, onOpenPdf, onOpenReplay, onOpenSheet, onOpenBor
   );
 }
 
-function ageLabel(fecha) {
-  const d = ageDays(fecha);
-  if (d == null) return "—";
-  if (d === 0) return "hoy";
-  if (d === 1) return "1d";
-  return `${d}d`;
-}
-
 export default function QuotesTable({
   rows,
   selected,
@@ -176,26 +173,27 @@ export default function QuotesTable({
                   onToggle={onToggleSelectAll}
                 />
               </th>
-              <th style={{ width: 18 }} aria-label="Estado de salud" />
+              <th style={{ width: 92 }}>Alerta</th>
               <th>Cliente</th>
               <th>Canal</th>
               <th>Fecha</th>
               <th>Consulta</th>
               <th>Estado</th>
               <th>Responsable</th>
-              <th>Edad</th>
+              <th>Antigüedad</th>
+              <th>Prioridad</th>
               <th style={{ width: 220 }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--ac-text-2)" }}>Cargando…</td></tr>
+              <tr><td colSpan={11} style={{ textAlign: "center", color: "var(--ac-text-2)" }}>Cargando…</td></tr>
             )}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={9} style={{ textAlign: "center", color: "var(--ac-text-2)" }}>{emptyMessage}</td></tr>
+              <tr><td colSpan={11} style={{ textAlign: "center", color: "var(--ac-text-2)" }}>{emptyMessage}</td></tr>
             )}
             {rows.map((row) => {
-              const lvl = healthLevel(row.fecha, row.estado);
+              const lvl = alertaLevel(row.fecha, row.estado);
               const isCrmOnly = row.source && row.source !== "admin";
               const isSel = !isCrmOnly && selected.has(row.rowNum);
               const rowKey = row.rowNum ?? `crm-${row.source || "x"}-${row.crmRow ?? row.id ?? "?"}`;
@@ -212,7 +210,10 @@ export default function QuotesTable({
                     )}
                   </td>
                   <td>
-                    <span className="adminCot__health" data-level={lvl} aria-label={`Health ${lvl}`} />
+                    <span className="adminCot__alerta">
+                      <span className="adminCot__health" data-level={lvl} aria-label={`Alerta ${alertaLabel(lvl)}`} />
+                      <span className="adminCot__alerta-txt">{alertaLabel(lvl)}</span>
+                    </span>
                   </td>
                   <td>
                     <span className="adminCot__truncate" style={{ maxWidth: 180, fontWeight: 600 }}>
@@ -242,7 +243,13 @@ export default function QuotesTable({
                     )}
                   </td>
                   <td><EstadoPill estado={row.estado} /></td>
-                  <td style={{ color: "var(--ac-text-2)", whiteSpace: "nowrap" }}>{ageLabel(row.fecha)}</td>
+                  <td style={{ color: "var(--ac-text-2)", whiteSpace: "nowrap" }}>{row.responsable || "—"}</td>
+                  <td style={{ color: "var(--ac-text-2)", whiteSpace: "nowrap" }}>{antiguedadLabel(row.fecha)}</td>
+                  <td>
+                    <span className="adminCot__pill" data-prioridad={prioridadFromRow(row)}>
+                      {prioridadFromRow(row)}
+                    </span>
+                  </td>
                   <td>
                     <div className="adminCot__rowactions">
                       <button

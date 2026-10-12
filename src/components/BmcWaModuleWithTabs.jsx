@@ -1,14 +1,12 @@
 /**
- * BmcWaModuleWithTabs — wrapper para /hub/wa con dos vistas:
- *   - Cockpit (default): nuevo BmcWaCockpit (Postgres + extensión + AI)
- *   - Sheet legacy:      BmcWaOperativoModule (lectura CRM_Operativo por origen=WA)
- *
- * El cockpit es el flujo operativo nuevo (F1-F5 del plan WA Cockpit).
- * La pestaña legacy queda como fallback / referencia mientras la extensión
- * Chrome no esté cargando datos en producción.
+ * BmcWaModuleWithTabs — wrapper para /hub/wa:
+ *   - Bandeja (default): gemela de Admin cotizaciones, canal WA
+ *   - Cockpit: Postgres + extensión + AI
+ *   - Sheet legacy: CRM_Operativo origen=WA
  */
 import { Suspense, lazy, useEffect, useState } from "react";
 
+const WaBandejaPurificada = lazy(() => import("./hub/wa/WaBandejaPurificada.jsx"));
 const BmcWaCockpit = lazy(() => import("./BmcWaCockpit.jsx"));
 const BmcWaOperativoModule = lazy(() => import("./BmcWaOperativoModule.jsx"));
 
@@ -48,17 +46,18 @@ const fallback = (
 );
 
 const TABS = [
+  { id: "bandeja", label: "Bandeja", subtitle: "Gemela Admin · canal WA" },
   { id: "cockpit", label: "Cockpit", subtitle: "Postgres · extensión · AI" },
   { id: "legacy", label: "Sheet legacy", subtitle: "CRM_Operativo · origen=WA" },
 ];
 
 export default function BmcWaModuleWithTabs() {
-  const [active, setActive] = useState("cockpit");
+  const [active, setActive] = useState("bandeja");
 
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved === "cockpit" || saved === "legacy") setActive(saved);
+      if (saved === "bandeja" || saved === "cockpit" || saved === "legacy") setActive(saved);
     } catch {
       /* ignore */
     }
@@ -96,7 +95,7 @@ export default function BmcWaModuleWithTabs() {
       </div>
       <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
         <Suspense fallback={fallback}>
-          {active === "cockpit" ? <BmcWaCockpit /> : <BmcWaOperativoModule />}
+          {active === "bandeja" ? <WaBandejaPurificada /> : active === "cockpit" ? <BmcWaCockpit /> : <BmcWaOperativoModule />}
         </Suspense>
       </div>
     </div>

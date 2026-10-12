@@ -183,6 +183,9 @@ C4Container
 | Channels | `wa.js`, `omni.js`, `transportista.js`, `mlSearch.js`, webhooks | Postgres + Meta/ML |
 | PDF | `server/routes/pdf.js`, `src/utils/pdfGenerator.js` | Chromium first, html2pdf fallback |
 | Auth | `identityAuth.js`, `authGoogle.js`, `authMfa.js`, `requireGrant.js` | JWT + Google + TOTP + RBAC |
+| IAlfred Voice Dock (cross-app, **local-only**) | `src/components/IAlfredVoiceDockLoader.jsx`, `App.jsx` mount, `ialfred:ui` listener + `?ialfredQuote=latest` deep-link in `PanelinCalculadoraV3_backup.jsx` | Script + API live outside this repo (`~/bmc-sheet-quote-pipeline/scripts/enviar-desk.mjs` :8787: `/voice-dock.js`, `/api/voice/*`, SSE `/api/voice/events`). Gated by `VITE_IALFRED_DOCK` + localhost hostname; never shipped to Vercel/public hosts. Writes stay HITL (`guardar_fila`/WhatsApp confirm) |
+
+> **Voice Dock note (2026-10-12):** one shared dock (Shadow DOM) is injected in Enviar Desk :8787, Calculadora :5173 and IAlfred :3857; a single voice session (`~/.ialfred/memory/voice`) follows the operator across URLs. Prices come only from the Calculadora API (`desk_cotizar`); the dock never computes totals. E2E: `npm run test:playwright:ialfred-dock`.
 
 ### SPA route inventory (CONFIRMED `src/App.jsx`)
 

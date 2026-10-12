@@ -143,3 +143,26 @@ export function validateIngestBatch(body) {
     batch_id: batch_id ? String(batch_id).slice(0, 64) : null,
   };
 }
+
+/**
+ * Client/server helper: keep ingest bounded (e.g. last 14 days) without
+ * dumping the full IndexedDB history.
+ * @param {string|number|Date} ts
+ * @param {string} sinceIso inclusive lower bound
+ */
+export function isIngestTsInWindow(ts, sinceIso) {
+  const t = new Date(ts).getTime();
+  const s = new Date(sinceIso).getTime();
+  return Number.isFinite(t) && Number.isFinite(s) && t >= s;
+}
+
+/**
+ * @template T
+ * @param {T[]} messages
+ * @param {string} sinceIso
+ * @returns {T[]}
+ */
+export function filterIngestMessagesSince(messages, sinceIso) {
+  if (!Array.isArray(messages) || !sinceIso) return Array.isArray(messages) ? messages : [];
+  return messages.filter((m) => isIngestTsInWindow(m?.ts, sinceIso));
+}

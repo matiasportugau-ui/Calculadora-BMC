@@ -2359,6 +2359,11 @@ async function executeToolImpl(name, input, calcState = {}, opts = {}) {
       if (input?.linkDrive != null) body.linkDrive = String(input.linkDrive);
       if (input?.estado != null) body.estado = String(input.estado);
       if (input?.replaySnapshotUrl != null) body.replaySnapshotUrl = String(input.replaySnapshotUrl);
+      if (input?.canonical) body.canonical = true;
+      if (input?.consulta != null) body.consulta = String(input.consulta);
+      if (input?.interpretacion != null) body.interpretacion = String(input.interpretacion);
+      if (input?.respuestaAi != null) body.respuestaAi = String(input.respuestaAi);
+      if (input?.faltantes != null) body.faltantes = String(input.faltantes);
       return await wolfboardForward("/api/wolfboard/row", { method: "POST", body }, name);
     }
 

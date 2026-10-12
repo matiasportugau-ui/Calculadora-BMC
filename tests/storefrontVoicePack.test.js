@@ -51,7 +51,9 @@ assert.ok(names.includes("add_to_cart"), "add_to_cart");
 assert.ok(names.includes("navigate"), "navigate");
 assert.ok(names.includes("get_cart"), "get_cart");
 assert.ok(names.includes("present_choices"), "tap-to-reply chips");
+assert.ok(names.includes("shop_point"), "shop_point cursor");
 assert.equal(isStorefrontShopTool("present_choices"), true);
+assert.equal(isStorefrontShopTool("shop_point"), true);
 
 const widgetSrc = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.ok(widgetSrc.includes("cart:update"), "Horizon cart:update after add");
@@ -210,6 +212,12 @@ assert.ok(widget.includes("bmc_panelin_nudge"), "nudge session flag");
 assert.ok(widget.includes("function asoma()"), "scroll asoma");
 assert.ok(widget.includes("nudge-off"), "dismiss docks orb");
 assert.ok(widget.includes("Te asesoro acá: ficha, carrito o una aproximación lista web."), "empty-state sells advice + approx");
+assert.ok(widget.includes("¿Seguís ahí? Cuando quieras seguimos con la aproximación."), "silence check-in");
+assert.ok(widget.includes("function closeoutChat"), "closeout on farewell/cut/abandon");
+assert.ok(widget.includes("CHAT_IDLE_MS = 25 * 1000"), "wait before writing on silence");
+assert.ok(widget.includes("function findPointTarget"), "points at product on page");
+assert.ok(widget.includes("bmc-guide"), "Panelin cursor overlay");
+assert.ok(widget.includes("shop_point"), "shop_point tool in widget");
 assert.ok(
   fs.existsSync(path.join(ROOT, "server/public/storefront-voice/panelin.png")),
   "avatar poster",

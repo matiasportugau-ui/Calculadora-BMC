@@ -111,11 +111,21 @@ assert.match(transcript, /Chat Panelin \(VW\) · Ana/);
 assert.match(transcript, /Vos: quiero techo/);
 assert.match(transcript, /Vos: IsoDec 100/);
 assert.match(transcript, /Te armo la aproximación/);
-assert.match(actionSrc, /persistStorefrontAdminTranscript/, "every /chat writes Admin col J");
+assert.match(actionSrc, /persistStorefrontAdminTranscript/, "every /chat writes Admin Consulta");
 assert.match(actionSrc, /formatStorefrontAdminTranscript/, "chat transcript for the sheet");
+assert.match(actionSrc, /buildCanonicalAdminUpdates/, "storefront persist uses canonical Admin columns");
+assert.match(actionSrc, /getSheetsClient/, "persist writes Sheets directly (no silent loopback miss)");
+assert.match(actionSrc, /adminPersist/, "/chat response includes adminPersist");
+assert.match(actionSrc, /storefront_admin_persist/, "persist failures record voice error kind");
+assert.match(actionSrc, /WOLFB_DRY_RUN/, "dry-run is surfaced as persist failure");
 
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.match(widget, /adminRow: state\.adminRow/, "widget sends adminRow on /chat");
 assert.match(widget, /pagehide/, "flush transcript on leave");
+assert.match(actionSrc, /storefront_chat_closeout/, "/log records closeout");
+assert.match(widget, /closeout:/, "widget sends closeout reason on /log");
+assert.match(widget, /Admin persist \/log failed/, "widget no longer ignores /log HTTP errors");
+assert.match(widget, /adminPersist/, "widget reads adminPersist from /chat");
+assert.match(widget, /lastAdminPersist/, "widget keeps last Admin persist status");
 
 console.log("publicVoiceAdmin.test.js ok");
