@@ -44,7 +44,15 @@ async function cdpCall(ws, id, method, params) {
 }
 
 const list = await fetch(CDP + "/json/list").then((r) => r.json());
-const page = (list || []).find((t) => String(t.url || "").startsWith("https://web.whatsapp.com"));
+const isWaTab = (u) => {
+  try {
+    const url = new URL(String(u || ""));
+    return url.protocol === "https:" && url.hostname === "web.whatsapp.com";
+  } catch {
+    return false;
+  }
+};
+const page = (list || []).find((t) => isWaTab(t.url));
 if (!page?.webSocketDebuggerUrl) {
   console.error("No WA tab on CDP. tabs=", (list || []).map((t) => t.url).slice(0, 8));
   process.exit(3);

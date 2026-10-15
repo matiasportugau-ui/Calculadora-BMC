@@ -216,7 +216,7 @@ function chromeEval(js) {
   mkdirSync(dirname(jsPath), { recursive: true });
   writeFileSync(jsPath, js, "utf8");
   const script = `
-set jsPath to "${jsPath.replace(/"/g, '\\"')}"
+set jsPath to "${jsPath.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"
 set js to read POSIX file jsPath as «class utf8»
 tell application "Google Chrome"
   repeat with w in windows
