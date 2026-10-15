@@ -28,13 +28,75 @@ function normalizePhone(s) {
   return String(s || "").replace(/\D/g, "");
 }
 
+/** Match B4:AN rows. Sheet row = index + 4. Phone is 6–11 digits; 12+ is a RUT lookup. */
+export function matchCrmClientRows(rows, query, limite = 10) {
+  const q = String(query || "").trim();
+  if (!q) return { ok: false, error: "query requerido (nombre, teléfono o RUT)" };
+
+  const cap = Math.max(1, Math.min(50, Number(limite || 10)));
+
+  const qLower = q.toLowerCase();
+  const qDigits = normalizePhone(q);
+  const isPhoneQuery = qDigits.length >= 6 && qDigits.length <= 11;
+  // Uruguay RUT: 12 digits (e.g. 217123620016). Treat 12+ digit queries
+  // as RUT lookups against cliente + observaciones (RUT is sometimes
+  // embedded in the client name like "ACME SRL — RUT 21712362016" or in
+  // the observations field). Copilot finding: prior code advertised RUT
+  // search but never actually checked it.
+  const isRutQuery = qDigits.length >= 12;
+
+  const matches = [];
+  for (let i = 0; i < rows.length && matches.length < cap; i++) {
+    const r = rows[i];
+    if (!r || r.length === 0) continue;
+    // Index relative to col B: C is index 1, D is index 2, W is index 21, AH is index 32, AL is index 36, AM is index 37.
+    const cliente = String(r[1] || "").trim();
+    if (!cliente) continue;
+    const telefono = String(r[2] || "").trim();
+    const ubicacion = String(r[3] || "").trim();
+    const observaciones = String(r[21] || "").trim();
+    const linkPresupuesto = String(r[32] || "").trim();
+    const tipoContacto = String(r[36] || "").trim();
+    const tagsTaxonomia = String(r[37] || "").trim();
+    const timestamp = String(r[0] || "").trim();
+
+    const clienteHit = cliente.toLowerCase().includes(qLower);
+    const obsHit = observaciones.toLowerCase().includes(qLower);
+    const phoneHit = isPhoneQuery && normalizePhone(telefono).includes(qDigits);
+    // RUT match: digits-only across cliente + observaciones (so embedded
+    // RUTs match regardless of formatting like dots/dashes).
+    const rutHit = isRutQuery && (
+      normalizePhone(cliente).includes(qDigits) ||
+      normalizePhone(observaciones).includes(qDigits)
+    );
+
+    if (clienteHit || obsHit || phoneHit || rutHit) {
+      matches.push({
+        row: i + 4,
+        cliente,
+        telefono,
+        ubicacion,
+        link_presupuesto: linkPresupuesto || null,
+        observaciones: observaciones.slice(0, 200) || null,
+        tipo_contacto: tipoContacto || null,
+        tags_taxonomia: tagsTaxonomia || null,
+        timestamp: timestamp || null,
+        match_via: rutHit ? "rut" : phoneHit ? "telefono" : (clienteHit ? "cliente" : "observaciones"),
+      });
+    }
+  }
+
+  return { ok: true, count: matches.length, matches };
+}
+
 /**
  * @param {object} input
  * @param {string} input.query    Free text — name fragment, phone, or RUT.
  * @param {number} [input.limite] Max matches. Default 10, max 50.
+ * @param {object} [input.sheets] Optional Sheets client. Production callers omit it.
  * @returns {Promise<{ok:true,count:number,matches:Array,sheetId:string}|{ok:false,error:string}>}
  */
-export async function searchCrmClients({ query, limite = 10 } = {}) {
+export async function searchCrmClients({ query, limite = 10, sheets: sheetsOverride } = {}) {
   const sheetId = config.bmcSheetId;
   if (!sheetId) {
     return { ok: false, error: "BMC_SHEET_ID no configurado — no se puede buscar en CRM_Operativo" };
@@ -43,11 +105,13 @@ export async function searchCrmClients({ query, limite = 10 } = {}) {
   const q = String(query || "").trim();
   if (!q) return { ok: false, error: "query requerido (nombre, teléfono o RUT)" };
 
-  let sheets;
-  try {
-    sheets = await getSheetsClient();
-  } catch (err) {
-    return { ok: false, error: `Google auth falló: ${err.message}` };
+  let sheets = sheetsOverride;
+  if (!sheets) {
+    try {
+      sheets = await getSheetsClient();
+    } catch (err) {
+      return { ok: false, error: `Google auth falló: ${err.message}` };
+    }
   }
 
   try {
@@ -58,60 +122,9 @@ export async function searchCrmClients({ query, limite = 10 } = {}) {
       range: "'CRM_Operativo'!B4:AN",
     });
     const rows = resp.data.values || [];
-    const cap = Math.max(1, Math.min(50, Number(limite || 10)));
-
-    const qLower = q.toLowerCase();
-    const qDigits = normalizePhone(q);
-    const isPhoneQuery = qDigits.length >= 6 && qDigits.length <= 11;
-    // Uruguay RUT: 12 digits (e.g. 217123620016). Treat 12+ digit queries
-    // as RUT lookups against cliente + observaciones (RUT is sometimes
-    // embedded in the client name like "ACME SRL — RUT 21712362016" or in
-    // the observations field). Copilot finding: prior code advertised RUT
-    // search but never actually checked it.
-    const isRutQuery = qDigits.length >= 12;
-
-    const matches = [];
-    for (let i = 0; i < rows.length && matches.length < cap; i++) {
-      const r = rows[i];
-      if (!r || r.length === 0) continue;
-      // Index relative to col B: C is index 1, D is index 2, W is index 21, AH is index 32, AL is index 36, AM is index 37.
-      const cliente = String(r[1] || "").trim();
-      if (!cliente) continue;
-      const telefono = String(r[2] || "").trim();
-      const ubicacion = String(r[3] || "").trim();
-      const observaciones = String(r[21] || "").trim();
-      const linkPresupuesto = String(r[32] || "").trim();
-      const tipoContacto = String(r[36] || "").trim();
-      const tagsTaxonomia = String(r[37] || "").trim();
-      const timestamp = String(r[0] || "").trim();
-
-      const clienteHit = cliente.toLowerCase().includes(qLower);
-      const obsHit = observaciones.toLowerCase().includes(qLower);
-      const phoneHit = isPhoneQuery && normalizePhone(telefono).includes(qDigits);
-      // RUT match: digits-only across cliente + observaciones (so embedded
-      // RUTs match regardless of formatting like dots/dashes).
-      const rutHit = isRutQuery && (
-        normalizePhone(cliente).includes(qDigits) ||
-        normalizePhone(observaciones).includes(qDigits)
-      );
-
-      if (clienteHit || obsHit || phoneHit || rutHit) {
-        matches.push({
-          row: i + 4,
-          cliente,
-          telefono,
-          ubicacion,
-          link_presupuesto: linkPresupuesto || null,
-          observaciones: observaciones.slice(0, 200) || null,
-          tipo_contacto: tipoContacto || null,
-          tags_taxonomia: tagsTaxonomia || null,
-          timestamp: timestamp || null,
-          match_via: rutHit ? "rut" : phoneHit ? "telefono" : (clienteHit ? "cliente" : "observaciones"),
-        });
-      }
-    }
-
-    return { ok: true, count: matches.length, matches, sheetId };
+    const matched = matchCrmClientRows(rows, q, limite);
+    if (!matched.ok) return matched;
+    return { ...matched, sheetId };
   } catch (err) {
     return { ok: false, error: err.message || "Error desconocido al leer Sheets" };
   }
