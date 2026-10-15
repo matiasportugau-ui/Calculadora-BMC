@@ -6,6 +6,8 @@
  * Si waConfig no está disponible (offline test), usa defaults seguros.
  */
 
+import { suggestFamiliaForUso } from "./quoteKnowledgeRules.js";
+
 let _quoteCfgGetter = null;
 function getQuoteConfig() {
   // Lazy-load para no romper en tests offline.
@@ -112,11 +114,16 @@ export function extractQuoteParams(text) {
   if (/lista\s+venta|distribuidor/i.test(s)) lista = "venta";
   else if (/lista\s+web|cliente\s+final/i.test(s)) lista = "web";
 
+  // Reglas #4/#5 (Conocimiento pack 2026-10-11): si el uso (techo/pared) detectado
+  // contradice la familia, sugerir la familia correcta sin mutar la extracción.
+  const { sugerida: familiaSugerida, changed: familiaCambia, motivo: familiaAviso } =
+    suggestFamiliaForUso({ familia, scope });
+
   // Reglas configurables desde waConfig (config.quote):
   //   - minM2: mínimo m² para considerar quote
   //   - requireFamilyOrThickness: bool — si false, basta m² + scope
   const qcfg = getQuoteConfig();
-  const fields = { metros, espesor, familia, scope, color, lista };
+  const fields = { metros, espesor, familia, scope, color, lista, familiaSugerida, familiaCambia, familiaAviso };
   const meetsArea = metros != null && metros >= (qcfg.minM2 || 5);
   const meetsFamilyOrThickness = qcfg.requireFamilyOrThickness !== false
     ? (espesor != null || familia != null)

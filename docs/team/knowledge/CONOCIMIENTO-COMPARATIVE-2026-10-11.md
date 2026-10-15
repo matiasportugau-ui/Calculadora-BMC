@@ -122,30 +122,86 @@ Compare **legacy Conocimiento** vs **BQ-derived rules** (Enviados × Dropbox, n=
 |-------|-------------|----------|
 | #1 ML/CL ask family+espesor before calc | Matias skipped | **YES** — still high leverage for incomplete ML leads |
 
-## D. Selection matrix for team
+## D. Selection matrix for team — **FILLED 2026-10-12**
 
-Mark one column per rule in review:
+Decisions agreed in the IAlfred/team review (one column per rule). ✅ = selected.
+**WIRE** items were implemented in this session — see §E.1 ledger.
+**TUNE** = wording change recommended; it is a *live sheet edit* and therefore
+gated behind human confirm (harness law: human confirm for production sheet
+writes) — **not performed here**.
 
 | Rule | KEEP as-is | TUNE wording | WIRE into code | RETIRE |
 |------|:--:|:--:|:--:|:--:|
-| #2 WA/LL quote-ready | ☐ | ☐ | ☐ | ☐ |
-| #3 EM + adjuntos/planos | ☐ | ☐ | ☐ | ☐ |
-| #4 IsoPanel techo→IsoDec | ☐ | ☐ | ☐ | ☐ |
-| #5 IsoDec pared→IsoPanel | ☐ | ☐ | ☐ | ☐ |
-| #6 WA sin familia default | ☐ | ☐ | ☐ | ☐ |
-| #7 USD/m² sanity band | ☐ | ☐ | ☐ | ☐ |
-| #8 Espesor ladder techo | ☐ | ☐ | ☐ | ☐ |
-| #9 FB medidas → directo | ☐ | ☐ | ☐ | ☐ |
-| #10 Priorizar WA/LL recontacto | ☐ | ☐ | ☐ | ☐ |
-| Draft #1 ML/CL clarify (not live) | ☐ | ☐ | ☐ | ☐ |
+| #2 WA/LL quote-ready | ✅ | ☐ | ☐ | ☐ |
+| #3 EM + adjuntos/planos | ☐ | ✅ | ☐ | ☐ |
+| #4 IsoPanel techo→IsoDec | ☐ | ☐ | ✅ | ☐ |
+| #5 IsoDec pared→IsoPanel | ☐ | ☐ | ✅ | ☐ |
+| #6 WA sin familia default | ☐ | ✅ | ☐ | ☐ |
+| #7 USD/m² sanity band | ☐ | ☐ | ✅ | ☐ |
+| #8 Espesor ladder techo | ✅ | ☐ | ☐ | ☐ |
+| #9 FB medidas → directo | ✅ | ☐ | ☐ | ☐ |
+| #10 Priorizar WA/LL recontacto | ☐ | ✅ | ☐ | ☐ |
+| Draft #1 ML/CL clarify (not live) | ☐ | ☐ | ✅ | ☐ |
 
-## E. Recommended wiring (after selection)
+### D.1 Rationale
 
-1. **#7 pricing** → Log Cotizaciones / calc QA gate (flag USD/m² outliers).
-2. **#3 adjuntos** → ensure mail/WA attachment path feeds vision/PDF extract before clarify.
-3. **#10 comercial** → `/commercial-followup` ranking weight by origen.
-4. **#4/#5 familia** → scenario router unit tests with golden consultas.
-5. Resume Dropbox full run (~64% left) to harden medians before changing bands.
+- **#2 KEEP** — prior already live and complements the legacy rules; wiring a
+  "skip clarification for WA/LL" branch into the agent would silently suppress
+  legitimate clarifications and is premature on a ~36% sample.
+- **#3 TUNE** — tighten the wording to point at the **existing** plan pipeline
+  (`server/routes/planInterpret.js` + `server/lib/planInterpreter.js`). The
+  inbound-**email** path (`server/lib/emailLeadIngest.js`) is body-only and has
+  no attachment fetch; wiring that is a cross-cutting prod change (mail ingest +
+  vision cost) and belongs to its own session, not this one.
+- **#4 + #5 WIRE** — the highest-leverage, lowest-risk fix: a pure
+  `suggestFamiliaForUso({ familia, scope })` now flags the observed human
+  rewrites (IsoPanel↔IsoDec for techo/pared) at the WA extraction call site and
+  guards the scenario router. No behavior change unless a caller opts in.
+- **#6 TUNE** — the rule "WA sin familia → default IsoDec EPS" over-defaults and
+  can produce false *techos*; keep it as an ops prior and tighten the wording.
+- **#7 WIRE** — a new `pricing` sanity band (`< 40` or `> 100` → flag) is added
+  as **non-blocking** warnings on the server-side quote preview; the band is a
+  soft gate, never an invalidation.
+- **#8 KEEP** — already aligns with the legacy multi-espesor rule
+  (hitCount = 449); no code needed.
+- **#9 KEEP** — small n (86), low risk, no conflict.
+- **#10 TUNE** — the referenced `/commercial-followup` **skill does not exist**
+  in this repo, and follow-up items carry no `origen` field, so there is no
+  call site to wire. Keep as an ops/process prior and record the ranking weights.
+- **Draft #1 WIRE (advisory)** — decided **to activate** as a *non-blocking*
+  ML/CL clarify gate (`needsClarifyForIncompleteLead`): ML/CL arrive less
+  complete and have a lower median (ML ~USD 1.9k vs WA ~2.9k). It returns what is
+  missing so the caller can ask; it does not block a calc.
+
+## E. Wiring ledger (implemented)
+
+### E.1 WIRE items — DONE this session (2026-10-12)
+
+Single pure module: **`server/lib/quoteKnowledgeRules.js`** (rules #3 gap helper,
+#4/#5 familia, #7 pricing, draft #1 clarify, scenario-router guard).
+
+| Rule | Artifact | Integration |
+|------|----------|-------------|
+| #7 pricing | `sanityCheckUsdPerM2()` + `USD_M2` bands | `server/lib/quotePayloadValidator.js` → `preview.warnings` (`[USD/m²] …`), non-blocking |
+| #4/#5 familia | `suggestFamiliaForUso()` | `server/lib/waQuoteParams.js` → `familiaSugerida` / `familiaCambia` / `familiaAviso` (advisory, non-mutating) |
+| draft #1 ML/CL | `needsClarifyForIncompleteLead()` | exported helper (advisory) |
+| #3 adjuntos | `attachmentGeometryGap()` | exported helper (advisory) |
+| scenario guard | `inferQuoteIntentFromUserText()` + `buildQuoteIntentConflict()` | re-exported from `quotePayloadValidator.js` — fixes the previously broken `tests/quoteIntentGuard.test.js` |
+
+Tests (registered in `test:core`):
+- `tests/quoteKnowledgeRules.test.js` — 21 checks + golden consultas
+- `tests/quoteIntentGuard.test.js` — was failing on import; now 3/3 (orphan fixed)
+
+### E.2 Remaining (not this session)
+
+1. **#3 adjuntos** → wire inbound email/WA attachment fetch → `visionExtract`
+   before clarify (dedicated session; touches prod mail ingest).
+2. **#10 comercial** → create `/commercial-followup` and add `origen` to
+   follow-up items, then weight WA/LL over ML/CL (needs the skill to exist).
+3. **#6 / #3 / #10 TUNE** → apply wording edits to the live `Conocimiento` sheet
+   (requires human confirm — production sheet write).
+4. Resume the Dropbox full run (~64% left) to harden the #7 bands before
+   treating them as hard limits (see §F, second prompt).
 
 ## F. Resume prompts
 

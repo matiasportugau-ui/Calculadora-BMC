@@ -14,6 +14,16 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-10-13 (feat — Hito 1 slice 1: Desk vía API + pipeline bajo git, D1/D6/D10/D11):** Postgres pasa a ser fuente de verdad de la mesa de revisión. Nuevo `server/routes/desk.js` (`GET /api/desk/health|queue|:id`, `POST /reviews|:id/edit-cause|:id/approve-send`, `PATCH /:id/status`) con `canales` grant + 503 sin DB; link `wa.me` server-side, sin auto-envío (HITL). Nuevo `server/lib/deskQueue.js` (causa 1 clic D10, `matriz_snapshot_required` D6, `sold` con monto D14) + migración `server/migrations/desk/001_desk.sql` (`matriz_snapshots`, `desk_reviews`). Tests `tests/deskQueue.test.js` 6/6 en `test:core`. `~/bmc-sheet-quote-pipeline` inicializado en git (root-commit solo `.gitignore` + `README-DESK-FREEZE.md`, sin secretos): Desk :8787 queda congelado como lector legacy, writes nuevos por `/api/desk`. Pendiente slice 2: `matrizSnapshot.freezeMatriz()` + Desk llama `queue→approve` en vez de Sheets + migración aplicada en prod.
+
+**2026-10-12 (feat — Conocimiento rules wired into code, WIRE-only):** IAlfred/team review of [`CONOCIMIENTO-COMPARATIVE-2026-10-11.md`](./knowledge/CONOCIMIENTO-COMPARATIVE-2026-10-11.md): selection matrix #2–#10 filled and draft #1 decided. **WIRE items only** implemented in a new pure module [`server/lib/quoteKnowledgeRules.js`](../../server/lib/quoteKnowledgeRules.js):
+- **#7 pricing** → `sanityCheckUsdPerM2()` wired into `server/lib/quotePayloadValidator.js` as non-blocking `[USD/m²]` warnings (`<40` / `>100` hard band, soft deviation vs family typical).
+- **#4/#5 familia** → `suggestFamiliaForUso()` wired into `server/lib/waQuoteParams.js` (advisory `familiaSugerida`/`familiaCambia`/`familiaAviso`; IsoPanel↔IsoDec for techo/pared).
+- **draft #1 ML/CL** → `needsClarifyForIncompleteLead()` (advisory clarify gate) and **#3** `attachmentGeometryGap()` (advisory gap) exported helpers.
+- **scenario guard** → `inferQuoteIntentFromUserText()` + `buildQuoteIntentConflict()` re-exported from `quotePayloadValidator.js`; fixes the previously broken `tests/quoteIntentGuard.test.js`.
+- **TUNE (not applied, human-gated sheet write):** #3, #6, #10. **KEEP:** #2, #8, #9. No RETIRE.
+- Tests: `tests/quoteKnowledgeRules.test.js` (21/21) + `tests/quoteIntentGuard.test.js` (3/3), registered in `test:core`. Lint clean on touched files. Not committed.
+
 **2026-10-12 (feat — IAlfred Voice Dock cross-app, Fases 2.0–5; solo local):** El copiloto de voz de Fase 1 ahora tiene UI y se puede llamar desde las 3 URLs locales: Enviar Desk :8787, Calculadora :5173 e IAlfred :3857. El dock es uno solo (`voice-dock.js`, Shadow DOM) y lo sirve el desk. **Nunca se carga en hosts públicos:** guard por hostname, más `VITE_IALFRED_DOCK` en este repo.
 - **En este repo:**
   - [`src/components/IAlfredVoiceDockLoader.jsx`](../../src/components/IAlfredVoiceDockLoader.jsx), lazy, montado en `App.jsx`.
