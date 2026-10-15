@@ -83,7 +83,9 @@ function routeBlock(src, pathLiteral) {
   assert.ok(app.includes('label: "Carga"'));
   assert.ok(app.includes('label: "Listo"'));
   assert.ok(app.includes('label: "Perfil"'));
-  assert.ok(app.includes("<Tabs />"));
+  assert.ok(app.includes("<Tabs />") || app.includes("onLoginScreen"));
+  assert.ok(app.includes('path="ingresar"'));
+  assert.ok(!app.includes("if (!sess.token)"));
   const home = readFileSync(join(root, "src/components/driver/DriverHome.jsx"), "utf8");
   assert.ok(home.includes("projectDriverTripFeed"));
   assert.ok(home.includes("Sin viaje asignado"));
@@ -107,6 +109,10 @@ function routeBlock(src, pathLiteral) {
   const login = readFileSync(join(root, "src/components/driver/DriverLogin.jsx"), "utf8");
   assert.ok(login.includes("Agregar a inicio"));
   assert.ok(login.includes("Email o celular"));
+  assert.ok(login.includes("onGuest") || login.includes("Entrar a la app"));
+  const homeGuest = readFileSync(join(root, "src/components/driver/DriverHome.jsx"), "utf8");
+  assert.ok(homeGuest.includes("guest"));
+  assert.ok(homeGuest.includes("Ingresar con email o enlace"));
   const routes = readFileSync(join(root, "server/routes/transportista.js"), "utf8");
   assert.ok(routes.includes("listTripsForDriverAuth"));
   assert.ok(routes.includes("resolveDriverAuth"));
