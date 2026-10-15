@@ -38,6 +38,7 @@ import { isAiGatewayEnabled, generateTextViaGateway, generateObjectViaGateway, D
 import { getGoogleAuthClient } from "../lib/googleAuthCache.js";
 import { makeRequireEmailIngestAuth } from "../lib/emailIngestAuth.js";
 import { shadowWriteEmailIngest } from "../lib/omni/adapters/emailIngest.js";
+import { recordEmailAdminInbound } from "../lib/adminInboundDispatch.js";
 import { mirrorMlSendApprovedToOmni } from "../lib/omni/adapters/mlOutboundMirror.js";
 import { getEmailIngestPool, wasIngested, markIngested, getIngestByRow } from "../lib/emailIngestDb.js";
 import { sendEmailReply, extractEmailAddress } from "../lib/emailReply.js";
@@ -3058,6 +3059,14 @@ Respondé SOLO JSON válido, sin markdown ni explicación.`;
     // messageId is client-supplied; strip CR/LF/TAB before it reaches any log line
     // so it can't forge log entries (CodeQL js/log-injection).
     const safeMessageId = String(messageId ?? "?").replace(/[\n\r\t]/g, " ");
+    await recordEmailAdminInbound({
+      config,
+      logger: req.log || console,
+      messageId,
+      remitente,
+      asunto,
+      cuerpo,
+    });
 
     // Idempotency: the unattended ingester (Cloud Run Job) re-sends the same
     // messages each run; skip if already processed so we don't write dup leads.

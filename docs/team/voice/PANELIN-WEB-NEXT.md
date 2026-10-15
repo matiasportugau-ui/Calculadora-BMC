@@ -2,7 +2,7 @@
 
 SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 
-**Última:** 2026-10-08 (Admin VW: working-set row + columnas canónicas C–L; no append 3713+)  
+**Última:** 2026-10-08 (Admin VW working-set + columnas C–L; no append 3713+)  
 **Local:** http://127.0.0.1:3001/storefront-voice/  
 **Shop:** widget on bmcuruguay.com.uy. Orb opens. `POST /chat` 200 `grok` / `grok-3-mini`. Silence mic **10 s**. Chat idle **25 s** → one «¿Seguís ahí?».  
 **Score:** runtime **68/100** (2026-09-07) — logs: `docs/team/reports/STATUS-EVAL-panelin-front-LOGS-2026-09-07.md`
@@ -14,7 +14,7 @@ Prod chat was 400 `Incorrect API key` on xAI and did not fall through to Gemini.
 ## Próximo prompt
 
 ```
-ship Admin VW working-set (sí / ship). HITL: no mover dump 3713–3798 hasta “escribí admin”.
+Tras merge: deploy-calc-api. Dump VW 3713+ ya migrado HITL al working set.
 ```
 
 ## No hacer ahora

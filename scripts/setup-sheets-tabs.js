@@ -10,6 +10,7 @@
  */
 import "dotenv/config";
 import { google } from "googleapis";
+import { CRM_GO_LIVE_TABS, planTabCreates } from "./lib/crmGoLiveTabs.mjs";
 
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 
@@ -31,27 +32,56 @@ async function getSpreadsheet(sheets, spreadsheetId) {
   return res.data;
 }
 
+function columnLetter(length) {
+  return String.fromCharCode(64 + length);
+}
+
 async function addSheetIfMissing(sheets, spreadsheetId, title, headers) {
   const meta = await getSpreadsheet(sheets, spreadsheetId);
-  const exists = meta.sheets?.some((s) => s.properties.title === title);
-  if (exists) {
-    console.log(`  [SKIP] Tab "${title}" ya existe`);
-    return;
+  const titles = (meta.sheets || []).map((s) => s.properties.title);
+  const plan = planTabCreates(titles, [{ title, headers }]);
+  for (const skipped of plan.skips) {
+    console.log(`  [SKIP] Tab "${skipped}" ya existe`);
   }
-  const addRes = await sheets.spreadsheets.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      requests: [{ addSheet: { properties: { title } } }],
-    },
-  });
-  const sheetId = addRes.data.replies[0].addSheet.properties.sheetId;
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: `'${title}'!A1:${String.fromCharCode(64 + headers.length)}1`,
-    valueInputOption: "USER_ENTERED",
-    requestBody: { values: [headers] },
-  });
-  console.log(`  [OK] Tab "${title}" creada`);
+  for (const spec of plan.headerWrites) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{ addSheet: { properties: { title: spec.title } } }],
+      },
+    });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${spec.title}'!A1:${columnLetter(spec.headers.length)}1`,
+      valueInputOption: "RAW",
+      requestBody: { values: [spec.headers] },
+    });
+    console.log(`  [OK] Tab "${spec.title}" creada`);
+  }
+}
+
+async function ensureCrmGoLiveTabs(sheets, spreadsheetId) {
+  const meta = await getSpreadsheet(sheets, spreadsheetId);
+  const titles = (meta.sheets || []).map((s) => s.properties.title);
+  const plan = planTabCreates(titles, CRM_GO_LIVE_TABS);
+  for (const skipped of plan.skips) {
+    console.log(`  [SKIP] Tab "${skipped}" ya existe`);
+  }
+  for (const spec of plan.headerWrites) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{ addSheet: { properties: { title: spec.title } } }],
+      },
+    });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${spec.title}'!A1:${columnLetter(spec.headers.length)}1`,
+      valueInputOption: "RAW",
+      requestBody: { values: [spec.headers] },
+    });
+    console.log(`  [OK] Tab "${spec.title}" creada`);
+  }
 }
 
 async function addColumnIfMissing(sheets, spreadsheetId, sheetTitle, headerRow, newColumnName) {
@@ -119,6 +149,18 @@ async function main() {
   }
 
   const sheets = await getSheetsClient();
+
+  if (process.argv.includes("--crm-go-live")) {
+    const spreadsheetId = process.env.BMC_SHEET_ID;
+    if (!spreadsheetId) {
+      console.error("Falta BMC_SHEET_ID");
+      process.exit(1);
+    }
+    console.log("\nCRM go-live tabs — Metas_Ventas + AUDIT_LOG");
+    await ensureCrmGoLiveTabs(sheets, spreadsheetId);
+    console.log("\n✓ CRM go-live tabs listo.\n");
+    return;
+  }
 
   console.log("\n1. Pagos Pendientes 2026 — Tab CONTACTOS");
   await addSheetIfMissing(sheets, IDS.pagos, "CONTACTOS", ["NOMBRE", "EMAIL"]);

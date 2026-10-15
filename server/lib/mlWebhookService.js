@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { mlWebhookToOmniEvent, extractMlWebhookResourceId } from "./omni/adapters/mlWebhook.js";
 import { normalizeAndPersist } from "./omni/normalizer.js";
+import { dispatchAdminInbound, mercadoLibreQuestionFields } from "./adminInboundDispatch.js";
 
 const SUPPORTED_TOPICS = new Set(["questions", "messages"]);
 
@@ -60,6 +61,7 @@ export function createMlWebhookProcessor({
   fetchResource = defaultFetchMlWebhookResource,
   persistOmni = normalizeAndPersist,
   buffer = createMlWebhookBuffer(),
+  getSheets,
 } = {}) {
   const autoAnswerResourceIds = new Set();
 
@@ -95,13 +97,29 @@ export function createMlWebhookProcessor({
     return syncResult;
   }
 
+  async function appendQuestionAdminRow({ notification }) {
+    if (!config?.adminInboundRows) return { ok: true, skipped: "flag_off" };
+    let question = null;
+    try {
+      question = await fetchResource({ ml, notification, topic: "questions" });
+    } catch (err) {
+      logger?.warn?.({ err: err?.message }, "ML admin inbound question fetch failed");
+      return { ok: false, error: "question_fetch_failed" };
+    }
+    return dispatchAdminInbound(
+      config,
+      mercadoLibreQuestionFields({ notification, question }),
+      { logger, getSheets },
+    );
+  }
+
   async function processNotification({ body, headers, autoMode } = {}) {
     const topic = mlWebhookTopic({ body, headers });
     if (!SUPPORTED_TOPICS.has(topic)) return { ok: true, skipped: "unsupported_topic", topic };
 
     const notification = { ...(body || {}), topic };
     const resourceId = extractMlWebhookResourceId(notification);
-    const [omniResult, syncResult] = await Promise.all([
+    const [omniResult, syncResult, adminResult] = await Promise.all([
       persistWebhookToOmni({ notification, topic }).catch((err) => {
         logger?.warn?.({ err: err?.message, topic, resourceId }, "ML omni webhook persist failed");
         return null;
@@ -109,8 +127,14 @@ export function createMlWebhookProcessor({
       topic === "questions"
         ? triggerQuestionCrmSync({ resourceId, autoMode })
         : Promise.resolve(null),
+      topic === "questions"
+        ? appendQuestionAdminRow({ notification }).catch((err) => {
+          logger?.warn?.({ err: err?.message, resourceId }, "ML admin inbound row failed");
+          return { ok: false, error: "admin_inbound_failed" };
+        })
+        : Promise.resolve(null),
     ]);
-    return { ok: true, topic, resourceId, omni: omniResult, sync: syncResult };
+    return { ok: true, topic, resourceId, omni: omniResult, sync: syncResult, admin: adminResult };
   }
 
   function handleWebhook({ body, query, headers, autoMode } = {}) {

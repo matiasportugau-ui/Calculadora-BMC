@@ -97,6 +97,11 @@ export const config = {
   wolfbAdminCotDualWriteEnabled: bool(process.env.WOLFB_ADMIN_COT_DUAL_WRITE, false),
   wolfbAdminCotEnviadosTab: process.env.WOLFB_ADMIN_COT_ENVIADOS_TAB || "Enviados",
   wolfbDryRun: process.env.WOLFB_DRY_RUN === "1",
+  /**
+   * When on, each inbound WhatsApp, Mercado Libre, Facebook, Instagram, and
+   * email message appends its own Admin row. Default off. Do not enable here.
+   */
+  adminInboundRows: bool(process.env.ADMIN_INBOUND_ROWS, false),
   wolfbRitualLog: process.env.WOLFB_RITUAL_LOG === "1",
   wolfbCalcApiBase: process.env.WOLFB_CALC_API_BASE || "",
   /** Primera fila de datos H:K en Admin 2.0 (default 2). */
@@ -168,6 +173,18 @@ export const config = {
   fbPageToken: process.env.FB_PAGE_TOKEN || "",
   igAppSecret: process.env.IG_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
   fbAppSecret: process.env.FB_APP_SECRET || process.env.META_APP_SECRET || process.env.WHATSAPP_APP_SECRET || "",
+  // Meta inbox HITL (Run 1+). OWNER_WHATSAPP = owner's personal phone (E.164 digits),
+  // not the Cloud API sender (092 663 245). Notifications go TO this number FROM the
+  // business WA line. Empty = notify disabled (code still ingests).
+  ownerWhatsapp: process.env.OWNER_WHATSAPP || "",
+  metaPageId: process.env.META_PAGE_ID || "",
+  metaIgAccountId: process.env.META_IG_ACCOUNT_ID || "",
+  metaCommentsEnabled: bool(process.env.META_COMMENTS_ENABLED, false),
+  // Slack operator communication (optional). Empty = ping helper no-ops.
+  slackBotToken: process.env.SLACK_BOT_TOKEN || "",
+  slackWebhookUrl: process.env.SLACK_WEBHOOK_URL || "",
+  slackNotifyChannel: process.env.SLACK_NOTIFY_CHANNEL || "",
+  slackSigningSecret: process.env.SLACK_SIGNING_SECRET || "",
   // Shopify (questions/quotes flow – Mercado Libre replacement)
   shopifyClientId: process.env.SHOPIFY_CLIENT_ID || "",
   shopifyClientSecret: process.env.SHOPIFY_CLIENT_SECRET || "",
