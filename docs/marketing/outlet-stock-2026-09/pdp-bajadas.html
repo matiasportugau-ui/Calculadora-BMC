@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Lote 3 · 50 babetas · absentee / live</title>
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root { --bg:#F9F8F6; --ink:#111; --muted:#5c5c5c; --line:#e4e1db; --ok:#1f6b3a; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--ink); font-family:"Red Hat Display",sans-serif; }
+    a { color:inherit; text-decoration:none; }
+    img { display:block; max-width:100%; }
+    input, button { font:inherit; }
+    .mockbar { background:#111; color:#f4f1ea; font-size:12px; text-align:center; padding:8px; }
+    header { display:flex; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--line); }
+    .brand { font-weight:800; letter-spacing:.08em; }
+    .wrap { max-width:1120px; margin:0 auto; padding:24px 24px 80px; display:grid; grid-template-columns:1.1fr .9fr; gap:32px; }
+    .photo { border:1px solid var(--line); position:relative; }
+    .photo img { width:100%; min-height:380px; object-fit:cover; }
+    .seal { position:absolute; top:14px; left:14px; background:#7a2e24; color:#fff; font-weight:800; font-size:12px; padding:6px 8px; }
+    h1 { font-size:26px; letter-spacing:-.03em; margin:6px 0 10px; }
+    .label { font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+    .current { font-size:36px; font-weight:800; }
+    table { width:100%; border-collapse:collapse; font-size:14px; margin:14px 0; }
+    td { padding:8px 0; border-bottom:1px solid var(--line); }
+    td:first-child { color:var(--muted); width:42%; }
+    .cta { width:100%; background:#111; color:#fff; border:0; min-height:48px; font-weight:800; cursor:pointer; }
+    input { width:100%; border:1px solid #111; padding:12px; font-size:16px; min-height:44px; margin:8px 0; }
+    .note { font-size:13px; color:var(--muted); line-height:1.4; margin-top:10px; }
+    .hist { font-family:"IBM Plex Mono",monospace; font-size:12px; margin-top:16px; }
+    .hist div { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid var(--line); }
+    .ok { color:var(--ok); font-weight:700; }
+    @media (max-width:767px) { .wrap { grid-template-columns:1fr; padding:16px 16px 24px; } .photo img { min-height:220px; } }
+  </style>
+</head>
+<body>
+  <div class="mockbar">MOCK · lote todavía no live · absentee = max bid proxy de eBay · se ejecuta cuando el lote entra al martillo</div>
+  <header>
+    <a class="brand" href="outlet.html">BMC URUGUAY</a>
+    <a href="live.html">← Lote 2 está LIVE</a>
+  </header>
+  <main class="wrap">
+    <div class="photo">
+      <img src="assets/babetas.jpg" alt="50 babetas de atornillar bordeaux 3 m" />
+      <div class="seal">SEGUNDA SELECCIÓN</div>
+    </div>
+    <div>
+      <div class="label">Lote 3 · entra después de bajadas</div>
+      <h1>50 babetas de atornillar 3 m bordeaux, importación</h1>
+      <div class="label">Mejor absentee ahora</div>
+      <div class="current">USD 40</div>
+      <p class="ok">3 máximos ya cargados · tu máximo queda oculto hasta que lo superen</p>
+      <table>
+        <tr><td>Estado</td><td>2ª selección · marcas y abolladuras · funcionales</td></tr>
+        <tr><td>Salida</td><td>USD 40</td></tr>
+        <tr><td>Incremento</td><td>USD 2 (franja 30–49, tabla eBay Live)</td></tr>
+        <tr><td>Reserva</td><td>USD 180 (se revela al alcanzarla)</td></tr>
+        <tr><td>En el martillo</td><td>~2 min + soft-close +5 s</td></tr>
+        <tr><td>Entrega</td><td>Retiro depósito · flete a cotizar</td></tr>
+        <tr><td>Pago</td><td>No online. Ganador: WhatsApp para coordinar</td></tr>
+      </table>
+      <label class="label" for="max">Tu puja máxima (proxy)</label>
+      <input id="max" type="number" min="42" value="42" />
+      <button class="cta" type="button" onclick="alert('MOCK: máximo USD '+document.getElementById('max').value+' guardado. Cuando el lote 3 entre live, el sistema puja el incremento por vos hasta ese tope.')">Dejar absentee USD 42</button>
+      <p class="note">Como eBay: el máximo es confidencial. El sistema solo puja lo necesario para ir ganando, de a un incremento. Si alguien iguala o supera, te avisamos para subir el tope.</p>
+      <div class="hist">
+        <div><span>instal_mvd</span><span>máx. oculto · 11:02</span></div>
+        <div><span>techos_este</span><span>máx. oculto · 10:41</span></div>
+        <div><span>obra_rocha</span><span>USD 40 · salida</span></div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

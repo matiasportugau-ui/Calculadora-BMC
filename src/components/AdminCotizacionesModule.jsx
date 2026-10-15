@@ -40,7 +40,7 @@ function ModuleInner() {
       } 
     },
     urgentes: { 
-      label: "Urgentes (7d+)", 
+      label: "Alertas 7d+", 
       filter: (r) => {
         const age = ageDays(r.fecha);
         return age != null && age >= 7 && !String(r.estado || "").toLowerCase().includes("enviado");

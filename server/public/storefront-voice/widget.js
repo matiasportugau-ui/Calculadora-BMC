@@ -12,10 +12,17 @@
   const MAX_MS = 8 * 60 * 1000;
   /** Wall-clock idle after last speech/turn: stop mic + WS so silence is not billed. */
   const SILENCE_CUT_MS = 10 * 1000;
+  /** Wait after the last turn before one check-in. Keep in sync with storefrontChatIdle.js */
+  const CHAT_IDLE_MS = 25 * 1000;
+  const CHAT_ABANDON_MS = 50 * 1000;
+  const CHAT_HIDDEN_MS = 60 * 1000;
+  const CHAT_CHECKIN = "¿Seguís ahí? Cuando quieras seguimos con la aproximación.";
+  const CHAT_CLOSEOUT_BYE = "Quedó registrada tu consulta en BMC. Cuando quieras volvemos.";
   /** Skip PCM append below this peak — xAI bills silence the same as speech. */
   const PCM_SILENCE_PEAK = 0.008;
   const SS_RESUME = "bmc_panelin_resume";
   const SS_IDENTITY = "bmc_panelin_identity";
+  const SS_POINT = "bmc_panelin_point";
   const SS_LIVE = "bmc_panelin_live";
   const LIVE_HANDOFF = "Un agente de ventas de BMC se suma a la conversación.";
   const SHOP_HOSTS = ["bmcuruguay.com.uy", "www.bmcuruguay.com.uy", "xj4rir-qz.myshopify.com"];
@@ -39,6 +46,7 @@
     open_url: 1,
     share_link: 1,
     present_choices: 1,
+    shop_point: 1,
     add_quote_to_cart: 1,
   };
 
@@ -484,7 +492,7 @@
 #bmc-paneli-voice.nudge .bmc-launch,#bmc-paneli-voice.open .bmc-launch,#bmc-paneli-voice.nudge-off .bmc-launch{transform:none}
 #bmc-paneli-voice .bmc-ask{display:flex;align-items:center;gap:4px;max-width:14.5em;min-height:44px;background:rgba(15,23,42,.92);color:#fff;font-size:13px;font-weight:600;line-height:1.25;padding:8px 6px 8px 12px;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.22);cursor:pointer;opacity:0;pointer-events:none;transform:translateX(8px);transition:opacity .35s ease,transform .35s ease}
 #bmc-paneli-voice.nudge .bmc-ask{opacity:1;pointer-events:auto;transform:none}
-#bmc-paneli-voice.open .bmc-ask,#bmc-paneli-voice.nudge-off .bmc-ask,#bmc-paneli-voice.nudge-done .bmc-ask{display:none}
+#bmc-paneli-voice.open .bmc-ask,#bmc-paneli-voice.has-chat .bmc-ask,#bmc-paneli-voice.nudge-off .bmc-ask,#bmc-paneli-voice.nudge-done .bmc-ask{display:none}
 #bmc-paneli-voice .bmc-ask-x{width:44px;height:44px;flex:none;border:0;background:transparent;color:#fff;font-size:20px;line-height:1;cursor:pointer;border-radius:10px}
 #bmc-paneli-voice.open .bmc-launch{visibility:hidden;pointer-events:none}
 #bmc-paneli-voice .bmc-orb{width:76px;height:76px;padding:0;border:2px solid #fff;border-radius:50%;background:#1a3a5c;cursor:pointer;display:grid;place-items:center;overflow:hidden;box-shadow:0 10px 28px rgba(20,19,17,.28);position:relative;flex:none;animation:bmc-orb-breathe 3.6s ease-in-out infinite}
@@ -668,8 +676,16 @@
     cliente: "",
     telefono: "",
     adminRow: null,
+    lastAdminPersist: null,
     logTimer: null,
     silenceTimer: null,
+    idleTimer: null,
+    abandonTimer: null,
+    hiddenTimer: null,
+    awaitingReply: false,
+    closedOut: false,
+    point: null,
+    guideTimer: null,
     liveId: null,
     livePing: null,
     livePoll: null,
@@ -1028,16 +1044,17 @@
     }, 2500);
   }
 
-  async function flushLog() {
+  async function flushLog(closeout) {
     if (state.logTimer) {
       clearTimeout(state.logTimer);
       state.logTimer = null;
     }
     if (!state.identified || !state.adminRow) return;
-    const transcript = transcriptText();
+    let transcript = transcriptText();
+    if (closeout) transcript = `${transcript}\n— closeout ${String(closeout).slice(0, 40)}`.slice(0, 8000);
     if (!transcript) return;
     try {
-      await fetch(`${API}/api/public/voice/log`, {
+      const res = await fetch(`${API}/api/public/voice/log`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1046,9 +1063,102 @@
           cliente: state.cliente,
           transcript,
           pageUrl: window.location.href,
+          closeout: closeout || undefined,
         }),
       });
-    } catch { /* ignore */ }
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+      if (!res.ok || data?.ok === false) {
+        const msg = data?.error || `Admin log HTTP ${res.status}`;
+        console.warn("[Panelin] Admin persist /log failed:", msg, data?.dryRun ? "(dryRun)" : "");
+        state.lastAdminPersist = { ok: false, via: "log", error: msg, at: Date.now() };
+      } else {
+        state.lastAdminPersist = {
+          ok: true,
+          via: "log",
+          adminRow: data?.adminRow || state.adminRow,
+          at: Date.now(),
+        };
+      }
+    } catch (err) {
+      console.warn("[Panelin] Admin persist /log network error:", err?.message || err);
+      state.lastAdminPersist = { ok: false, via: "log", error: String(err?.message || err), at: Date.now() };
+    }
+  }
+
+  function isStorefrontFarewell(text) {
+    const t = String(text || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .trim();
+    if (!t) return false;
+    if (/\b(chau|adios|adeu|nos vemos|hasta luego|me voy|despues sigo|bye)\b/.test(t)) return true;
+    return /^(gracias|listo|dale gracias)[\s!.]*$/.test(t);
+  }
+
+  function clearChatIdle() {
+    if (state.idleTimer) {
+      clearTimeout(state.idleTimer);
+      state.idleTimer = null;
+    }
+    if (state.abandonTimer) {
+      clearTimeout(state.abandonTimer);
+      state.abandonTimer = null;
+    }
+    if (state.hiddenTimer) {
+      clearTimeout(state.hiddenTimer);
+      state.hiddenTimer = null;
+    }
+  }
+
+  function armChatIdle() {
+    if (state.closedOut || !state.identified) return;
+    if (!root.classList.contains("open") || !root.classList.contains("has-chat")) return;
+    if (state.awaitingReply || state.chatBusy) return;
+    if (state.idleTimer) clearTimeout(state.idleTimer);
+    state.idleTimer = setTimeout(onChatIdle, CHAT_IDLE_MS);
+  }
+
+  function armChatAbandon(reason) {
+    if (state.closedOut) return;
+    if (state.abandonTimer) clearTimeout(state.abandonTimer);
+    state.abandonTimer = setTimeout(() => closeoutChat(reason || "silence"), CHAT_ABANDON_MS);
+  }
+
+  function onChatIdle() {
+    state.idleTimer = null;
+    if (state.closedOut || state.chatBusy || state.awaitingReply) return;
+    if (!root.classList.contains("open") || !root.classList.contains("has-chat")) return;
+    if (voiceLive() && (state.status === "speaking" || state.status === "listening" || state.pendingTools > 0)) {
+      armChatIdle();
+      return;
+    }
+    state.awaitingReply = true;
+    addCap("assistant", CHAT_CHECKIN);
+    armChatAbandon("silence");
+  }
+
+  async function closeoutChat(reason) {
+    if (state.closedOut) return;
+    state.closedOut = true;
+    state.awaitingReply = false;
+    clearChatIdle();
+    stopNudge();
+    try { sessionStorage.setItem(NUDGE_KEY, "off"); } catch { /* ignore */ }
+    root.classList.add("nudge-off");
+    if (root.classList.contains("has-chat")) addCap("assistant", CHAT_CLOSEOUT_BYE);
+    await flushLog(reason || "closed");
+    pingLive("ended");
+    stopLiveLoop();
+    if (voiceLive()) teardown();
+    stopPipelineListen();
+    stopPipelineSpeak();
+    root.classList.remove("open");
   }
 
   function setErr(msg) {
@@ -1181,6 +1291,15 @@
     caps.scrollTop = caps.scrollHeight;
     remember(role === "user" ? "user" : role === "agent" ? "agent" : "assistant", t);
     scheduleLog();
+    if (role === "user") {
+      state.awaitingReply = false;
+      if (state.abandonTimer) {
+        clearTimeout(state.abandonTimer);
+        state.abandonTimer = null;
+      }
+    } else if (t !== CHAT_CHECKIN && t !== CHAT_CLOSEOUT_BYE && !state.awaitingReply) {
+      armChatIdle();
+    }
     if (role !== "user" && shopPicks.hidden) renderChoiceChips(parseReplyChoices(t));
   }
 
@@ -1346,6 +1465,7 @@
 
   if (LOCAL_HOST) {
     window.__bmcShowChoices = (opts) => renderChoiceChips(opts);
+    window.__bmcPointAt = (query) => pointAt({ query });
   }
 
   function setCartCount(n) {
@@ -1369,6 +1489,130 @@
         chatHistory: state.chatHistory.slice(-20),
       }));
     } catch { /* ignore */ }
+  }
+
+  function rememberPoint(spec) {
+    const point = {
+      query: String(spec?.query || spec?.handle || "").slice(0, 80),
+      handle: String(spec?.handle || "").replace(/^\/products\//, "").split("?")[0].slice(0, 80),
+      path: String(spec?.path || spec?.url || "").slice(0, 200),
+    };
+    if (!point.query && !point.handle && !point.path) return;
+    state.point = point;
+    try { sessionStorage.setItem(SS_POINT, JSON.stringify(point)); } catch { /* ignore */ }
+  }
+
+  function findPointTarget(spec) {
+    const query = String(spec?.query || "").toLowerCase().trim();
+    const handle = String(spec?.handle || "").toLowerCase().replace(/^\/products\//, "").split("?")[0];
+    const path = String(spec?.path || "").split("?")[0];
+    const tokens = query.split(/\s+/).filter((t) => t.length > 2);
+    const skip = (el) => {
+      if (!el || el.closest("#bmc-paneli-voice, #bmc-guide")) return true;
+      const r = el.getBoundingClientRect();
+      return r.width < 40 || r.height < 16;
+    };
+    const hrefHit = (el) => {
+      const href = String(el.getAttribute("href") || el.href || "");
+      if (handle && href.toLowerCase().includes("/products/" + handle)) return true;
+      if (path && href.includes(path)) return true;
+      if (query && href.toLowerCase().includes(query.replace(/\s+/g, "-"))) return true;
+      return false;
+    };
+    const textHit = (el) => {
+      if (!tokens.length) return false;
+      const hay = `${el.textContent || ""} ${el.getAttribute("alt") || ""}`.toLowerCase();
+      return tokens.every((t) => hay.includes(t));
+    };
+    const ranked = [];
+    document.querySelectorAll("a[href], [data-product-handle], h1, h2, h3, .product-card, .product-card-wrapper, .card-wrapper").forEach((el) => {
+      if (skip(el)) return;
+      let score = 0;
+      if (hrefHit(el)) score += 8;
+      if (textHit(el)) score += 5;
+      const h = String(el.getAttribute("data-product-handle") || "").toLowerCase();
+      if (handle && h === handle) score += 10;
+      if (score) ranked.push({ el, score });
+    });
+    ranked.sort((a, b) => b.score - a.score);
+    return ranked[0]?.el || null;
+  }
+
+  function ensureGuide() {
+    let g = document.getElementById("bmc-guide");
+    if (g) return g;
+    const css = document.createElement("style");
+    css.id = "bmc-guide-css";
+    css.textContent = `#bmc-guide{position:fixed;inset:0;z-index:2147482998;pointer-events:none}
+#bmc-guide[hidden]{display:none!important}
+#bmc-guide .bmc-guide-ring{position:fixed;border:3px solid #0071e3;border-radius:16px;box-shadow:0 0 0 6px rgba(0,113,227,.22);transition:left .55s cubic-bezier(.2,.8,.2,1),top .55s cubic-bezier(.2,.8,.2,1),width .55s ease,height .55s ease}
+#bmc-guide .bmc-guide-cursor{position:fixed;width:28px;height:28px;margin-left:-4px;margin-top:-4px;transition:left .55s cubic-bezier(.2,.8,.2,1),top .55s cubic-bezier(.2,.8,.2,1)}
+#bmc-guide .bmc-guide-cursor i{display:block;width:0;height:0;border-left:12px solid #1a3a5c;border-top:8px solid transparent;border-bottom:16px solid transparent;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+#bmc-guide .bmc-guide-label{position:fixed;background:#1a3a5c;color:#fff;font:600 12px/1.3 -apple-system,BlinkMacSystemFont,sans-serif;padding:6px 10px;border-radius:10px;max-width:14em;transition:left .55s cubic-bezier(.2,.8,.2,1),top .55s cubic-bezier(.2,.8,.2,1)}
+@media(prefers-reduced-motion:reduce){#bmc-guide .bmc-guide-ring,#bmc-guide .bmc-guide-cursor,#bmc-guide .bmc-guide-label{transition:none}}`;
+    document.documentElement.appendChild(css);
+    g = document.createElement("div");
+    g.id = "bmc-guide";
+    g.hidden = true;
+    g.innerHTML = '<div class="bmc-guide-ring"></div><div class="bmc-guide-cursor" aria-hidden="true"><i></i></div><p class="bmc-guide-label"></p>';
+    (document.body || document.documentElement).appendChild(g);
+    return g;
+  }
+
+  function hideGuide() {
+    const g = document.getElementById("bmc-guide");
+    if (g) g.hidden = true;
+    if (state.guideTimer) {
+      clearTimeout(state.guideTimer);
+      state.guideTimer = null;
+    }
+  }
+
+  function showGuide(el, spec) {
+    if (!el) return { ok: false, error: "No encontré eso en esta página" };
+    const g = ensureGuide();
+    const ring = g.querySelector(".bmc-guide-ring");
+    const cur = g.querySelector(".bmc-guide-cursor");
+    const lab = g.querySelector(".bmc-guide-label");
+    const pad = 8;
+    const move = () => {
+      const r = el.getBoundingClientRect();
+      ring.style.left = `${Math.max(8, r.left - pad)}px`;
+      ring.style.top = `${Math.max(8, r.top - pad)}px`;
+      ring.style.width = `${r.width + pad * 2}px`;
+      ring.style.height = `${r.height + pad * 2}px`;
+      cur.style.left = `${r.left + Math.min(24, r.width * 0.2)}px`;
+      cur.style.top = `${r.top + Math.min(24, r.height * 0.2)}px`;
+      lab.style.left = `${Math.max(8, r.left)}px`;
+      lab.style.top = `${Math.min(window.innerHeight - 40, r.bottom + 10)}px`;
+    };
+    lab.textContent = `Acá: ${String(spec?.query || spec?.handle || "esto").slice(0, 40)}`;
+    const orbBox = orb.getBoundingClientRect();
+    cur.style.left = `${orbBox.left + 20}px`;
+    cur.style.top = `${orbBox.top + 20}px`;
+    g.hidden = false;
+    el.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+    requestAnimationFrame(() => requestAnimationFrame(move));
+    if (state.guideTimer) clearTimeout(state.guideTimer);
+    state.guideTimer = setTimeout(hideGuide, 8000);
+    return { ok: true, pointed: true };
+  }
+
+  function pointAt(spec) {
+    rememberPoint(spec);
+    const el = findPointTarget(spec);
+    if (el) return showGuide(el, spec);
+    return { ok: false, error: "No encontré eso en esta página" };
+  }
+
+  function applySavedPoint() {
+    let spec = state.point;
+    if (!spec) {
+      try { spec = JSON.parse(sessionStorage.getItem(SS_POINT) || "null"); } catch { spec = null; }
+    }
+    if (!spec) return;
+    try { sessionStorage.removeItem(SS_POINT); } catch { /* ignore */ }
+    setTimeout(() => pointAt(spec), 400);
   }
 
   function isCartPath(path) {
@@ -1442,8 +1686,16 @@
       const out = await shopSearch(args.query);
       if (out.ok) {
         renderPicks(out.products);
+        rememberPoint({
+          query: args.query,
+          handle: out.products?.[0]?.handle,
+          path: out.collection || out.products?.[0]?.url,
+        });
         const dest = out.collection || out.products?.[0]?.url;
-        if (dest) out.navigated = goTo(dest);
+        if (dest) {
+          out.navigated = goTo(dest);
+          if (out.navigated?.already) out.pointed = pointAt(state.point);
+        }
       }
       return out;
     }
@@ -1451,7 +1703,15 @@
       const out = await shopProduct(args.handle);
       if (out.ok && out.product) {
         renderPicks([out.product]);
-        if (out.product.url) out.navigated = goTo(out.product.url);
+        rememberPoint({
+          query: out.product.title || args.handle,
+          handle: out.product.handle || args.handle,
+          path: out.product.url,
+        });
+        if (out.product.url) {
+          out.navigated = goTo(out.product.url);
+          if (out.navigated?.already) out.pointed = pointAt(state.point);
+        }
       }
       return out;
     }
@@ -1477,6 +1737,9 @@
     if (name === "present_choices") {
       const n = renderChoiceChips(args.options || args.choices || []);
       return { ok: true, shown: n };
+    }
+    if (name === "shop_point") {
+      return pointAt({ query: args.query, handle: args.handle, path: args.path || args.url });
     }
     if (name === "add_quote_to_cart") {
       return addQuoteLinesToCart(args.lines || args.cart_lines || [], {
@@ -1951,8 +2214,16 @@
     shopPicks.innerHTML = "";
     setErr("");
     root.classList.add("open");
+    state.closedOut = false;
+    state.awaitingReply = false;
+    clearChatIdle();
     if (state.agentMode) {
       addCap("user", text);
+      return;
+    }
+    if (isStorefrontFarewell(text)) {
+      addCap("user", text);
+      closeoutChat("farewell");
       return;
     }
     if (voiceLive() && state.send) {
@@ -1976,6 +2247,16 @@
     try {
       for (let hop = 0; hop < 4; hop++) {
         const data = await postChat(body);
+        if (data.adminPersist) {
+          state.lastAdminPersist = { ...data.adminPersist, via: "chat", at: Date.now() };
+          if (data.adminPersist.ok === false) {
+            console.warn(
+              "[Panelin] Admin persist /chat failed:",
+              data.adminPersist.error || data.adminPersist.reason || "unknown",
+              data.adminPersist.dryRun ? "(dryRun)" : "",
+            );
+          }
+        }
         if (data.history) state.chatHistory = data.history;
         if (data.text) {
           addCap("assistant", data.text);
@@ -2045,6 +2326,8 @@
   function canNudge() {
     if (nudgeDisabled()) return false;
     if (root.classList.contains("open")) return false;
+    if (root.classList.contains("has-chat")) return false;
+    if (state.identified && state.chatHistory.length) return false;
     if (root.classList.contains("nudge-off")) return false;
     if (root.classList.contains("nudge-done")) return false;
     if (!root.parentNode) return false;
@@ -2106,6 +2389,13 @@
       clearTimeout(nudge.holdTimer);
       nudge.holdTimer = null;
     }
+    if (state.abandonTimer) {
+      clearTimeout(state.abandonTimer);
+      state.abandonTimer = null;
+    }
+    if (state.identified && root.classList.contains("has-chat") && !state.closedOut) {
+      armChatIdle();
+    }
   }
 
   root.querySelector(".bmc-panel").addEventListener("click", (e) => {
@@ -2121,6 +2411,10 @@
     if (!state.agentMode) {
       pingLive("ended");
       stopLiveLoop();
+    }
+    clearChatIdle();
+    if (state.identified && root.classList.contains("has-chat") && !state.closedOut) {
+      armChatAbandon("abandon");
     }
   }
 
@@ -2276,10 +2570,25 @@
   }
 
   window.addEventListener("pagehide", () => {
-    flushLog();
+    if (state.identified && root.classList.contains("has-chat") && !state.closedOut) {
+      closeoutChat("cut");
+    } else {
+      flushLog();
+    }
   });
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden) flushLog();
+    if (document.hidden) {
+      flushLog();
+      if (state.identified && root.classList.contains("has-chat") && !state.closedOut) {
+        if (state.hiddenTimer) clearTimeout(state.hiddenTimer);
+        state.hiddenTimer = setTimeout(() => closeoutChat("cut"), CHAT_HIDDEN_MS);
+      }
+      return;
+    }
+    if (state.hiddenTimer) {
+      clearTimeout(state.hiddenTimer);
+      state.hiddenTimer = null;
+    }
   });
 
   (async function boot() {
@@ -2290,6 +2599,7 @@
     } catch { /* fail open */ }
     attachBubble();
     restoreSession();
+    applySavedPoint();
     startNudge();
     try { window.speechSynthesis && window.speechSynthesis.getVoices(); } catch { /* ignore */ }
   })();

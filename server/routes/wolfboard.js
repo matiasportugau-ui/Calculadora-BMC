@@ -37,6 +37,7 @@ import crypto from "node:crypto";
 import { getAvailableProviders } from "../lib/aiProviderConfig.js";
 import {
   findNextWorkingSetRow,
+  isAdminHeaderEcho,
   mapAdminRowCanonical,
   buildCanonicalAdminUpdates,
   formatAdminFecha,
@@ -373,7 +374,9 @@ export function createWolfboardRouter(config) {
       return res.status(503).json({ ok: false, error: "Error al leer Admin: " + e.message });
     }
 
-    const mapped = rawRows.map((row, idx) => mapAdminSheetRow(row, idx, adminSheetId));
+    const mapped = rawRows
+      .map((row, idx) => (isAdminHeaderEcho(row) ? null : mapAdminSheetRow(row, idx, adminSheetId)))
+      .filter(Boolean);
     const data = filterAdminRowsByScope(mapped, scope);
 
     return res.json({
@@ -779,7 +782,9 @@ export function createWolfboardRouter(config) {
       return res.status(503).json({ ok: false, error: "Error al leer Admin: " + e.message });
     }
 
-    const mapped = rawRows.map((row, idx) => mapAdminSheetRow(row, idx, adminSheetId));
+    const mapped = rawRows
+      .map((row, idx) => (isAdminHeaderEcho(row) ? null : mapAdminSheetRow(row, idx, adminSheetId)))
+      .filter(Boolean);
     const rows = filterAdminRowsByScope(mapped, scope);
 
     const escape = v => `"${String(v).replace(/"/g, '""')}"`;

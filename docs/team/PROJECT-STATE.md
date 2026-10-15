@@ -14,6 +14,52 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-10-13 (feat — Hito 1 slice 1: Desk vía API + pipeline bajo git, D1/D6/D10/D11):** Postgres pasa a ser fuente de verdad de la mesa de revisión. Nuevo `server/routes/desk.js` (`GET /api/desk/health|queue|:id`, `POST /reviews|:id/edit-cause|:id/approve-send`, `PATCH /:id/status`) con `canales` grant + 503 sin DB; link `wa.me` server-side, sin auto-envío (HITL). Nuevo `server/lib/deskQueue.js` (causa 1 clic D10, `matriz_snapshot_required` D6, `sold` con monto D14) + migración `server/migrations/desk/001_desk.sql` (`matriz_snapshots`, `desk_reviews`). Tests `tests/deskQueue.test.js` 6/6 en `test:core`. `~/bmc-sheet-quote-pipeline` inicializado en git (root-commit solo `.gitignore` + `README-DESK-FREEZE.md`, sin secretos): Desk :8787 queda congelado como lector legacy, writes nuevos por `/api/desk`. Pendiente slice 2: `matrizSnapshot.freezeMatriz()` + Desk llama `queue→approve` en vez de Sheets + migración aplicada en prod.
+
+**2026-10-12 (feat — Conocimiento rules wired into code, WIRE-only):** IAlfred/team review of [`CONOCIMIENTO-COMPARATIVE-2026-10-11.md`](./knowledge/CONOCIMIENTO-COMPARATIVE-2026-10-11.md): selection matrix #2–#10 filled and draft #1 decided. **WIRE items only** implemented in a new pure module [`server/lib/quoteKnowledgeRules.js`](../../server/lib/quoteKnowledgeRules.js):
+- **#7 pricing** → `sanityCheckUsdPerM2()` wired into `server/lib/quotePayloadValidator.js` as non-blocking `[USD/m²]` warnings (`<40` / `>100` hard band, soft deviation vs family typical).
+- **#4/#5 familia** → `suggestFamiliaForUso()` wired into `server/lib/waQuoteParams.js` (advisory `familiaSugerida`/`familiaCambia`/`familiaAviso`; IsoPanel↔IsoDec for techo/pared).
+- **draft #1 ML/CL** → `needsClarifyForIncompleteLead()` (advisory clarify gate) and **#3** `attachmentGeometryGap()` (advisory gap) exported helpers.
+- **scenario guard** → `inferQuoteIntentFromUserText()` + `buildQuoteIntentConflict()` re-exported from `quotePayloadValidator.js`; fixes the previously broken `tests/quoteIntentGuard.test.js`.
+- **TUNE (not applied, human-gated sheet write):** #3, #6, #10. **KEEP:** #2, #8, #9. No RETIRE.
+- Tests: `tests/quoteKnowledgeRules.test.js` (21/21) + `tests/quoteIntentGuard.test.js` (3/3), registered in `test:core`. Lint clean on touched files. Not committed.
+
+**2026-10-12 (feat — IAlfred Voice Dock cross-app, Fases 2.0–5; solo local):** El copiloto de voz de Fase 1 ahora tiene UI y se puede llamar desde las 3 URLs locales: Enviar Desk :8787, Calculadora :5173 e IAlfred :3857. El dock es uno solo (`voice-dock.js`, Shadow DOM) y lo sirve el desk. **Nunca se carga en hosts públicos:** guard por hostname, más `VITE_IALFRED_DOCK` en este repo.
+- **En este repo:**
+  - [`src/components/IAlfredVoiceDockLoader.jsx`](../../src/components/IAlfredVoiceDockLoader.jsx), lazy, montado en `App.jsx`.
+  - `PanelinCalculadoraV3_backup.jsx` (solo agregados):
+    - Deep-link `?ialfredQuote=latest` → `GET /api/voice/session/:id/project` (forma `.bmc.json`).
+    - Listener `ialfred:ui` que aplica cotizaciones sin recargar.
+    - Publica `window.__ialfredCalcState` como contexto de pantalla.
+  - Bloque nuevo en `.env.example`.
+  - Script E2E `npm run test:playwright:ialfred-dock` ([`scripts/playwright-ialfred-voice-dock.mjs`](../../scripts/playwright-ialfred-voice-dock.mjs), 14 escenarios).
+- **En el pipeline (fuera de repo):**
+  - Fallback Gemini→xAI en `llm.mjs` (las herramientas internas del desk ya no dependen solo de Gemini).
+  - `voice-tts.mjs`: TTS xAI con 28 voces seleccionables (default `eve`), prefs compartidas en `~/.ialfred/voice-prefs.json` y previews cacheados.
+  - `voice-speech.mjs`: texto hablado rioplatense.
+  - `voice-desk-bridge.js`: el operador gana sobre el borrador del agente; el snapshot HITL se actualiza con lo que se ve en pantalla.
+  - SSE `/api/voice/events` para sincronizar entre pestañas.
+  - Sesión retomable desde cualquier URL (`latestActive`).
+  - Cierre por inactividad a los 30 min con auditoría, y carry-over de 12 h sin heredar acciones pendientes. El cierre explícito ("cerramos por hoy") no siembra la sesión siguiente.
+  - Cambio de voz por voz ("cambiá la voz a leo").
+- **Tests:**
+  - Pipeline: `npm run test:voice` 50/50 (copilot, session-bridge, speech, tts, llm-shape) y `test:g4` OK.
+  - E2E: 14/14.
+  - Origin ajeno → 403 en `/turn` y `/prefs`.
+  - personal-agent: API 86/86 y build web OK.
+- **Sin commits (diff listo).**
+- **Riesgo:** sigue operativo solo xAI (Gemini 429, Anthropic 401, OpenAI sin créditos).
+
+**2026-10-12 (feat — IAlfred Voice Copilot Fase 1 en Enviar Desk):** Backend del copiloto conversacional en `~/bmc-sheet-quote-pipeline/scripts/enviar-desk.mjs` (:8787), fuera de este repo. Rutas nuevas: `POST /api/voice/turn`, `GET /api/voice/health`, `GET /api/voice/sessions`, `GET /api/voice/session/:id`, `POST /api/voice/session/close` y `POST /api/voice/history/search`; los POST solo aceptan origen localhost. Módulos nuevos:
+- `voice-memory.mjs`: L0 append-only en `~/.ialfred/memory/raw/voice-turns-*.jsonl` con el sobre de ia-memory; sesión viva atómica (0600) que sobrevive reinicios; auto-compactación a 8 turnos o 3k tokens (conserva los últimos 3 textuales, resumen LLM fuera del lock con respaldo determinístico); recall total con `desk_buscar_historial`; al cerrar escribe `~/.ialfred/audit/voice-session-<id>.json` y un `closeout` canónico.
+- `voice-llm.mjs`: adaptadores xAI, Gemini, Anthropic y OpenAI con cooldown ante 429/401. Orden por defecto: xai primero, con el modelo `grok-4.20-0309-non-reasoning` (~1–1,5 s por paso).
+- `voice-agent.mjs`: 9 herramientas `desk_*`; HITL con snapshot para guardar y WhatsApp (cancelación por fast-path); lecciones solo con intención explícita; guard de cifras USD; total 0 de la calculadora tratado como error.
+
+Además: mutex FIFO para escrituras en Sheets (también en save-log, save-reply y mark-sent) y cache de 60 s para calc base. Tests: `npm run test:voice` 20/20. Smoke live de 11 turnos: recall después de un reinicio, herencia "¿y en 150?" (USD 5626.77), compactación LLM T1–T5, gate de guardado cancelado sin escribir, Origin ajeno → 403, cierre con auditoría de 11/11 turnos. **Riesgo:** en `bmc-backend/prd` solo xAI está operativo (Gemini sin cuota free, Anthropic con 401 por key inválida, OpenAI sin créditos), y las herramientas internas del desk (reinterpretar y redactar) dependen de Gemini. Fuera de alcance (Fase 2+): UI del Voice Dock, TTS y deep-links.
+
+**2026-10-12 (fix — stack local unificado + resiliencia PDF Enviar Desk):** Desacople de `bmc02` (HP ProDesk Linux) a ejecución 100% local en macOS para habilitar WhatsApp Desktop nativo, AppleScript y Preview.app. Enviar Desk (`scripts/enviar-desk.mjs` :8787): fallback HTTP 302 a Drive/GCS en `/api/pdf/:row/:idx` ante login wall o errores de facturación (0 errores 500); doble autenticación en `fetchDriveAuthed` (OAuth + Service Account); `prepareSend` tolera fallas de descarga de PDF sin bloquear la apertura de WhatsApp con el texto preparado; tarjetas de lista con acceso directo `Drive ↗`. Script de control unificado `scripts/local-stack.sh` (`npm run stack:local status|start|stop|restart`) gestionando IAlfred (:3857), Enviar Desk (:8787), Calculadora API (:3001) y Vite UI (:5173). Tests 9/9 verificados.
+
+**2026-09-11 (feat — Bandeja WA gemela Admin: Antigüedad / Alerta / Prioridad):** `/hub/wa` default tab is **Bandeja** (same QuotesTable as cotizaciones, canal WA only). Copy: Edad→Antigüedad, Salud→Alerta (7d/14d abandonment). Prioridad = sheet Urgencia or derived Alta/Media/Normal. Helpers in `src/utils/adminBandejaCriteria.js`. Not shipped.
 **2026-10-08 (feat — Panelin VW Admin working set, not row 3713):** `POST /wolfboard/row-create` no longer `values.append` (that followed the sheet used-range into the dump at 3713+). Writes the next empty row in A2:M200 with canonical columns (C Estado, D Fecha, E Cliente, F Origen, G Tel, I Consulta, J interpretación, K respuesta, L faltantes). Stub «Chat tienda Panelin — inicio» → Falta info; real chat is evaluated/assumed (no firm prices). `/chat` persist uses the same layout. Tests `adminLeadLayout.test.js`. Existing dump 3713–3798 migrated HITL to working set.
 
 **2026-10-04 (ops — bot autónomo `bmc-crm-golive` registrado):** Definido el agente Grok `bmc-crm-golive` (`~/.grok/agents/bmc-crm-golive.md`, máquina de Matías) para cerrar lo que queda del go-live del dashboard: tab `CONTACTOS` en Pagos, conversión Ventas .xlsx→Sheet autorizada + propagación de ID, Script Properties del digest, `VentasConsolidar.gs` + triggers. Reglas duras: binding-check por paso (spreadsheet↔proyecto↔función vs [`AUTOMATIONS-BY-WORKBOOK.md`](../google-sheets-module/AUTOMATIONS-BY-WORKBOOK.md) §10), nunca ejecuta funciones Apps Script, OAuth = gate humano, dry-run default con `APPLY=1`, merge solo checks verdes. Quedan humanos: 3.3 `runInitialSetup` y UAT 6.1–6.7.

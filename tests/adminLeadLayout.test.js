@@ -5,10 +5,18 @@ import {
   isStubStorefrontConsulta,
   STOREFRONT_STUB_CONSULTA,
   detectAdminRowLayout,
+  isAdminHeaderEcho,
   mapAdminRowCanonical,
   buildCanonicalAdminUpdates,
   formatAdminFecha,
 } from "../server/lib/adminLeadLayout.js";
+
+const headerEcho = Array(13).fill("");
+headerEcho[2] = "Estado";
+headerEcho[4] = "Cliente ";
+headerEcho[8] = "Consulta ";
+assert.equal(isAdminHeaderEcho(headerEcho), true);
+assert.equal(isAdminHeaderEcho(occupiedRow()), false);
 
 function occupiedRow() {
   const r = Array(13).fill("");

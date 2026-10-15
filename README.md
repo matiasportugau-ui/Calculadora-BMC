@@ -6,7 +6,7 @@ Cotizador profesional de paneles de aislamiento térmico y acústico para **BMC 
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-7-646CFF?logo=vite&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)
-![Node](https://img.shields.io/badge/Node-20-339933?logo=node.js&logoColor=white)
+![Node](https://img.shields.io/badge/Node-24-339933?logo=node.js&logoColor=white)
 ![License](https://img.shields.io/badge/license-UNLICENSED-red)
 
 <!-- AUTO-GENERATED-BLOCK: scripts/generate-readme-presentation.mjs -->
@@ -15,11 +15,11 @@ Cotizador profesional de paneles de aislamiento térmico y acústico para **BMC 
 
 | Campo | Valor |
 |-------|-------|
-| **Fecha generación (UTC)** | `2026-05-06` · timestamp ISO en `public/presentation-data.json` |
+| **Fecha generación (UTC)** | `2026-10-15` · timestamp ISO en `public/presentation-data.json` |
 | **package.json** | `3.1.5` |
-| **Git** | `0bd4d7f` · `copilot/update-readme` |
-| **CALCULATOR_DATA_VERSION** | `45e744c8db` |
-| **README smoke** | `384` passed (`validation.js`) + `10` ok (`roofVisualQuoteConsistency.js`) |
+| **Git** | `55271855` · `feat/panelin-front-idle-closeout` |
+| **CALCULATOR_DATA_VERSION** | `26ff0c017e` |
+| **README smoke** | `443` passed (`validation.js`) + `10` ok (`roofVisualQuoteConsistency.js`) |
 | **Presentación Matrix** | [Local :5173](http://localhost:5173/matrix-presentation.html) · [Vercel](https://calculadora-bmc.vercel.app/matrix-presentation.html) |
 
 **Regenerar:** `npm run readme:sync` · solo README/JSON: `npm run readme:generate` · comprobar: `npm run readme:check`.
@@ -344,14 +344,6 @@ Ver [`CONTRIBUTING.md`](CONTRIBUTING.md) para la guía completa de contribución
 | Banco | BROU · Cta. Dólares: 110520638-00002 |
 
 ---
-
-## Documentation Agent
-
-- **Daily auto-update** via GitHub Actions (`.github/workflows/update-docs.yml`, cron `0 6 * * *` UTC + `workflow_dispatch`).
-- **Pipeline**: scan repo → Gemini writer → Gemini critic → rewrite `README.md` only if the critic approves.
-- **Local run**: `export GEMINI_API_KEY='…'` then `python3 scripts/doc_agent.py`
-- **Required secret** (repo → Settings → Secrets → Actions): `GEMINI_API_KEY`
-- `GITHUB_TOKEN` is provided automatically by Actions.
 
 ## Licencia
 

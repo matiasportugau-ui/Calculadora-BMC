@@ -1,15 +1,13 @@
-import { ageDays, healthLevel } from "../../hooks/useAdminCotizaciones.js";
+import {
+  alertaLabel,
+  alertaLevel,
+  antiguedadLabel,
+  prioridadFromRow,
+} from "../../hooks/useAdminCotizaciones.js";
 import { suggestOwner, operatorLabel } from "../../utils/cotizacionAssignment.js";
 
-function ageLabel(fecha) {
-  const d = ageDays(fecha);
-  if (d == null) return "—";
-  if (d === 0) return "hoy";
-  return `${d}d`;
-}
-
 export default function QuoteCard({ row, selected, onToggleSelect, onEdit, onMarkEnviado }) {
-  const lvl = healthLevel(row.fecha, row.estado);
+  const lvl = alertaLevel(row.fecha, row.estado);
   const suggested = suggestOwner({ origen: row.origen, consulta: row.consulta });
   const isCrmOnly = row.source && row.source !== "admin";
   return (
@@ -24,7 +22,7 @@ export default function QuoteCard({ row, selected, onToggleSelect, onEdit, onMar
               aria-label={`Seleccionar fila ${row.rowNum}`}
             />
           )}
-          <span className="adminCot__health" data-level={lvl} />
+          <span className="adminCot__health" data-level={lvl} title={alertaLabel(lvl)} />
           <strong>{row.cliente || "—"}</strong>
           {isCrmOnly && (
             <span
@@ -40,7 +38,7 @@ export default function QuoteCard({ row, selected, onToggleSelect, onEdit, onMar
       </div>
 
       <div className="adminCot__qcard-meta">
-        {(row.fecha || "—").slice(0, 10)} · {ageLabel(row.fecha)} · Estado: <strong>{row.estado || "Pendiente"}</strong>
+        {(row.fecha || "—").slice(0, 10)} · Antigüedad {antiguedadLabel(row.fecha)} · Alerta {alertaLabel(lvl)} · Prioridad {prioridadFromRow(row)} · Estado: <strong>{row.estado || "Pendiente"}</strong>
         {" · "}
         <span title={`Sugerencia automática: ${operatorLabel(suggested)} (${suggested}) · podés sobrescribir`}>
           💡 {operatorLabel(suggested)}

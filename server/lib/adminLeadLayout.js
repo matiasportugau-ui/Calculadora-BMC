@@ -64,6 +64,13 @@ function cell(row, idx) {
   return String(row?.[idx] ?? "").trim();
 }
 
+/** Row 2 of the live sheet is a second header (Estado / Cliente), not a lead. */
+export function isAdminHeaderEcho(row) {
+  const estado = cell(row, 2).toLowerCase();
+  const cliente = cell(row, 4).toLowerCase();
+  return estado === "estado" && cliente.startsWith("cliente");
+}
+
 export function rowHasLeadData(row) {
   if (!Array.isArray(row)) return false;
   return [2, 3, 4, 5, 6, 8, 9].some((i) => cell(row, i));

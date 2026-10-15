@@ -1,0 +1,217 @@
+# Conocimiento comparative — team / IAlfred review
+
+_Generated 2026-10-11 22:17 UTC_
+
+## Purpose
+Compare **legacy Conocimiento** vs **BQ-derived rules** (Enviados × Dropbox, n=2054 totals, ~36% archive) so the team can select what to keep, tune, or retire.
+
+## Snapshot
+- Live tab `Conocimiento`: **28** rows
+- Legacy (pre-2026-10-11): **17**
+- Added this session (BQ/HITL): **9**
+- Other same-day rows (not this pack): **2**
+- BigQuery: `chatbot-bmc-live.bmc_quote_knowledge.fact_quote_io` (**2054** rows with total)
+- Local pack: `~/.ialfred/ops/quote-knowledge-2026-10-11/`
+- Append result: `Conocimiento!A10:L18` (plus any later rows)
+
+## Evidence baselines (from BQ sample)
+
+| Metric | Value |
+|--------|------:|
+| Median quote USD | ~2,384 |
+| Sum sample | ~$6.94M |
+| USD/m² median | ~56 |
+| WA / ML / LL n | 880 / 547 / 213 |
+| WA vs ML median USD | ~2.9k vs ~1.9k |
+
+## A. Legacy rules (keep — already proven by hitCount)
+
+| category | conf | hits | trigger (short) |
+|----------|-----:|-----:|------------------|
+| escenario | 0.96 | 7191 | consulta especifica paneles con largos puntuales sin mencionar 'pared' |
+| escenario | 0.95 | 3552 | cliente pide varias propuestas (propuesta 1 / propuesta 2) con cantida |
+| espesor | 0.93 | 12201 | cliente pide 2 espesores distintos de la misma familia (ej: 'Isodec 10 |
+| terminacion | 0.92 | 4938 | consulta menciona accesorios de remate/goteros con medidas lineales (e |
+| familia | 0.95 | 9121 | consulta menciona 'Isoroof' o 'ISOROOF' con dimensiones 'ancho x largo |
+| general | 0.95 | 10332 | cualquier consulta de paneles donde el cliente ya definió cantidades y |
+| terminacion | 0.88 | 9965 | consulta ISOPANEL o ISODEC sin color explícito |
+| escenario | 0.85 | 3379 | consulta ISOPANEL o ISODEC sin estructura explícita y el contexto no l |
+| general | 0.99 | 684 | Admin planilla Editar Cotización AO openDrive openBmc calculadora edit |
+| general | 0.99 | 1774 | Admin Link Presupuesto M PDF factura cliente 🧾 presupuesto link |
+| general | 0.98 | 21 | iconos Admin emoji tamaño fuente planilla estilo 🧮 🧾 |
+| general | 0.99 | 409 | Google Drive upload service account quota invalid_grant refresh token  |
+| general | 0.98 | 1650 | openDrive openBmc cargar cotización wizard paso a paso bloqueado medid |
+| general | 0.96 | 11304 | instalación montaje procedimiento cómo se coloca cómo se instala isopa |
+| general | 0.98 | 13244 | montfrio kingspan isodec isopanel isoroof video procedimiento ficha an |
+| escenario | 0.95 | 13277 | completo con todo kit instalación montaje colocación jornal isopanel t |
+| general | 0.94 | 566 | sanitaria eléctrica yeso revestimiento aplacado cielorraso caños table |
+
+## B. New BQ/HITL rules (appended active — review for keep/tune)
+
+| # | category | conf | decision | trigger (short) | overlaps legacy? |
+|---|----------|-----:|----------|-----------------|------------------|
+| 2 | origen | — | **KEEP** | WA/LL quote-ready | Complements legacy; no conflict |
+| 3 | escenario | — | **KEEP/TUNE** | EM + adjuntos/planos | Extends missing_geometry; needs attachment pipeline |
+| 4 | familia | — | **KEEP** | IsoPanel techo→IsoDec | Complements IsoRoof-as-techo rule |
+| 5 | familia | — | **KEEP** | IsoDec pared→IsoPanel | Inverse of #4; confirm wording |
+| 6 | familia | — | **TUNE** | WA sin familia default | May over-default; watch false techos |
+| 7 | pricing | — | **KEEP** | USD/m² sanity band | NEW category pricing — wire into calc QA |
+| 8 | espesor | — | **KEEP** | Espesor ladder techo | Aligns with dual-espesor hitCount=449 |
+| 9 | origen | — | **KEEP** | FB medidas → directo | Small n=86; low risk |
+| 10 | comercial | — | **TUNE** | Priorizar WA/LL recontacto | Ops not calc; wire commercial-followup skill |
+
+### Full text of new rules
+
+#### `origen` · conf=0.86 · `dcda2ab1…`
+
+**Trigger:** origen=WA o LL y la consulta trae familia + espesor + medidas (largos/m2/cantidad)
+
+**Rule:** Cotizar sin ronda extra de aclaración salvo datos críticos faltantes (color/entrega). WA/LL llegan quote-ready en ~80%+ con familia/espesor; mediana WA ~USD 2.9k.
+
+#### `escenario` · conf=0.91 · `c98d7844…`
+
+**Trigger:** origen=EM (mail) o la consulta dice 'ver planos'/'plano WPP'/'adjunto' o hay archivos adjuntos (PDF, imagen, plano, DWG) sin medidas numéricas usables en el texto
+
+**Rule:** Analizar adjuntos antes de cotizar: leer PDF/imagen/plano si está disponible; extraer largos, anchos, m2, cantidad de paneles, familia y espesor cuando se vean. Si el adjunto no alcanza para geometría confiable, NO inventar medidas: marcar datos_faltantes=medidas_desde_plano_o_adjunto y pedir largo útil / m2 / cantidad. EM tiene alta tasa de 'ver planos' (~17%).
+
+#### `familia` · conf=0.84 · `06829a90…`
+
+**Trigger:** consulta menciona isopanel (o 'panel sandwich') para TECHO / cubierta / techos sin aclarar pared
+
+**Rule:** Preferir familia IsoDec (o IsoRoof si el cliente pide 3G/FOIL/PLUS/Colonial) en lugar de IsoPanel. Observado: humanos reescriben IsoPanel→IsoDec con frecuencia; IsoPanel→IsoRoof también aparece en techos.
+
+#### `familia` · conf=0.82 · `2222920f…`
+
+**Trigger:** consulta menciona isodec pero el uso es claramente PARED / muro / fachada / divisiones interiores
+
+**Rule:** Evaluar IsoPanel (pared) en lugar de IsoDec. Observado rewrite IsoDec→IsoPanel (n≈89). Confirmar con el cliente si hay duda techo vs pared.
+
+#### `familia` · conf=0.78 · `2ab44d81…`
+
+**Trigger:** consulta sin familia de producto y origen=WA
+
+**Rule:** Default operativo histórico: IsoDec EPS (techo) si el contexto es cubierta/techo; si es pared, IsoPanel. En archivo Dropbox, cuando la consulta no trae familia, WA suele cerrar en IsoDec.
+
+#### `pricing` · conf=0.85 · `8d817931…`
+
+**Trigger:** se generó un presupuesto con total USD y área m2 conocida (quote_total_usd / quote_area_m2)
+
+**Rule:** Sanity-check USD/m2: banda típica ~USD 46–62/m2 según familia (IsoPanel~46, IsoDec EPS~57, IsoRoof~60, IsoDec~62). Si USD/m2 < 40 o > 100, marcar para revisión humana antes de enviar. Mediana global ~USD 56/m2; ticket mediano ~USD 2.4k.
+
+#### `espesor` · conf=0.8 · `9168d958…`
+
+**Trigger:** cliente pide un solo espesor pero el caso de uso es techo IsoRoof/IsoDec y el espesor pedido es ambiguo o muy bajo (p.ej. 30mm) sin confirmar aislamiento
+
+**Rule:** Ofrecer ladder de opciones en paralelo (30/50/80 o 100/150) sin pedir que elija antes — alineado a regla multi-espesor existente. Humanos frecuentemente suben 30→50/80 y 100↔150/200 en el archivo final.
+
+#### `origen` · conf=0.83 · `dc1fb963…`
+
+**Trigger:** origen=FB y la consulta trae medidas claras
+
+**Rule:** FB suele venir muy completo (medidas ~97%, completo ~65%). Priorizar cotización directa; mediana ~USD 2.6k.
+
+#### `comercial` · conf=0.81 · `9049a714…`
+
+**Trigger:** lead de seguimiento comercial / ranking de recontacto
+
+**Rule:** Priorizar WA y LL sobre ML/CL a igual antigüedad: tickets medianos más altos (WA~USD 2.9k vs ML~USD 1.9k) y mayor tasa de datos completos.
+
+## C. Explicitly NOT added (HITL skipped)
+
+| Draft | Why skipped | Revisit? |
+|-------|-------------|----------|
+| #1 ML/CL ask family+espesor before calc | Matias skipped | **YES** — still high leverage for incomplete ML leads |
+
+## D. Selection matrix for team — **FILLED 2026-10-12**
+
+Decisions agreed in the IAlfred/team review (one column per rule). ✅ = selected.
+**WIRE** items were implemented in this session — see §E.1 ledger.
+**TUNE** = wording change recommended; it is a *live sheet edit* and therefore
+gated behind human confirm (harness law: human confirm for production sheet
+writes) — **not performed here**.
+
+| Rule | KEEP as-is | TUNE wording | WIRE into code | RETIRE |
+|------|:--:|:--:|:--:|:--:|
+| #2 WA/LL quote-ready | ✅ | ☐ | ☐ | ☐ |
+| #3 EM + adjuntos/planos | ☐ | ✅ | ☐ | ☐ |
+| #4 IsoPanel techo→IsoDec | ☐ | ☐ | ✅ | ☐ |
+| #5 IsoDec pared→IsoPanel | ☐ | ☐ | ✅ | ☐ |
+| #6 WA sin familia default | ☐ | ✅ | ☐ | ☐ |
+| #7 USD/m² sanity band | ☐ | ☐ | ✅ | ☐ |
+| #8 Espesor ladder techo | ✅ | ☐ | ☐ | ☐ |
+| #9 FB medidas → directo | ✅ | ☐ | ☐ | ☐ |
+| #10 Priorizar WA/LL recontacto | ☐ | ✅ | ☐ | ☐ |
+| Draft #1 ML/CL clarify (not live) | ☐ | ☐ | ✅ | ☐ |
+
+### D.1 Rationale
+
+- **#2 KEEP** — prior already live and complements the legacy rules; wiring a
+  "skip clarification for WA/LL" branch into the agent would silently suppress
+  legitimate clarifications and is premature on a ~36% sample.
+- **#3 TUNE** — tighten the wording to point at the **existing** plan pipeline
+  (`server/routes/planInterpret.js` + `server/lib/planInterpreter.js`). The
+  inbound-**email** path (`server/lib/emailLeadIngest.js`) is body-only and has
+  no attachment fetch; wiring that is a cross-cutting prod change (mail ingest +
+  vision cost) and belongs to its own session, not this one.
+- **#4 + #5 WIRE** — the highest-leverage, lowest-risk fix: a pure
+  `suggestFamiliaForUso({ familia, scope })` now flags the observed human
+  rewrites (IsoPanel↔IsoDec for techo/pared) at the WA extraction call site and
+  guards the scenario router. No behavior change unless a caller opts in.
+- **#6 TUNE** — the rule "WA sin familia → default IsoDec EPS" over-defaults and
+  can produce false *techos*; keep it as an ops prior and tighten the wording.
+- **#7 WIRE** — a new `pricing` sanity band (`< 40` or `> 100` → flag) is added
+  as **non-blocking** warnings on the server-side quote preview; the band is a
+  soft gate, never an invalidation.
+- **#8 KEEP** — already aligns with the legacy multi-espesor rule
+  (hitCount = 449); no code needed.
+- **#9 KEEP** — small n (86), low risk, no conflict.
+- **#10 TUNE** — the referenced `/commercial-followup` **skill does not exist**
+  in this repo, and follow-up items carry no `origen` field, so there is no
+  call site to wire. Keep as an ops/process prior and record the ranking weights.
+- **Draft #1 WIRE (advisory)** — decided **to activate** as a *non-blocking*
+  ML/CL clarify gate (`needsClarifyForIncompleteLead`): ML/CL arrive less
+  complete and have a lower median (ML ~USD 1.9k vs WA ~2.9k). It returns what is
+  missing so the caller can ask; it does not block a calc.
+
+## E. Wiring ledger (implemented)
+
+### E.1 WIRE items — DONE this session (2026-10-12)
+
+Single pure module: **`server/lib/quoteKnowledgeRules.js`** (rules #3 gap helper,
+#4/#5 familia, #7 pricing, draft #1 clarify, scenario-router guard).
+
+| Rule | Artifact | Integration |
+|------|----------|-------------|
+| #7 pricing | `sanityCheckUsdPerM2()` + `USD_M2` bands | `server/lib/quotePayloadValidator.js` → `preview.warnings` (`[USD/m²] …`), non-blocking |
+| #4/#5 familia | `suggestFamiliaForUso()` | `server/lib/waQuoteParams.js` → `familiaSugerida` / `familiaCambia` / `familiaAviso` (advisory, non-mutating) |
+| draft #1 ML/CL | `needsClarifyForIncompleteLead()` | exported helper (advisory) |
+| #3 adjuntos | `attachmentGeometryGap()` | exported helper (advisory) |
+| scenario guard | `inferQuoteIntentFromUserText()` + `buildQuoteIntentConflict()` | re-exported from `quotePayloadValidator.js` — fixes the previously broken `tests/quoteIntentGuard.test.js` |
+
+Tests (registered in `test:core`):
+- `tests/quoteKnowledgeRules.test.js` — 21 checks + golden consultas
+- `tests/quoteIntentGuard.test.js` — was failing on import; now 3/3 (orphan fixed)
+
+### E.2 Remaining (not this session)
+
+1. **#3 adjuntos** → wire inbound email/WA attachment fetch → `visionExtract`
+   before clarify (dedicated session; touches prod mail ingest).
+2. **#10 comercial** → create `/commercial-followup` and add `origen` to
+   follow-up items, then weight WA/LL over ML/CL (needs the skill to exist).
+3. **#6 / #3 / #10 TUNE** → apply wording edits to the live `Conocimiento` sheet
+   (requires human confirm — production sheet write).
+4. Resume the Dropbox full run (~64% left) to harden the #7 bands before
+   treating them as hard limits (see §F, second prompt).
+
+## F. Resume prompts
+
+```
+IAlfred/team: Review docs/team/knowledge/CONOCIMIENTO-COMPARATIVE-2026-10-11.md
+Fill selection matrix (KEEP/TUNE/WIRE/RETIRE) for rules #2–#10 and draft #1.
+Then implement WIRE items only.
+```
+
+```
+Continue quote-knowledge: resume Dropbox full_run_6616.py (skips cache),
+re-run finalize + bq load --replace, refresh USD/m² bands in rule #7.
+```

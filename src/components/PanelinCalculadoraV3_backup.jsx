@@ -5264,6 +5264,60 @@ const [pdfLayout, setPdfLayout] = useState(() => localStorage.getItem('bmc.pdfLa
     })();
   }, [applyDeserializedProject, showToast]);
 
+  // Deep-link IAlfred Voice (LOCAL-ONLY): `?ialfredSession=<id>&ialfredQuote=latest` trae del Enviar Desk local
+  // (`/api/voice/session/:id/project`) el proyecto de la última cotización por voz y lo aplica igual que openBmc.
+  // Además, si se cotiza por voz desde el dock de ESTA página, se aplica sin recargar (`ialfred:ui`).
+  const ialfredDoneRef = useRef(false);
+  const ialfredIsLocal = typeof window !== "undefined" && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+  const loadIAlfredProject = useCallback(async (sessionId) => {
+    const base = String(import.meta.env.VITE_ENVIAR_DESK_URL || "http://127.0.0.1:8787").replace(/\/+$/, "");
+    let deskHost = "";
+    try { deskHost = new URL(base).hostname; } catch { /* inválida */ }
+    if (!/^(localhost|127\.0\.0\.1)$/.test(deskHost)) { showToast("IAlfred: el desk de voz tiene que ser local"); return; }
+    if (!/^[A-Za-z0-9_-]{6,80}$/.test(String(sessionId || ""))) return;
+    const resp = await fetch(`${base}/api/voice/session/${encodeURIComponent(sessionId)}/project`, { credentials: "omit" });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok || !body?.project) { showToast(body?.error || `IAlfred: no pude traer la cotización (${resp.status})`); return; }
+    const ref = body.project?.proyecto?.refInterna;
+    applyDeserializedProject(deserializeProject(body.project), `Cotización de IAlfred${ref ? ` (${ref})` : ""}`);
+  }, [applyDeserializedProject, showToast]);
+  useEffect(() => {
+    if (ialfredDoneRef.current || !ialfredIsLocal) return;
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get("ialfredSession");
+    if (!sid || params.get("ialfredQuote") !== "latest") return;
+    ialfredDoneRef.current = true;
+    loadIAlfredProject(sid)
+      .catch((err) => showToast(err.message || "IAlfred: error al cargar la cotización"))
+      .finally(() => {
+        try {
+          const u = new URL(window.location.href);
+          u.searchParams.delete("ialfredQuote");
+          u.searchParams.delete("source");
+          window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+        } catch { /* ignore */ }
+      });
+  }, [ialfredIsLocal, loadIAlfredProject, showToast]);
+  useEffect(() => {
+    if (!ialfredIsLocal) return undefined;
+    const onUi = (e) => {
+      const d = e.detail || {};
+      if (!d.local || !d.ui?.quote?.familia || !d.turn?.sessionId) return;
+      loadIAlfredProject(d.turn.sessionId).catch(() => {});
+    };
+    window.addEventListener("ialfred:ui", onUi);
+    return () => window.removeEventListener("ialfred:ui", onUi);
+  }, [ialfredIsLocal, loadIAlfredProject]);
+  useEffect(() => {
+    if (!ialfredIsLocal) return;
+    window.__ialfredCalcState = {
+      scenario,
+      lista: listaPrecios,
+      techo: techo?.familia ? { familia: techo.familia, espesor: techo.espesor } : null,
+      pared: pared?.familia ? { familia: pared.familia, espesor: pared.espesor } : null,
+    };
+  }, [ialfredIsLocal, scenario, listaPrecios, techo?.familia, techo?.espesor, pared?.familia, pared?.espesor]);
+
   const handleDriveDelete = useCallback(async (folderId) => {
     if (!confirm("¿Eliminar esta cotización de Google Drive?")) return;
     try {

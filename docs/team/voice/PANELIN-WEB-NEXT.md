@@ -4,12 +4,12 @@ SoT for `/panelin-web`. Keep this short. Update after each useful hop.
 
 **Última:** 2026-10-08 (Admin VW working-set + columnas C–L; no append 3713+)  
 **Local:** http://127.0.0.1:3001/storefront-voice/  
-**Shop:** widget Cloud Run updates after `deploy-calc-api` on this merge. Silence **10 s**.  
-**Score:** runtime **68/100** — logs: `docs/team/reports/STATUS-EVAL-panelin-front-LOGS-2026-09-07.md`
+**Shop:** widget on bmcuruguay.com.uy. Orb opens. `POST /chat` 200 `grok` / `grok-3-mini`. Silence mic **10 s**. Chat idle **25 s** → one «¿Seguís ahí?».  
+**Score:** runtime **68/100** (2026-09-07) — logs: `docs/team/reports/STATUS-EVAL-panelin-front-LOGS-2026-09-07.md`
 
 ## Estado
 
-Shipping `feat/panelin-front-status-eval`: Hub 45 s; `/action` 400 `shop_tool_client_only`; `/chat` keeps orb; closed orb **asoma** on scroll with aproximación chip.
+Prod chat was 400 `Incorrect API key` on xAI and did not fall through to Gemini. Doppler `XAI_API_KEY` was valid; `GROK_API_KEY` matched the dead GSM copy. GSM `GROK_API_KEY` version 5 and Doppler `GROK_API_KEY` now match that working key. Cloud Run `panelin-calc-01120-c7n` serves 100%. Identify gate unchanged (name + phone before chat). This branch still has unshipped idle/closeout work.
 
 ## Próximo prompt
 

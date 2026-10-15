@@ -1,5 +1,10 @@
 import { setListaPrecios } from "../../src/data/constants.js";
 import { executeScenario } from "../../src/utils/scenarioOrchestrator.js";
+import { sanityCheckUsdPerM2 } from "./quoteKnowledgeRules.js";
+
+// Scenario-router guard (Conocimiento rules #4/#5 packing): re-exported here
+// because tests/quoteIntentGuard.test.js imports them from this module.
+export { inferQuoteIntentFromUserText, buildQuoteIntentConflict } from "./quoteKnowledgeRules.js";
 
 const VALID_SCENARIOS = new Set(["solo_techo", "solo_fachada", "techo_fachada", "camara_frig"]);
 const VALID_LP = new Set(["web", "venta"]);
@@ -98,6 +103,25 @@ export function validateAndPreviewQuote(rawPayload) {
     };
   }
 
+  const warnings = [...(result.warnings || [])];
+
+  // Rule #7 (Conocimiento pack 2026-10-11): sanity-check USD/m² before sending.
+  // Non-blocking — adds advisory warnings only; never invalidates a valid quote.
+  const techoArea = techo.zonas.reduce(
+    (acc, z) => acc + (Number(z.largo) || 0) * (Number(z.ancho) || 0),
+    0,
+  );
+  const paredArea = (Number(pared.perimetro) || 0) * (Number(pared.alto) || 0);
+  const areaM2 = techoArea + paredArea;
+  if (areaM2 > 0) {
+    const sanity = sanityCheckUsdPerM2({
+      totalUsd: subtotalUSD,
+      areaM2,
+      familia: techo.familia || pared.familia,
+    });
+    if (sanity.flags.length) warnings.push(...sanity.flags.map((f) => `[USD/m²] ${f}`));
+  }
+
   return {
     valid: true,
     errors: [],
@@ -105,7 +129,7 @@ export function validateAndPreviewQuote(rawPayload) {
       totalItems: items.length,
       subtotalUSD: +subtotalUSD.toFixed(2),
       totalConIVA: +totalConIVA.toFixed(2),
-      warnings: result.warnings || [],
+      warnings,
     },
   };
 }

@@ -32,6 +32,7 @@ import createBmcDashboardRouter from "./routes/bmcDashboard.js";
 import createChatwootRouter from "./routes/chatwoot.js";
 import createEmailAgentRouter from "./routes/emailAgentChat.js";
 import { createFollowupsRouter } from "./routes/followups.js";
+import deskRouter from "./routes/desk.js";
 import createShopifyRouter from "./routes/shopify.js";
 import createMlSearchRouter from "./routes/mlSearch.js";
 import createMlEtlRunRouter from "./routes/mlEtlRun.js";
@@ -1090,6 +1091,7 @@ app.use("/api", agentTranscribeRouter);
 app.use("/api", aiAnalyticsRouter);
 // Follow-up tracker (local store) — mount before dashboard so routes are unambiguous
 app.use("/api", createFollowupsRouter());
+app.use("/api", deskRouter);
 app.use("/api", omniRouter);
 app.use("/api", createTransportistaRouter(config, logger));
 app.use("/api", createCustomerTrackRouter(config, logger));
