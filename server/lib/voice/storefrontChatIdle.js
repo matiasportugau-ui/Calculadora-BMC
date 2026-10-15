@@ -12,7 +12,9 @@ export const CHAT_CLOSEOUT_BYE = "Quedó registrada tu consulta en BMC. Cuando q
 
 const FAREWELL_RE =
   /\b(chau|adios|adeu|nos vemos|hasta luego|me voy|despues sigo|bye)\b/;
-const THANKS_ONLY_RE = /^(gracias|listo|dale gracias)[\s!.]*$/;
+const THANKS_ONLY_RE = /^(muchas gracias|gracias|listo,? gracias|dale,? gracias)[\s!.]*$/;
+// A farewell is a short closing line; anything with a question or numbers is a real message.
+const FAREWELL_MAX_WORDS = 6;
 
 export function isStorefrontFarewell(text) {
   const t = String(text || "")
@@ -20,9 +22,8 @@ export function isStorefrontFarewell(text) {
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
     .trim();
-  if (!t) return false;
-  if (FAREWELL_RE.test(t)) return true;
-  return THANKS_ONLY_RE.test(t);
+  if (!t || /[?\d]/.test(t) || t.split(/\s+/).length > FAREWELL_MAX_WORDS) return false;
+  return FAREWELL_RE.test(t) || THANKS_ONLY_RE.test(t);
 }
 
 export function formatCloseoutFooter(reason) {

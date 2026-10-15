@@ -118,6 +118,8 @@ assert.match(actionSrc, /getSheetsClient/, "persist writes Sheets directly (no s
 assert.match(actionSrc, /adminPersist/, "/chat response includes adminPersist");
 assert.match(actionSrc, /storefront_admin_persist/, "persist failures record voice error kind");
 assert.match(actionSrc, /WOLFB_DRY_RUN/, "dry-run is surfaced as persist failure");
+assert.match(actionSrc, /adminRow_owner_mismatch/, "public persist only writes rows owned by the caller's phone");
+assert.equal((actionSrc.match(/persistStorefrontAdminTranscript\(adminRow, transcript, \{[^}]*telefono/g) || []).length, 2, "both callers pass telefono");
 
 const widget = fs.readFileSync(path.join(ROOT, "server/public/storefront-voice/widget.js"), "utf8");
 assert.match(widget, /adminRow: state\.adminRow/, "widget sends adminRow on /chat");

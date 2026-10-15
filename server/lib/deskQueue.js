@@ -24,6 +24,21 @@ export const __test__ = {
 };
 
 const VALID_STATUS = new Set(["pending", "approved", "sent", "sold", "discarded"]);
+// markStatus targets → allowed source statuses. pending/approved are reached only via
+// saveEditCause / approveSend; sold and discarded are final.
+const STATUS_FROM = {
+  sent: ["approved"],
+  sold: ["approved", "sent"],
+  discarded: ["pending", "approved", "sent"],
+};
+const EDITABLE_STATUS = ["pending", "approved"];
+const CAUSE_KEYS = new Set(["causa", "detalle", "at"]);
+
+async function notFoundOrConflict(p, id, conflictError) {
+  const { rows } = await p.query("select status from desk_reviews where id = $1", [id]);
+  if (!rows.length) return Object.assign(new Error("review_not_found"), { status: 404 });
+  return Object.assign(new Error(conflictError), { status: 409, detail: { current: rows[0].status } });
+}
 
 // D10 — causa en 1 clic al editar. Catálogo cerrado, extensible sin migrar.
 export const EDIT_CAUSES = [
@@ -114,22 +129,22 @@ export async function createReview({
   return rows[0];
 }
 
-/** D10 — guarda causa + patch de payload, vuelve a pending (re-revisión). */
+/** D10 — guarda causa (merge: conserva datos de venta D14) + patch de payload, vuelve a pending. */
 export async function saveEditCause({ id, causa, detalle, payloadPatch = null }, poolOverride) {
   if (!id) throw Object.assign(new Error("id_required"), { status: 400 });
   const cause = normalizeEditCause({ causa, detalle });
   const p = poolOverride || pool();
   const { rows } = await p.query(
     `update desk_reviews
-        set causa = $2::jsonb,
+        set causa = causa || $2::jsonb,
             payload = case when $3::jsonb is null then payload else payload || $3::jsonb end,
             status = 'pending',
             updated_at = now()
-      where id = $1
+      where id = $1 and status = any($4::text[])
       returning id, causa, status, updated_at`,
-    [id, JSON.stringify(cause), payloadPatch ? JSON.stringify(payloadPatch) : null],
+    [id, JSON.stringify(cause), payloadPatch ? JSON.stringify(payloadPatch) : null, EDITABLE_STATUS],
   );
-  if (!rows.length) throw Object.assign(new Error("review_not_found"), { status: 404 });
+  if (!rows.length) throw await notFoundOrConflict(p, id, "review_not_editable");
   return rows[0];
 }
 
@@ -148,7 +163,7 @@ export async function approveSend({ id, phoneE164, text }, poolOverride) {
       returning id, status, wa_link, updated_at`,
     [id, link],
   );
-  if (!rows.length) throw Object.assign(new Error("review_not_found_or_final"), { status: 404 });
+  if (!rows.length) throw await notFoundOrConflict(p, id, "review_not_approvable");
   return rows[0];
 }
 
@@ -156,16 +171,21 @@ export async function approveSend({ id, phoneE164, text }, poolOverride) {
 export async function markStatus({ id, status, extra = {} }, poolOverride) {
   if (!id) throw Object.assign(new Error("id_required"), { status: 400 });
   if (!VALID_STATUS.has(status)) throw Object.assign(new Error("invalid_status"), { status: 400 });
+  const from = STATUS_FROM[status];
+  if (!from) throw Object.assign(new Error("status_not_settable"), { status: 400 });
+  const safeExtra = Object.fromEntries(
+    Object.entries(extra && typeof extra === "object" ? extra : {}).filter(([k]) => !CAUSE_KEYS.has(k)),
+  );
   const p = poolOverride || pool();
   const { rows } = await p.query(
     `update desk_reviews
         set status = $2,
             causa = causa || $3::jsonb,
             updated_at = now()
-      where id = $1
+      where id = $1 and status = any($4::text[])
       returning id, status, updated_at`,
-    [id, status, JSON.stringify(extra || {})],
+    [id, status, JSON.stringify(safeExtra), from],
   );
-  if (!rows.length) throw Object.assign(new Error("review_not_found"), { status: 404 });
+  if (!rows.length) throw await notFoundOrConflict(p, id, "invalid_transition");
   return rows[0];
 }

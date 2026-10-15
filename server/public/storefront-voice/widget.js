@@ -1056,6 +1056,7 @@
     try {
       const res = await fetch(`${API}/api/public/voice/log`, {
         method: "POST",
+        keepalive: true, // survives pagehide; transcript ≤ 8000 chars stays under the 64 KB cap
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           adminRow: state.adminRow,
@@ -1096,9 +1097,9 @@
       .normalize("NFD")
       .replace(/\p{M}/gu, "")
       .trim();
-    if (!t) return false;
+    if (!t || /[?\d]/.test(t) || t.split(/\s+/).length > 6) return false;
     if (/\b(chau|adios|adeu|nos vemos|hasta luego|me voy|despues sigo|bye)\b/.test(t)) return true;
-    return /^(gracias|listo|dale gracias)[\s!.]*$/.test(t);
+    return /^(muchas gracias|gracias|listo,? gracias|dale,? gracias)[\s!.]*$/.test(t);
   }
 
   function clearChatIdle() {
@@ -1562,6 +1563,11 @@
   function hideGuide() {
     const g = document.getElementById("bmc-guide");
     if (g) g.hidden = true;
+    if (state.guideTrack) {
+      window.removeEventListener("scroll", state.guideTrack, true);
+      window.removeEventListener("resize", state.guideTrack);
+      state.guideTrack = null;
+    }
     if (state.guideTimer) {
       clearTimeout(state.guideTimer);
       state.guideTimer = null;
@@ -1593,13 +1599,28 @@
     g.hidden = false;
     el.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
     requestAnimationFrame(() => requestAnimationFrame(move));
+    // Follow the target through the smooth scroll (and later scroll/resize) while visible.
+    if (state.guideTrack) {
+      window.removeEventListener("scroll", state.guideTrack, true);
+      window.removeEventListener("resize", state.guideTrack);
+    }
+    let raf = 0;
+    state.guideTrack = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = 0; move(); });
+    };
+    window.addEventListener("scroll", state.guideTrack, { capture: true, passive: true });
+    window.addEventListener("resize", state.guideTrack, { passive: true });
     if (state.guideTimer) clearTimeout(state.guideTimer);
     state.guideTimer = setTimeout(hideGuide, 8000);
     return { ok: true, pointed: true };
   }
 
-  function pointAt(spec) {
-    rememberPoint(spec);
+  function pointAt(spec, { remember = true } = {}) {
+    if (remember) rememberPoint(spec);
+    else {
+      try { sessionStorage.removeItem(SS_POINT); } catch { /* ignore */ }
+    }
     const el = findPointTarget(spec);
     if (el) return showGuide(el, spec);
     return { ok: false, error: "No encontré eso en esta página" };
@@ -1611,8 +1632,18 @@
       try { spec = JSON.parse(sessionStorage.getItem(SS_POINT) || "null"); } catch { spec = null; }
     }
     if (!spec) return;
-    try { sessionStorage.removeItem(SS_POINT); } catch { /* ignore */ }
-    setTimeout(() => pointAt(spec), 400);
+    // Product cards can render after boot: retry briefly, consume the point on hit or at the deadline.
+    const deadline = Date.now() + 4000;
+    const attempt = () => {
+      const el = findPointTarget(spec);
+      if (el || Date.now() >= deadline) {
+        try { sessionStorage.removeItem(SS_POINT); } catch { /* ignore */ }
+        if (el) showGuide(el, spec);
+        return;
+      }
+      setTimeout(attempt, 500);
+    };
+    setTimeout(attempt, 400);
   }
 
   function isCartPath(path) {
@@ -1636,6 +1667,7 @@
       } catch { /* ignore */ }
     }
     persistResume();
+    state.navigating = true; // widget-driven hop: pagehide must not close the chat out
     location.assign("/cart");
     return { ok: true, path: "/cart" };
   }
@@ -1659,6 +1691,7 @@
     const here = (location.pathname || "/").replace(/\/+$/, "") || "/";
     if (destPath === here) return { ok: true, path, already: true };
     persistResume();
+    state.navigating = true;
     location.assign(path);
     return { ok: true, path };
   }
@@ -1694,7 +1727,7 @@
         const dest = out.collection || out.products?.[0]?.url;
         if (dest) {
           out.navigated = goTo(dest);
-          if (out.navigated?.already) out.pointed = pointAt(state.point);
+          if (out.navigated?.already) out.pointed = pointAt(state.point, { remember: false });
         }
       }
       return out;
@@ -1710,7 +1743,7 @@
         });
         if (out.product.url) {
           out.navigated = goTo(out.product.url);
-          if (out.navigated?.already) out.pointed = pointAt(state.point);
+          if (out.navigated?.already) out.pointed = pointAt(state.point, { remember: false });
         }
       }
       return out;
@@ -2297,6 +2330,7 @@
       state.chatBusy = false;
       if (state.status === "thinking") setStatus("idle");
       flushLog();
+      armChatIdle(); // the reply's addCap ran while chatBusy, so its arm was skipped
     }
   }
 
@@ -2569,8 +2603,9 @@
     } catch { /* ignore */ }
   }
 
+  window.addEventListener("pageshow", () => { state.navigating = false; });
   window.addEventListener("pagehide", () => {
-    if (state.identified && root.classList.contains("has-chat") && !state.closedOut) {
+    if (state.identified && root.classList.contains("has-chat") && !state.closedOut && !state.navigating) {
       closeoutChat("cut");
     } else {
       flushLog();

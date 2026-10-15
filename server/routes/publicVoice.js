@@ -41,6 +41,7 @@ import {
   evaluateStorefrontConsulta,
   isStubStorefrontConsulta,
   buildCanonicalAdminUpdates,
+  mapAdminRowCanonical,
 } from "../lib/adminLeadLayout.js";
 import { getSheetsClient, redactGoogleError } from "../lib/googleSheetsAuth.js";
 import { sanitizeCellValue } from "../lib/sheetsCsvGuard.js";
@@ -161,9 +162,16 @@ export async function persistStorefrontAdminTranscript(adminRow, transcript, ext
     const sheets = await getSheetsClient();
     const current = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: `'${tab.replace(/'/g, "")}'!I${Number(adminRow)}`,
+      range: `'${tab.replace(/'/g, "")}'!A${Number(adminRow)}:M${Number(adminRow)}`,
     });
-    const existing = String(current.data.values?.[0]?.[0] || "");
+    const row = mapAdminRowCanonical(current.data.values?.[0] || [], Number(adminRow) - 2, sheetId);
+    // Public route: only the shopper whose phone is on the row may write it.
+    const rowPhone = normalizeStorefrontPhone(row.telefono);
+    const callerPhone = normalizeStorefrontPhone(extra.telefono);
+    if (!rowPhone || !callerPhone || rowPhone.slice(-8) !== callerPhone.slice(-8)) {
+      return { ok: false, error: "adminRow_owner_mismatch", adminRow: Number(adminRow) };
+    }
+    const existing = String(row.consulta || "");
     if (richness(existing) > richness(text)) {
       return {
         ok: true,
@@ -632,6 +640,7 @@ export default function createPublicVoiceRouter() {
     try {
       const saved = await persistStorefrontAdminTranscript(adminRow, transcript, {
         cliente: String(req.body?.cliente || "").trim(),
+        telefono,
       });
       if (!saved.ok) {
         recordVoiceError({
@@ -723,6 +732,7 @@ export default function createPublicVoiceRouter() {
         try {
           const saved = await persistStorefrontAdminTranscript(adminRow, transcript, {
             cliente,
+            telefono,
           });
           adminPersist = {
             ok: Boolean(saved.ok),

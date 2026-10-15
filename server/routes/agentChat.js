@@ -665,10 +665,10 @@ router.post("/agent/chat", async (req, res) => {
           : brandCanonical,
       )
     : kbSurfaceForTraining(rawSurface);
-  // Always keep the original user/assistant text. The old gate (devMode or
-  // CHAT_LOG_CONVERSATIONS, plus UUID-only) left CONV files with meta and no turns.
-  const conversationId = typeof rawConvId === "string" && rawConvId.trim().length >= 8
-    ? rawConvId.trim().slice(0, 80)
+  // Transcript logging (PII) + autolearn stay opt-in via CHAT_LOG_CONVERSATIONS; ids no longer need to be UUIDs.
+  const _convLoggingEnabled = devMode || config.chatLogConversations;
+  const conversationId = _convLoggingEnabled && typeof rawConvId === "string" && /^[\w-]{8,80}$/.test(rawConvId.trim())
+    ? rawConvId.trim()
     : null;
   const aiProvider = String(rawAiProvider || "auto").toLowerCase();
   const aiModel = rawAiModel != null ? String(rawAiModel) : "";

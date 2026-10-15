@@ -22,6 +22,11 @@ assert.equal(isStorefrontFarewell("adiós, me voy"), true);
 assert.equal(isStorefrontFarewell("gracias"), true);
 assert.equal(isStorefrontFarewell("gracias, ¿y el espesor?"), false);
 assert.equal(isStorefrontFarewell("quiero IsoDec 150"), false);
+assert.equal(isStorefrontFarewell("me voy a hacer un techo de 50 m2, cuánto sale?"), false);
+assert.equal(isStorefrontFarewell("me voy a fijar y te aviso con las medidas del galpón"), false);
+assert.equal(isStorefrontFarewell("listo"), false);
+assert.equal(isStorefrontFarewell("listo, gracias"), true);
+assert.equal(isStorefrontFarewell("bueno me voy, chau"), true);
 assert.equal(formatCloseoutFooter("silence"), "— closeout silence");
 
 const widget = fs.readFileSync(
