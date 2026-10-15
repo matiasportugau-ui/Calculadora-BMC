@@ -31,9 +31,9 @@ Developers portal. When they disagree, refresh fails with `400 invalid_client` a
 - **Fix:** Re-sync the secret (Step 2 below), then **re-authorize** (Step 3).
 
 ### 🔴 Mode B — `400 invalid_grant` (refresh token dead/used) — **the "token dormido" problem**
-- **Symptom:** `/auth/ml/status` shows an `expiresAt` in the past; refresh returns `invalid_grant`.
+- **Symptom:** `/auth/ml/status` shows an `expiresAt` in the past; refresh returns `invalid_grant`. In the ML Manager UI (/hub/ml), Overview shows "Token de Mercado Libre expirado" with a "Re-autorizar" button.
 - **Cause:** The refresh_token is **single-use**. If it was already consumed, expired (6 mo), or lost on a cold start *before* the tokens were persisted to GCS — it can never be reused.
-- **Fix:** **Re-authorize** (Step 3). This is unavoidable — there is no programmatic recovery. (Tracked: gh#419 — auto re-auth fallback when the dormant token fails.)
+- **Fix:** **Re-authorize** (Step 3). Since gh#419 (2026-10-15), the UI auto-detects token expiry and offers a one-click re-auth button; clicking it takes you through `/auth/ml/start → callback` and returns to /hub/ml. This is unavoidable — there is no programmatic recovery.
 
 ### 🔴 Mode C — `OAuth not initialized` / `Refresh token missing` (401) — never logged in / lost tokens
 - **Symptom:** `/auth/ml/status` → `404 No token stored yet`; `/ml/*` → 401.

@@ -127,6 +127,18 @@ export const createMercadoLibreClient = ({ config, tokenStore, logger }) => {
           logger.info({ userId: next.user_id }, "MercadoLibre token refreshed");
           return next;
         })
+        .catch((err) => {
+          // Token refresh failed — likely refresh token expired or invalid
+          logger.warn(
+            { userId: tokens.user_id, status: err.status, message: err.message },
+            "MercadoLibre token refresh failed — fallback to re-auth required"
+          );
+          const reauthErr = new Error("MercadoLibre token expired. Re-authorization required.");
+          reauthErr.status = 401;
+          reauthErr.type = "token_expired";
+          reauthErr.original = err;
+          throw reauthErr;
+        })
         .finally(() => {
           refreshInFlight = null;
         });
