@@ -55,10 +55,10 @@ export const config = {
   apiAuthToken: process.env.API_AUTH_TOKEN || process.env.API_KEY || "",
   /**
    * Development-only: skip API_AUTH_TOKEN checks on Panelin developer routes (chat devMode,
-   * training KB, prompt editor, conversation stats). Auto-on when appEnv=development (local API);
-   * override with PANELIN_RELAX_DEV_AUTH=1 on trusted staging only — never on public production.
+   * training KB, prompt editor, conversation stats). Requires explicit opt-in via
+   * PANELIN_RELAX_DEV_AUTH=1 on trusted local/staging only — never on public production.
    */
-  panelinRelaxDevAuth: appEnv === "development" || panelinRelaxDevAuthExplicit,
+  panelinRelaxDevAuth: panelinRelaxDevAuthExplicit,
   /**
    * Opcional — POST /api/crm/ingest-email: si está definido, el bridge IMAP puede usar solo este secreto
    * (además de API_AUTH_TOKEN). Ver docs/team/panelsim/EMAIL-ADMINISTRATOR.md

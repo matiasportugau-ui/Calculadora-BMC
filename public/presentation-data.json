@@ -1,19 +1,19 @@
 {
   "schema": "bmc-presentation-data@1",
-  "generatedAt": "2026-05-06T02:40:35.408Z",
+  "generatedAt": "2026-10-15T04:16:04.067Z",
   "packageVersion": "3.1.5",
   "name": "calculadora-bmc",
   "description": "Calculadora de cotización de paneles de aislamiento — BMC Uruguay (METALOG SAS)",
   "git": {
-    "short": "0bd4d7f",
-    "branch": "copilot/update-readme"
+    "short": "55271855",
+    "branch": "feat/panelin-front-idle-closeout"
   },
   "calculatorData": {
-    "hash": "45e744c8db",
-    "date": "2026-05-05T03:46:07.501Z"
+    "hash": "26ff0c017e",
+    "date": "2026-10-15T04:16:04.004Z"
   },
   "tests": {
-    "validationPassed": 384,
+    "validationPassed": 443,
     "roofVisualOk": 10,
     "skipped": false
   },
