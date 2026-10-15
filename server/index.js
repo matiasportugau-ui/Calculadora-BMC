@@ -103,7 +103,7 @@ import { startWaEnricherWorker } from "./lib/waEnricherWorker.js";
 import { getWaPool } from "./lib/waDb.js";
 import { verifyWhatsAppSignature } from "./lib/whatsappSignature.js";
 import { verifyMLSignature } from "./lib/mlSignature.js";
-import { authorizeMlWebhook, cloudRunPeerIp, mlWebhookRateKey } from "./lib/mlWebhookAuth.js";
+import { authorizeMlWebhook, cloudRunPeerIp, mlWebhookRateKey, mlWebhookReceivedToken } from "./lib/mlWebhookAuth.js";
 import omniRouter from "./routes/omni.js";
 import createAssistantsStatusRouter from "./routes/assistantsStatus.js";
 import { requireAssistantEnabled } from "./middleware/requireAssistantEnabled.js";
@@ -621,10 +621,7 @@ app.post("/webhooks/ml", mlWebhookLimiter, asyncHandler(async (req, res) => {
     mlSigVerified,
     peerIp: cloudRunPeerIp(req),
     webhookVerifyToken: config.webhookVerifyToken,
-    receivedToken:
-      req.query.verify_token ||
-      req.headers["x-webhook-token"] ||
-      req.headers.authorization,
+    receivedToken: mlWebhookReceivedToken(req),
   });
   if (!decision.accept) {
     const error = decision.reason === "invalid_webhook_token"

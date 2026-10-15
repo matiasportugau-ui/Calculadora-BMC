@@ -2,7 +2,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { verifyWhatsAppSignature } from "../lib/whatsappSignature.js";
 import { verifyMLSignature } from "../lib/mlSignature.js";
-import { authorizeMlWebhook, cloudRunPeerIp, mlWebhookRateKey } from "../lib/mlWebhookAuth.js";
+import { authorizeMlWebhook, cloudRunPeerIp, mlWebhookRateKey, mlWebhookReceivedToken } from "../lib/mlWebhookAuth.js";
 import { config } from "../config.js";
 import { createMlWebhookBuffer, createMlWebhookProcessor } from "../lib/mlWebhookService.js";
 
@@ -36,10 +36,7 @@ router.post("/ml", mlWebhookLimiter, async (req, res, next) => {
       mlSigVerified,
       peerIp: cloudRunPeerIp(req),
       webhookVerifyToken: config.webhookVerifyToken,
-      receivedToken:
-        req.query.verify_token ||
-        req.headers["x-webhook-token"] ||
-        req.headers.authorization,
+      receivedToken: mlWebhookReceivedToken(req),
     });
     if (!decision.accept) {
       const error = decision.reason === "invalid_webhook_token"
