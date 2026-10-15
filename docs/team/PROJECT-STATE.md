@@ -14,6 +14,28 @@ Fuente única de estado para que todos los agentes estén actualizados. Ver [PRO
 
 ## Cambios recientes
 
+**2026-10-15 (ship — Hito 1 en main, prod sigue pinneado):**
+- **Merged:**
+  - #1358 (`b80b2056`): desk API + `deskQueue` + `001_desk.sql`, reglas de conocimiento, voice dock, bandeja WA. Fixes incluidos:
+    - read limiter acotado a `/desk`; antes throttleaba todo `/api` a 120/min por IP.
+    - 2 alertas CodeQL en `scripts/wa-*`.
+  - #1357 (`0cc7bfb0`): `matrizSnapshot` content-addressed (`MATRIZ-<sha256[0:16]>`) con:
+    - `ON CONFLICT` + lookup por hash;
+    - parse RFC-4180;
+    - timeout de 10 s;
+    - errores SQLSTATE→400/503.
+
+    Runbook [`DESK-API-PROD-MIGRATION.md`](./procedures/DESK-API-PROD-MIGRATION.md) reescrito.
+- **Prod NO cambió:**
+  - El tráfico de `panelin-calc` está pinneado a `panelin-calc-01138-wlp` (`d477a44e`). La revisión con Hito 1 (`01143-t4j`) no recibe tráfico.
+  - Las tablas desk no existen en prod.
+- **Pendiente (owner):**
+  1. Aplicar `001_desk.sql` (runbook §1).
+  2. `update-traffic --to-latest` (§2).
+  3. Smoke (§3).
+  4. Otorgar `canales:write` a los operadores del desk.
+- **Bloqueante aparte:** keys IA de prod caídas (Grok 400, Gemini error). `suggest-response` da 503 y los jobs prod-smoke/voice/channels de main quedan en rojo.
+
 **2026-10-13 (feat — Hito 1 slice 1: Desk vía API + pipeline bajo git, D1/D6/D10/D11):** Postgres pasa a ser fuente de verdad de la mesa de revisión. Nuevo `server/routes/desk.js` (`GET /api/desk/health|queue|:id`, `POST /reviews|:id/edit-cause|:id/approve-send`, `PATCH /:id/status`) con `canales` grant + 503 sin DB; link `wa.me` server-side, sin auto-envío (HITL). Nuevo `server/lib/deskQueue.js` (causa 1 clic D10, `matriz_snapshot_required` D6, `sold` con monto D14) + migración `server/migrations/desk/001_desk.sql` (`matriz_snapshots`, `desk_reviews`). Tests `tests/deskQueue.test.js` 6/6 en `test:core`. `~/bmc-sheet-quote-pipeline` inicializado en git (root-commit solo `.gitignore` + `README-DESK-FREEZE.md`, sin secretos): Desk :8787 queda congelado como lector legacy, writes nuevos por `/api/desk`. Pendiente slice 2: `matrizSnapshot.freezeMatriz()` + Desk llama `queue→approve` en vez de Sheets + migración aplicada en prod.
 
 **2026-10-12 (feat — Conocimiento rules wired into code, WIRE-only):** IAlfred/team review of [`CONOCIMIENTO-COMPARATIVE-2026-10-11.md`](./knowledge/CONOCIMIENTO-COMPARATIVE-2026-10-11.md): selection matrix #2–#10 filled and draft #1 decided. **WIRE items only** implemented in a new pure module [`server/lib/quoteKnowledgeRules.js`](../../server/lib/quoteKnowledgeRules.js):
