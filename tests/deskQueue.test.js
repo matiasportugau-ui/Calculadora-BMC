@@ -52,10 +52,10 @@ function memPool() {
       if (text.includes("from desk_reviews where id = $1")) {
         return { rows: rows.filter((r) => r.id === params[0]) };
       }
-      if (text.includes("set causa = $2::jsonb")) {
+      if (text.includes("set causa = causa || $2::jsonb")) {
         const r = rows.find((x) => x.id === params[0]);
-        if (!r) return { rows: [] };
-        r.causa = JSON.parse(params[1]);
+        if (!r || !params[3].includes(r.status)) return { rows: [] };
+        r.causa = { ...r.causa, ...JSON.parse(params[1]) };
         if (params[2]) r.payload = { ...r.payload, ...JSON.parse(params[2]) };
         r.status = "pending";
         r.updated_at = new Date().toISOString();
@@ -71,7 +71,7 @@ function memPool() {
       }
       if (text.includes("set status = $2")) {
         const r = rows.find((x) => x.id === params[0]);
-        if (!r) return { rows: [] };
+        if (!r || !params[3].includes(r.status)) return { rows: [] };
         r.status = params[1];
         r.causa = { ...r.causa, ...JSON.parse(params[2]) };
         r.updated_at = new Date().toISOString();
@@ -115,6 +115,28 @@ describe("desk queue flow (D1/D6/D11)", () => {
   });
   it("getReview 404-friendly", async () => {
     assert.equal(await getReview({ id: "nope" }, memPool()), null);
+  });
+  it("edit-cause conserva datos de venta y no reabre reviews finales (D14)", async () => {
+    const p = memPool();
+    const c = await createReview({ matrizVersion: "v1", payload: {} }, p);
+    await approveSend({ id: c.id, phoneE164: "+59899123456", text: "x" }, p);
+    await markStatus({ id: c.id, status: "sold", extra: { monto: 110, causa: "forjada" } }, p);
+    assert.equal(p.rows[0].causa.monto, 110);
+    assert.notEqual(p.rows[0].causa.causa, "forjada", "extra cannot overwrite edit-cause keys");
+    await assert.rejects(
+      () => saveEditCause({ id: c.id, causa: "precio" }, p),
+      (e) => e.status === 409 && e.message === "review_not_editable",
+    );
+    assert.equal(p.rows[0].status, "sold");
+  });
+  it("markStatus exige transición válida (409) y distingue 404", async () => {
+    const p = memPool();
+    const c = await createReview({ matrizVersion: "v1", payload: {} }, p);
+    await assert.rejects(() => markStatus({ id: c.id, status: "sent" }, p), (e) => e.status === 409);
+    await assert.rejects(() => markStatus({ id: c.id, status: "pending" }, p), (e) => e.status === 400);
+    await assert.rejects(() => markStatus({ id: "nope", status: "sold" }, p), (e) => e.status === 404);
+    const d = await markStatus({ id: c.id, status: "discarded" }, p);
+    assert.equal(d.status, "discarded");
   });
   it("markStatus rechaza estado inválido", async () => {
     await assert.rejects(() => markStatus({ id: "x", status: "hack" }, memPool()), /invalid_status/);

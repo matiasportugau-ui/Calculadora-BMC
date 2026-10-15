@@ -34,6 +34,12 @@ const router = Router();
 // Path-scoped: this router is mounted at "/api", so a bare use() would throttle every later /api route.
 router.use("/desk", readLimiter);
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+router.param("id", (req, res, next, id) => {
+  if (!UUID_RE.test(id)) return res.status(404).json({ ok: false, error: "review_not_found" });
+  next();
+});
+
 router.get("/desk/health", requireDeskDb, async (req, res) => {
   try {
     await req.deskPool.query("select 1");
@@ -48,7 +54,8 @@ router.get("/desk/queue", requireGrant.read("canales"), requireDeskDb, async (re
     const rows = await listQueue({ limit: req.query.limit }, req.deskPool);
     res.json({ ok: true, reviews: rows });
   } catch (e) {
-    res.status(e.status || 503).json({ ok: false, error: e.message });
+    const err = toDbError(e, "desk");
+    res.status(err.status).json({ ok: false, error: err.message, detail: err.detail });
   }
 });
 
@@ -58,7 +65,8 @@ router.get("/desk/:id", requireGrant.read("canales"), requireDeskDb, async (req,
     if (!row) return res.status(404).json({ ok: false, error: "review_not_found" });
     res.json({ ok: true, review: row });
   } catch (e) {
-    res.status(e.status || 503).json({ ok: false, error: e.message });
+    const err = toDbError(e, "desk");
+    res.status(err.status).json({ ok: false, error: err.message, detail: err.detail });
   }
 });
 
@@ -124,7 +132,8 @@ router.post("/desk/:id/edit-cause", requireGrant.write("canales"), writeLimiter,
     const row = await saveEditCause({ id: req.params.id, ...parsed.data }, req.deskPool);
     res.json({ ok: true, review: row });
   } catch (e) {
-    res.status(e.status || 503).json({ ok: false, error: e.message });
+    const err = toDbError(e, "desk");
+    res.status(err.status).json({ ok: false, error: err.message, detail: err.detail });
   }
 });
 
@@ -140,7 +149,8 @@ router.post("/desk/:id/approve-send", requireGrant.write("canales"), writeLimite
     const row = await approveSend({ id: req.params.id, ...parsed.data }, req.deskPool);
     res.json({ ok: true, review: row });
   } catch (e) {
-    res.status(e.status || 503).json({ ok: false, error: e.message });
+    const err = toDbError(e, "desk");
+    res.status(err.status).json({ ok: false, error: err.message, detail: err.detail });
   }
 });
 
@@ -156,7 +166,8 @@ router.patch("/desk/:id/status", requireGrant.write("canales"), writeLimiter, re
     const row = await markStatus({ id: req.params.id, ...parsed.data }, req.deskPool);
     res.json({ ok: true, review: row });
   } catch (e) {
-    res.status(e.status || 503).json({ ok: false, error: e.message });
+    const err = toDbError(e, "desk");
+    res.status(err.status).json({ ok: false, error: err.message, detail: err.detail });
   }
 });
 
