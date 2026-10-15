@@ -112,6 +112,7 @@
     "smoke:paneli-mcp": "node scripts/smoke-paneli-mcp.mjs",
     "verify-tabs": "node scripts/verify-sheets-tabs.js",
     "setup-sheets-tabs": "node scripts/setup-sheets-tabs.js",
+    "setup:go-live:hardening": "node scripts/setup-go-live-hardening.mjs",
     "integrate-admin-cotizaciones": "node scripts/integrate-admin-cotizaciones.js",
     "watch-full-team": "./scripts/watch-full-team-run.sh",
     "map-all-sheets": "node scripts/map-all-sheets-audit.js",
