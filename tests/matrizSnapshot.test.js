@@ -7,6 +7,7 @@ import {
   freezeMatriz,
   getMatrizSnapshot,
   listMatrizSnapshots,
+  toDbError,
 } from "../server/lib/matrizSnapshot.js";
 
 function memPool() {
@@ -62,13 +63,20 @@ describe("freezeMatriz", () => {
     const v2 = await freezeMatriz(CSV, "op", p);
     assert.equal(v1, v2);
     assert.equal(p.byVersion.size, 1);
-    assert.match(p.calls[0].text, /ON CONFLICT \(version\) DO NOTHING/);
-    assert.ok(p.calls[0].query_timeout > 0, "queries carry a timeout");
+    const inserts = p.calls.filter((c) => /INSERT INTO matriz_snapshots/.test(c.text));
+    assert.equal(inserts.length, 1, "repeat freeze skips parse + INSERT");
+    assert.match(inserts[0].text, /ON CONFLICT \(version\) DO NOTHING/);
+    assert.ok(p.calls.every((c) => c.query_timeout > 0), "queries carry a timeout");
   });
   it("maps connection errors to 503 and other DB errors to 500", async () => {
     await assert.rejects(freezeMatriz(CSV, "op", failingPool(Object.assign(new Error("x"), { code: "ECONNREFUSED" }))), (e) => e.status === 503);
     await assert.rejects(freezeMatriz(CSV, "op", failingPool(new Error("Query read timeout"))), (e) => e.status === 503);
-    await assert.rejects(freezeMatriz(CSV, "op", failingPool(Object.assign(new Error("dup"), { code: "42P01" }))), (e) => e.status === 500);
+    await assert.rejects(freezeMatriz(CSV, "op", failingPool(new Error("Connection terminated unexpectedly"))), (e) => e.status === 503);
+    await assert.rejects(
+      freezeMatriz(CSV, "op", failingPool(Object.assign(new Error('relation "matriz_snapshots" does not exist'), { code: "42P01" }))),
+      (e) => e.status === 500 && e.message === "freeze_error",
+      "raw pg text is not returned",
+    );
   });
   it("rejects missing CSV with 400", async () => {
     await assert.rejects(freezeMatriz("", "op", memPool()), (e) => e.status === 400);
@@ -87,5 +95,13 @@ describe("snapshot reads", () => {
     const down = failingPool(Object.assign(new Error("x"), { code: "08006" }));
     await assert.rejects(getMatrizSnapshot("MATRIZ-a", down), (e) => e.status === 503);
     await assert.rejects(listMatrizSnapshots(5, down), (e) => e.status === 503);
+  });
+});
+
+describe("toDbError", () => {
+  it("maps integrity / invalid input to 400 and keeps existing statuses", () => {
+    assert.equal(toDbError(Object.assign(new Error("fk"), { code: "23503" }), "create_review").status, 400);
+    assert.equal(toDbError(Object.assign(new Error("uuid"), { code: "22P02" }), "create_review").status, 400);
+    assert.equal(toDbError(Object.assign(new Error("x"), { status: 404 }), "op").status, 404);
   });
 });

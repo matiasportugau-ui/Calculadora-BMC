@@ -18,7 +18,7 @@ import {
   approveSend,
   markStatus,
 } from "../lib/deskQueue.js";
-import { freezeMatriz } from "../lib/matrizSnapshot.js";
+import { freezeMatriz, toDbError } from "../lib/matrizSnapshot.js";
 
 const readLimiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false });
 const writeLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
@@ -106,7 +106,8 @@ router.post("/desk/reviews", requireGrant.write("canales"), writeLimiter, requir
     );
     res.status(201).json({ ok: true, review: row });
   } catch (e) {
-    res.status(e.status || 503).json({ ok: false, error: e.message, detail: e.detail });
+    const err = toDbError(e, "create_review");
+    res.status(err.status).json({ ok: false, error: err.message, detail: err.detail });
   }
 });
 

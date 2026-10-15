@@ -15,7 +15,7 @@ import { parseCsvRows } from "./bancoStatementParser.js";
 import { isDbConnectionError } from "./workspaceDb.js";
 
 const QUERY_TIMEOUT_MS = 10_000;
-const MAX_CSV_CHARS = 5_000_000;
+const MAX_CSV_CHARS = 1_000_000; // matches express.json({ limit: "1mb" }) in server/index.js
 
 let _testPool = null;
 function pool() {
@@ -38,12 +38,24 @@ function query(p, text, values) {
   return p.query({ text, values, query_timeout: QUERY_TIMEOUT_MS });
 }
 
-/** Map pg/network failures to 503 (retryable) vs 500; keep statuses already set. */
-function toDbError(err, op) {
+// node-pg raises some connection losses without a SQLSTATE code.
+const CONNECTION_LOSS_RE = /timeout|Connection terminated|not queryable|ECONN/i;
+
+/**
+ * Map pg/network failures to a stable client-facing error: 503 retryable, 400 for
+ * invalid input / integrity violations (SQLSTATE classes 22, 23), else 500.
+ * Raw pg text is logged, never returned.
+ */
+export function toDbError(err, op) {
   if (err?.status) return err;
-  const timedOut = /timeout/i.test(String(err?.message || ""));
-  if (timedOut || isDbConnectionError(err)) return httpError("db_unavailable", 503);
-  return httpError(`${op}_error: ${err?.message || "unknown"}`, 500);
+  const code = typeof err?.code === "string" ? err.code : "";
+  if (isDbConnectionError(err) || CONNECTION_LOSS_RE.test(String(err?.message || ""))) {
+    return httpError("db_unavailable", 503);
+  }
+  console.error(`[desk] ${op} db error`, code, err?.message);
+  if (code.startsWith("23")) return httpError(`${op}_conflict`, 400);
+  if (code.startsWith("22")) return httpError(`${op}_invalid_input`, 400);
+  return httpError(`${op}_error`, 500);
 }
 
 export function parseMatrizCSV(csv) {
@@ -63,7 +75,7 @@ export function parseMatrizCSV(csv) {
 
 /** Content-addressed: identical CSV always yields the same version, regardless of time. */
 export function matrizVersionFor(csv) {
-  const normalized = String(csv).replace(/^﻿/, "").replace(/\r\n?/g, "\n").trim();
+  const normalized = String(csv).replace(/^\ufeff/, "").replace(/\r\n?/g, "\n").trim();
   const hash = crypto.createHash("sha256").update(normalized).digest("hex").slice(0, 16);
   return `MATRIZ-${hash}`;
 }
@@ -77,10 +89,12 @@ export async function freezeMatriz(csv, createdBy = "system", poolOverride) {
   if (!csv || typeof csv !== "string") throw httpError("csv_required", 400);
   if (csv.length > MAX_CSV_CHARS) throw httpError("csv_too_large", 413);
 
-  const data = parseMatrizCSV(csv);
   const version = matrizVersionFor(csv);
   try {
     const p = poolOverride || pool();
+    const existing = await query(p, "SELECT 1 FROM matriz_snapshots WHERE version = $1 LIMIT 1", [version]);
+    if (existing.rows.length) return version;
+    const data = parseMatrizCSV(csv);
     await query(
       p,
       `INSERT INTO matriz_snapshots (version, data, source, created_by)
