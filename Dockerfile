@@ -14,8 +14,12 @@ ENV VITE_API_URL=$VITE_API_URL
 ENV BMC_DISK_PRECHECK_SKIP=1
 RUN npm run build
 
-FROM nginx:1.27-alpine AS runtime
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+FROM node:24-alpine AS runtime
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/server ./server
+COPY --from=build /app/package.json ./
+EXPOSE 3001
+ENV NODE_ENV=production
+CMD ["node", "server/index.js"]
