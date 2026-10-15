@@ -163,7 +163,7 @@ export async function approveSend({ id, phoneE164, text }, poolOverride) {
       returning id, status, wa_link, updated_at`,
     [id, link],
   );
-  if (!rows.length) throw Object.assign(new Error("review_not_found_or_final"), { status: 404 });
+  if (!rows.length) throw await notFoundOrConflict(p, id, "review_not_approvable");
   return rows[0];
 }
 

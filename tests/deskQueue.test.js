@@ -53,6 +53,7 @@ function memPool() {
         return { rows: rows.filter((r) => r.id === params[0]) };
       }
       if (text.includes("set causa = causa || $2::jsonb")) {
+        assert.match(text, /status = any\(\$4::text\[\]\)/, "edit-cause SQL must guard status");
         const r = rows.find((x) => x.id === params[0]);
         if (!r || !params[3].includes(r.status)) return { rows: [] };
         r.causa = { ...r.causa, ...JSON.parse(params[1]) };
@@ -70,6 +71,7 @@ function memPool() {
         return { rows: [{ id: r.id, status: r.status, wa_link: r.wa_link, updated_at: r.updated_at }] };
       }
       if (text.includes("set status = $2")) {
+        assert.match(text, /status = any\(\$4::text\[\]\)/, "markStatus SQL must guard status");
         const r = rows.find((x) => x.id === params[0]);
         if (!r || !params[3].includes(r.status)) return { rows: [] };
         r.status = params[1];
@@ -126,6 +128,10 @@ describe("desk queue flow (D1/D6/D11)", () => {
     await assert.rejects(
       () => saveEditCause({ id: c.id, causa: "precio" }, p),
       (e) => e.status === 409 && e.message === "review_not_editable",
+    );
+    await assert.rejects(
+      () => approveSend({ id: c.id, phoneE164: "+59899123456", text: "x" }, p),
+      (e) => e.status === 409 && e.message === "review_not_approvable",
     );
     assert.equal(p.rows[0].status, "sold");
   });

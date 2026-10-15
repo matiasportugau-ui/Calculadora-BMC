@@ -1483,7 +1483,6 @@
   }
 
   function persistResume() {
-    state.navigating = true; // widget-driven hop: pagehide must not close the chat out
     try {
       sessionStorage.setItem(SS_RESUME, JSON.stringify({
         conversationId: state.conversationId,
@@ -1633,8 +1632,18 @@
       try { spec = JSON.parse(sessionStorage.getItem(SS_POINT) || "null"); } catch { spec = null; }
     }
     if (!spec) return;
-    try { sessionStorage.removeItem(SS_POINT); } catch { /* ignore */ }
-    setTimeout(() => pointAt(spec, { remember: false }), 400);
+    // Product cards can render after boot: retry briefly, consume the point on hit or at the deadline.
+    const deadline = Date.now() + 4000;
+    const attempt = () => {
+      const el = findPointTarget(spec);
+      if (el || Date.now() >= deadline) {
+        try { sessionStorage.removeItem(SS_POINT); } catch { /* ignore */ }
+        if (el) showGuide(el, spec);
+        return;
+      }
+      setTimeout(attempt, 500);
+    };
+    setTimeout(attempt, 400);
   }
 
   function isCartPath(path) {
@@ -1658,6 +1667,7 @@
       } catch { /* ignore */ }
     }
     persistResume();
+    state.navigating = true; // widget-driven hop: pagehide must not close the chat out
     location.assign("/cart");
     return { ok: true, path: "/cart" };
   }
@@ -1681,6 +1691,7 @@
     const here = (location.pathname || "/").replace(/\/+$/, "") || "/";
     if (destPath === here) return { ok: true, path, already: true };
     persistResume();
+    state.navigating = true;
     location.assign(path);
     return { ok: true, path };
   }
