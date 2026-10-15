@@ -30,7 +30,8 @@ function requireDeskDb(req, res, next) {
 }
 
 const router = Router();
-router.use(readLimiter);
+// Path-scoped: this router is mounted at "/api", so a bare use() would throttle every later /api route.
+router.use("/desk", readLimiter);
 
 router.get("/desk/health", requireDeskDb, async (req, res) => {
   try {
