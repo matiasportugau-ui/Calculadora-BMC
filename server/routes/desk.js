@@ -18,6 +18,7 @@ import {
   approveSend,
   markStatus,
 } from "../lib/deskQueue.js";
+import { freezeMatriz } from "../lib/matrizSnapshot.js";
 
 const readLimiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false });
 const writeLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
@@ -66,7 +67,8 @@ const createSchema = z.object({
   conversationId: z.string().uuid().nullable().optional(),
   contactId: z.string().uuid().nullable().optional(),
   channel: z.enum(["wa", "email", "ml", "instagram", "facebook", "manual"]).default("wa"),
-  matrizVersion: z.string().min(1),
+  matrizVersion: z.string().min(1).optional(),
+  matrizCsv: z.string().optional(),
   payload: z.record(z.unknown()).default({}),
   interp: z.record(z.unknown()).default({}),
   faltantes: z.array(z.unknown()).default([]),
@@ -76,13 +78,25 @@ router.post("/desk/reviews", requireGrant.write("canales"), writeLimiter, requir
   const parsed = createSchema.safeParse(req.body || {});
   if (!parsed.success) return res.status(400).json({ ok: false, error: "invalid_body", detail: parsed.error.issues });
   try {
+    let matrizVersion = parsed.data.matrizVersion;
+
+    // Auto-freeze Matriz if version not provided but CSV is
+    if (!matrizVersion && parsed.data.matrizCsv) {
+      matrizVersion = await freezeMatriz(parsed.data.matrizCsv, req.user?.id || "system", req.deskPool);
+    }
+
+    // Require a version (either provided or auto-frozen)
+    if (!matrizVersion) {
+      return res.status(400).json({ ok: false, error: "matrizVersion_required" });
+    }
+
     const row = await createReview(
       {
         quoteId: parsed.data.quoteId,
         conversationId: parsed.data.conversationId,
         contactId: parsed.data.contactId,
         channel: parsed.data.channel,
-        matrizVersion: parsed.data.matrizVersion,
+        matrizVersion,
         payload: parsed.data.payload,
         interp: parsed.data.interp,
         faltantes: parsed.data.faltantes,
