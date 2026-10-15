@@ -19,7 +19,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
+COPY --from=build /app/docs ./docs
 COPY --from=build /app/package.json ./
 EXPOSE 3001
 ENV NODE_ENV=production
+# Ensure API routes are mounted before static SPA fallback
 CMD ["node", "server/index.js"]
