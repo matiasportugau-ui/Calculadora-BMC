@@ -1,15 +1,21 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // matrizSnapshot — Capture frozen Matriz state for desk_reviews FK (D6)
 //
-// Freezes the current MATRIZ CSV at quote-creation time so desk reviews
-// always compare quotes against the snapshot taken then, not live prices.
+// Freezes the MATRIZ CSV at quote-creation time so desk reviews compare quotes
+// against the prices seen then, not live prices.
 //
-// Schema: matriz_snapshots(id, version, data, source, created_by, created_at)
-// FK: desk_reviews.matriz_version → matriz_snapshots.version
+// Schema (server/migrations/desk/001_desk.sql):
+//   matriz_snapshots(id, version UNIQUE, data, source, created_by, created_at)
+//   desk_reviews.matriz_version → matriz_snapshots.version
 // ═══════════════════════════════════════════════════════════════════════════
+import crypto from "node:crypto";
 import { getOmniPool } from "./omni/omniDb.js";
 import { config } from "../config.js";
-import crypto from "crypto";
+import { parseCsvRows } from "./bancoStatementParser.js";
+import { isDbConnectionError } from "./workspaceDb.js";
+
+const QUERY_TIMEOUT_MS = 10_000;
+const MAX_CSV_CHARS = 5_000_000;
 
 let _testPool = null;
 function pool() {
@@ -24,164 +30,99 @@ export const __test__ = {
   reset() { _testPool = null; },
 };
 
-/**
- * Parse CSV data into structured format for matriz_snapshots.data
- * @param {string} csv - Raw CSV text
- * @returns {object} Parsed matrix data with headers and rows
- */
-function parseMatrizCSV(csv) {
-  const lines = csv.trim().split("\n");
-  if (lines.length < 2) {
-    throw Object.assign(new Error("invalid_matriz_csv"), { status: 400 });
-  }
+function httpError(message, status) {
+  return Object.assign(new Error(message), { status });
+}
 
-  // First row = headers
-  const headers = lines[0].split(",").map(h => h.trim());
-  const rows = [];
+function query(p, text, values) {
+  return p.query({ text, values, query_timeout: QUERY_TIMEOUT_MS });
+}
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
+/** Map pg/network failures to 503 (retryable) vs 500; keep statuses already set. */
+function toDbError(err, op) {
+  if (err?.status) return err;
+  const timedOut = /timeout/i.test(String(err?.message || ""));
+  if (timedOut || isDbConnectionError(err)) return httpError("db_unavailable", 503);
+  return httpError(`${op}_error: ${err?.message || "unknown"}`, 500);
+}
 
-    // Simple CSV parsing (assumes no commas in values)
-    const values = line.split(",").map(v => v.trim());
+export function parseMatrizCSV(csv) {
+  const parsed = parseCsvRows(csv).filter((r) => r.some((v) => String(v).trim() !== ""));
+  if (parsed.length < 2) throw httpError("invalid_matriz_csv", 400);
+  const headers = parsed[0].map((h) => String(h).trim());
+  const rows = parsed.slice(1).map((values) => {
     const row = {};
-    for (let j = 0; j < headers.length; j++) {
-      row[headers[j]] = values[j] || null;
-    }
-    rows.push(row);
-  }
+    headers.forEach((h, j) => {
+      const v = values[j] == null ? "" : String(values[j]).trim();
+      row[h] = v === "" ? null : v;
+    });
+    return row;
+  });
+  return { headers, rowCount: rows.length, rows };
+}
 
-  return {
-    headers,
-    rowCount: rows.length,
-    rows,
-    parsedAt: new Date().toISOString(),
-  };
+/** Content-addressed: identical CSV always yields the same version, regardless of time. */
+export function matrizVersionFor(csv) {
+  const normalized = String(csv).replace(/^﻿/, "").replace(/\r\n?/g, "\n").trim();
+  const hash = crypto.createHash("sha256").update(normalized).digest("hex").slice(0, 16);
+  return `MATRIZ-${hash}`;
 }
 
 /**
- * Generate unique version ID for this matriz snapshot
- * Format: MATRIZ-YYYYMMDD-HHmmss-xxxx (xxxx = first 4 chars of CSV content hash)
- * @param {string} csv - CSV content to hash
- * @returns {string} Version string
- */
-function generateVersion(csv) {
-  const now = new Date();
-  const dateStr = now.toISOString().slice(0, 19).replace(/[-:]/g, "");
-  const hash = crypto.createHash("sha256").update(csv).digest("hex").slice(0, 4);
-  return `MATRIZ-${dateStr}-${hash}`;
-}
-
-/**
- * Freeze current Matriz state into postgres
- * Called at quote-creation time (desk_reviews will reference this snapshot)
- *
- * @param {string} csv - Raw CSV content from MATRIZ sheet
- * @param {string} [createdBy] - User/system identifier (optional)
- * @param {object} [poolOverride] - Test pool override
- * @returns {Promise<string>} Version ID (for FK reference)
- * @throws {Error} with status 503 if DB unavailable, 400 if CSV invalid
+ * Freeze a Matriz CSV into postgres and return its version (FK for desk_reviews).
+ * Idempotent and concurrency-safe via ON CONFLICT on the unique version.
+ * @throws {Error} status 400 invalid CSV, 503 DB unavailable/timeout, 500 other DB error
  */
 export async function freezeMatriz(csv, createdBy = "system", poolOverride) {
-  if (!csv || typeof csv !== "string") {
-    throw Object.assign(new Error("csv_required"), { status: 400 });
-  }
+  if (!csv || typeof csv !== "string") throw httpError("csv_required", 400);
+  if (csv.length > MAX_CSV_CHARS) throw httpError("csv_too_large", 413);
 
-  const version = generateVersion(csv);
-
+  const data = parseMatrizCSV(csv);
+  const version = matrizVersionFor(csv);
   try {
-    const data = parseMatrizCSV(csv);
     const p = poolOverride || pool();
-
-    // Check if this version already exists (idempotent)
-    const existing = await p.query(
-      "SELECT id FROM matriz_snapshots WHERE version = $1 LIMIT 1",
-      [version]
-    );
-
-    if (existing.rows.length > 0) {
-      // Already frozen with same content; return existing version
-      return version;
-    }
-
-    // Insert new snapshot
-    const result = await p.query(
+    await query(
+      p,
       `INSERT INTO matriz_snapshots (version, data, source, created_by)
        VALUES ($1, $2, $3, $4)
-       RETURNING version`,
-      [
-        version,
-        JSON.stringify(data),
-        "MATRIZ",
-        createdBy,
-      ]
+       ON CONFLICT (version) DO NOTHING`,
+      [version, JSON.stringify(data), "MATRIZ", createdBy],
     );
-
-    if (!result.rows.length) {
-      throw Object.assign(new Error("insert_failed"), { status: 500 });
-    }
-
-    return result.rows[0].version;
+    return version;
   } catch (err) {
-    // Re-throw with status if already set
-    if (err.status) throw err;
-
-    // Postgres unavailable or syntax error
-    if (err.message?.includes("connect") || err.code === "ECONNREFUSED") {
-      throw Object.assign(new Error("db_unavailable"), { status: 503 });
-    }
-
-    // Other DB error
-    throw Object.assign(new Error(`freeze_error: ${err.message}`), { status: 500 });
+    throw toDbError(err, "freeze");
   }
 }
 
-/**
- * Get a frozen snapshot by version
- * @param {string} version - Version ID
- * @param {object} [poolOverride] - Test pool override
- * @returns {Promise<object|null>} Snapshot data or null if not found
- */
+/** @returns {Promise<object|null>} null only when the version does not exist; DB failures throw. */
 export async function getMatrizSnapshot(version, poolOverride) {
   if (!version) return null;
-
   try {
     const p = poolOverride || pool();
-    const result = await p.query(
-      `SELECT id, version, data, source, created_at FROM matriz_snapshots
-       WHERE version = $1 LIMIT 1`,
-      [version]
+    const result = await query(
+      p,
+      `SELECT id, version, data, source, created_by, created_at
+       FROM matriz_snapshots WHERE version = $1 LIMIT 1`,
+      [version],
     );
-
     return result.rows[0] || null;
   } catch (err) {
-    // Log but don't throw — graceful fallback if lookup fails
-    console.error("[matrizSnapshot] lookup error:", err.message);
-    return null;
+    throw toDbError(err, "lookup");
   }
 }
 
-/**
- * List recent matriz snapshots (for debugging/audit)
- * @param {number} [limit=10] - Max snapshots to return
- * @param {object} [poolOverride] - Test pool override
- * @returns {Promise<Array>} Recent snapshots, newest first
- */
 export async function listMatrizSnapshots(limit = 10, poolOverride) {
+  const n = Math.max(1, Math.min(Number(limit) || 10, 100));
   try {
     const p = poolOverride || pool();
-    const result = await p.query(
+    const result = await query(
+      p,
       `SELECT id, version, source, created_by, created_at
-       FROM matriz_snapshots
-       ORDER BY created_at DESC
-       LIMIT $1`,
-      [Math.min(limit, 100)]
+       FROM matriz_snapshots ORDER BY created_at DESC LIMIT $1`,
+      [n],
     );
-
     return result.rows;
   } catch (err) {
-    console.error("[matrizSnapshot] list error:", err.message);
-    return [];
+    throw toDbError(err, "list");
   }
 }

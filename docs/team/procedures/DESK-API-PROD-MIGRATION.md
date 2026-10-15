@@ -1,412 +1,144 @@
-# Desk API Production Migration Runbook
+# Desk API — Production Migration Runbook (Hito 1 · D1/D6/D10/D11)
 
-**Date:** 2026-10-15  
-**Owner:** Matias Portugau  
-**Status:** Ready for Execution  
-**Timeline:** ~30 minutes (+ 24h monitoring)
+**Status:** ready to execute when the owner approves. Nothing here runs automatically.
+**Owner gate:** Matías. Prod traffic for `panelin-calc` is currently **pinned** to a named revision
+(see §0) — merging to `main` does not make the desk live by itself.
 
----
+## What ships
 
-## Overview
+| Piece | Path |
+|-------|------|
+| Schema (idempotent, `IF NOT EXISTS`) | `server/migrations/desk/001_desk.sql` → `matriz_snapshots`, `desk_reviews` |
+| Queue logic | `server/lib/deskQueue.js` |
+| Frozen Matriz (D6) | `server/lib/matrizSnapshot.js` — content-addressed version `MATRIZ-<sha256[0:16]>` |
+| Router (mounted `app.use("/api", deskRouter)`) | `server/routes/desk.js` |
 
-This runbook executes the migration of the **Desk review queue** from legacy **Sheets-only** to **PostgreSQL backend with API-first architecture**. The new `/api/desk/*` routes enable programmatic quote review, automated routing, and price-snapshot isolation.
+Routes (all under `/api`):
 
-### Key Requirements Met
+| Method | Path | Auth |
+|--------|------|------|
+| GET | `/desk/health` | none |
+| GET | `/desk/queue`, `/desk/:id` | `canales:read` |
+| POST | `/desk/reviews` | `canales:write` |
+| POST | `/desk/:id/edit-cause`, `/desk/:id/approve-send` | `canales:write` |
+| PATCH | `/desk/:id/status` | `canales:write` |
 
-✅ **Schema Migration:** `001_desk.sql` (matriz_snapshots + desk_reviews tables)  
-✅ **Routes Coded:** `GET /api/desk/queue`, `GET /api/desk/reviews/:id`, `POST /api/desk/reviews`, `PATCH /api/desk/reviews/:id`  
-✅ **Business Logic:** Frozen snapshot pricing (D6), causa root-cause tracking (D10), sold amount validation (D14)  
-✅ **Tests Passing:** 6/6 deskQueue tests verified  
-✅ **freezeMatriz() Implementation:** Completed with idempotent snapshot capture
+Auth is the identity JWT (`requireGrant`), **not** `API_AUTH_TOKEN`. Writes need `canales:write`,
+the same grant Omni uses to send replies — grant it per operator in `/hub/admin/users`.
 
-### No Breaking Changes
+Without the tables, `/api/desk/*` returns 503/500; the rest of the API is unaffected (pool is lazy,
+nothing runs at boot).
 
-- Desk `:8787` continues reading/writing to Sheets during migration
-- New API endpoints available but not yet wired to Sheets queue
-- Full rollback capability (drop tables, revert Cloud Run)
-
----
-
-## Pre-Migration Checklist (Verify These First)
-
-- [ ] Postgres connection verified on Cloud Run instance
-- [ ] `calculadora-bmc/.claude/worktrees/desk-api-deploy` has matrizSnapshot.js + updated desk.js
-- [ ] All 6 deskQueue tests passing locally: `npm run test:core`
-- [ ] No uncommitted changes in worktree
-- [ ] Backup of prod Postgres database created (manual step outside this runbook)
-
----
-
-## Migration Steps
-
-### Step 1: Apply Database Schema Migration
-
-**On Production Postgres Instance:**
+## 0. Pre-checks
 
 ```bash
-# SSH to Cloud Run instance or use gcloud sql proxy
-psql -h <prod-db-host> -U postgres -d calculadora_bmc << 'EOF'
+# Which revision serves traffic? (pinned vs latest)
+gcloud run services describe panelin-calc --region us-central1 --project chatbot-bmc-live \
+  --format='value(status.traffic,status.latestCreatedRevisionName)'
 
--- Run the migration: create matriz_snapshots and desk_reviews tables
-\i /path/to/server/migrations/desk/001_desk.sql
-
--- Verify table creation
-\dt matriz_snapshots desk_reviews
-
--- Confirm zero rows (expected for first deployment)
-SELECT COUNT(*) FROM matriz_snapshots;
-SELECT COUNT(*) FROM desk_reviews;
-
-EOF
+# Omni tables must exist (desk_reviews has FKs to omni_conversations / omni_contacts)
+doppler run --project bmc-backend --config prd -- \
+  sh -c 'psql "$DATABASE_URL" -Atc "select to_regclass('\''omni_conversations'\''), to_regclass('\''omni_contacts'\'')"'
 ```
 
-**Expected Output:**
-```
-CREATE TABLE
-CREATE INDEX
-CREATE TABLE
-CREATE INDEX
+Both regclass values must be non-empty. If not, run `npm run omni:migrate` first.
 
- public | desk_reviews      | table | postgres
- public | matriz_snapshots  | table | postgres
-
-count
--------
-    0
-
-count
--------
-    0
-```
-
-**If Error:**
-- Check migration syntax: `cat server/migrations/desk/001_desk.sql`
-- Verify connection and permissions (postgres user can CREATE TABLE)
-- Roll back (see **Rollback** section below)
-
----
-
-### Step 2: Verify Table Schema
-
-**On Prod Postgres:**
+## 1. Apply the schema
 
 ```bash
-psql -h <prod-db-host> -U postgres -d calculadora_bmc << 'EOF'
+cd ~/calculadora-bmc   # on an up-to-date main
+doppler run --project bmc-backend --config prd -- \
+  sh -c 'psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f server/migrations/desk/001_desk.sql'
 
--- Verify matriz_snapshots schema
-\d matriz_snapshots
-
--- Verify desk_reviews schema
-\d desk_reviews
-
--- Verify foreign key constraint
-SELECT constraint_name, table_name, column_name
-FROM information_schema.key_column_usage
-WHERE table_name = 'desk_reviews' AND column_name = 'matriz_version';
-
-EOF
+doppler run --project bmc-backend --config prd -- \
+  sh -c 'psql "$DATABASE_URL" -Atc "select count(*) from matriz_snapshots; select count(*) from desk_reviews;"'
 ```
 
-**Expected Output:**
-```
-Table "public.matriz_snapshots"
- id          | bigint
- version     | text
- data        | jsonb
- source      | text
- created_by  | text
- created_at  | timestamp
+`-1` wraps the file in one transaction; re-running is a no-op.
 
-Table "public.desk_reviews"
- id                  | bigint
- quote_id            | text
- conversation_id     | uuid
- contact_id          | uuid
- channel             | text
- matriz_version      | text (FK → matriz_snapshots.version)
- payload             | jsonb
- interp              | jsonb
- faltantes           | jsonb
- caused_by           | text
- sold_amount_usd     | numeric
- status              | text
- created_by          | text
- created_at          | timestamp
- updated_at          | timestamp
-```
+## 2. Deploy
 
-**If Missing Columns:**
-- Abort migration (tables are incompatible)
-- Drop tables and re-run `001_desk.sql` with corrected schema
-- Verify in staging before retrying on prod
+Deploys go through CI only: a green **CI — Panelin Calculadora BMC** run on `main` triggers
+`.github/workflows/deploy-calc-api.yml` (Docker image → Cloud Run `panelin-calc`). Do not use
+`gcloud run deploy --source .` — the root Dockerfile builds the SPA, not the API.
 
----
-
-### Step 3: Deploy Updated Cloud Run
-
-**Deploy to Cloud Run `panelin-calc` (prod revision):**
+If traffic is pinned (§0), the new revision gets no traffic until you move it:
 
 ```bash
-cd ~/calculadora-bmc
-
-# Ensure HEAD is on main with matrizSnapshot.js + updated desk.js
-git log --oneline -1  # Verify latest commit includes desk API changes
-
-# Build and deploy to Cloud Run
-npm run pre-deploy   # Green gate check locally first
-gcloud run deploy panelin-calc \
-  --region us-central1 \
-  --project chatbot-bmc-live \
-  --source .
+gcloud run services update-traffic panelin-calc --region us-central1 --project chatbot-bmc-live --to-latest
 ```
 
-**Expected Output:**
-```
-✓ Deploying container to Cloud Run service [panelin-calc] in region [us-central1]
-✓ Routing traffic...
-✓ Done
-Service panelin-calc deployed
-Revision: panelin-calc-xxxxx
-```
-
-**Post-Deploy Verification:**
+## 3. Smoke
 
 ```bash
-# Check health endpoint
-curl -H "Authorization: Bearer <API_TOKEN>" \
-  https://panelin-calc.run.app/api/health
-
-# Expected: {"status":"ok","db":"connected"}
+API=https://panelin-calc-q74zutv7dq-uc.a.run.app
+curl -s "$API/health" | jq .ok                       # true
+curl -s "$API/api/desk/health"                        # {"ok":true,"source":"postgres",...}
 ```
 
-**If Deployment Fails:**
-- Check Cloud Run logs: `gcloud run logs read panelin-calc --region us-central1`
-- Verify environment variables set (DB_URL, API_AUTH_TOKEN)
-- Rollback to previous revision if critical error
-
----
-
-### Step 4: Smoke Test — Manual Quote to Desk Review
-
-**Objective:** Verify end-to-end flow: quote → new `/api/desk/reviews` POST → row persisted to Postgres
-
-**Test Case:**
+Authenticated create (needs an operator Bearer JWT with `canales:write`; get one from a logged-in
+session via `POST /auth/refresh`):
 
 ```bash
-# 1. Create a test quote (or use existing quoteId)
-QUOTE_ID="test-quote-$(date +%s)"
-
-# 2. Capture current Matriz CSV
-# (In production, this comes from actualizar-precios endpoint or Sheets)
-MATRIZ_CSV=$(curl -s https://your-matriz-source/export.csv)
-
-# 3. POST desk review with matrizCsv (triggers auto-freeze)
-curl -X POST https://panelin-calc.run.app/api/desk/reviews \
-  -H "Authorization: Bearer <API_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "quoteId": "'$QUOTE_ID'",
-    "channel": "manual",
-    "matrizCsv": "'$MATRIZ_CSV'",
-    "payload": {"sku": "GLDCAM", "qty": 2},
-    "interp": {"user": "test-user"},
-    "faltantes": []
-  }'
-
-# Expected 201 response:
-# {
-#   "ok": true,
-#   "review": {
-#     "id": 1,
-#     "quote_id": "test-quote-xxx",
-#     "matriz_version": "MATRIZ-20261015-142530-a1b2",
-#     "status": "pending",
-#     "created_at": "2026-10-15T14:25:30Z"
-#   }
-# }
+TOKEN=...   # identity JWT
+curl -s "$API/api/actualizar-precios-calculadora" -o /tmp/matriz.csv
+jq -n --rawfile csv /tmp/matriz.csv '{channel:"manual", matrizCsv:$csv, payload:{smoke:true}}' \
+  | curl -s -X POST "$API/api/desk/reviews" \
+      -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data-binary @- | jq .
+# Expect 201: review.matriz_version = "MATRIZ-<16 hex>", status "pending"
 ```
 
-**Verify in Postgres:**
+`jq --rawfile` keeps newlines/quotes in the CSV intact. Posting the same CSV again reuses the same
+`matriz_version` (no duplicate snapshot). Mark the smoke row discarded afterwards:
 
 ```bash
-psql -h <prod-db-host> -U postgres -d calculadora_bmc << 'EOF'
-
--- Check matriz_snapshots was created
-SELECT version, created_at FROM matriz_snapshots ORDER BY created_at DESC LIMIT 1;
-
--- Check desk_reviews row was inserted
-SELECT id, quote_id, matriz_version, status FROM desk_reviews
-WHERE quote_id LIKE 'test-quote-%' ORDER BY created_at DESC LIMIT 1;
-
-EOF
+curl -s -X PATCH "$API/api/desk/<id>/status" -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"status":"discarded"}'
 ```
 
-**Expected:**
-- Row exists in both tables
-- FK constraint verified (matriz_version matches an existing snapshot version)
-- created_at timestamps are recent (within last minute)
-
-**If Test Fails:**
-
-| Error | Action |
-|-------|--------|
-| 401 Unauthorized | Verify API_AUTH_TOKEN in Cloud Run env vars |
-| 400 matrizVersion_required | Check that matrizCsv is valid CSV (has headers + rows) |
-| 503 db_unavailable | Verify Postgres connectivity from Cloud Run |
-| FK violation | Frozen snapshot failed; check freezeMatriz() logs |
-
----
-
-### Step 5: Monitor Desk Queue for 24 Hours
-
-**Monitoring Checklist:**
-
-- [ ] **Error Rate:** `/api/desk/reviews` POST requests with status 5xx → target 0%
-- [ ] **Database Integrity:** No NULL matriz_version values in desk_reviews (every review has snapshot FK)
-- [ ] **Latency:** Desk queue processing latency acceptable (< 500ms per review)
-- [ ] **Sheets Sync:** Legacy Sheets queue still functional (fallback verification)
-
-**Commands to Run Periodically:**
+## 4. Monitor (first 24 h)
 
 ```bash
-# Check for any 500+ errors in Cloud Run logs
-gcloud run logs read panelin-calc --region us-central1 --limit=100 | grep -i "error\|failed\|5[0-9]{2}"
+gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name="panelin-calc"
+  AND httpRequest.requestUrl:"/api/desk/" AND httpRequest.status>=500' \
+  --project chatbot-bmc-live --freshness=24h --limit=50
 
-# Count desk_reviews rows created in last 24h
-psql -h <prod-db-host> -U postgres -d calculadora_bmc << 'EOF'
-SELECT DATE(created_at) as date, COUNT(*) as review_count
-FROM desk_reviews
-WHERE created_at >= NOW() - INTERVAL '24 hours'
-GROUP BY DATE(created_at)
-ORDER BY date DESC;
-EOF
-
-# Verify no orphaned desk_reviews (FK violations should be caught at INSERT, but double-check)
-SELECT COUNT(*) as orphaned_reviews
-FROM desk_reviews dr
-WHERE NOT EXISTS (SELECT 1 FROM matriz_snapshots ms WHERE ms.version = dr.matriz_version);
+doppler run --project bmc-backend --config prd -- sh -c 'psql "$DATABASE_URL" <<SQL
+select status, count(*) from desk_reviews where created_at > now() - interval '"'"'24 hours'"'"' group by 1;
+select count(*) as orphans from desk_reviews r
+  left join matriz_snapshots s on s.version = r.matriz_version
+  where r.matriz_version is not null and s.version is null;
+SQL'
 ```
 
-**Success Criteria (After 24h):**
-- ✓ 0 desk_reviews rows with NULL matriz_version
-- ✓ 0 orphaned FK references
-- ✓ No 500+ errors in logs (warnings OK)
-- ✓ Desk queue processing latency stable
+`orphans` must be 0.
 
-**If Issues Found:**
+## 5. Rollback
 
-| Issue | Mitigation |
-|-------|-----------|
-| High error rate (> 5%) | Investigate error logs, identify root cause, rollback if severe |
-| FK violations | Check freezeMatriz() idempotency; re-run migration on staging |
-| Latency spike (> 1s) | Check Postgres resource usage, consider index tuning |
-
----
-
-## Rollback Plan
-
-**If Critical Issues Found During Step 4-5:**
-
-### Rollback Option 1: Full Revert (Safest)
-
-**On Production Postgres:**
+**App rollback (default — keeps all data):** route traffic back to the previous revision.
 
 ```bash
-psql -h <prod-db-host> -U postgres -d calculadora_bmc << 'EOF'
-
--- Drop desk_reviews first (has FK to matriz_snapshots)
-DROP TABLE IF EXISTS desk_reviews;
-
--- Drop matriz_snapshots
-DROP TABLE IF EXISTS matriz_snapshots;
-
--- Verify tables removed
-\dt | grep -E "desk_reviews|matriz_snapshots"
--- (should return no results)
-
-EOF
+gcloud run revisions list --service panelin-calc --region us-central1 --project chatbot-bmc-live --limit 5
+gcloud run services update-traffic panelin-calc --region us-central1 --project chatbot-bmc-live \
+  --to-revisions <previous-revision>=100
 ```
 
-**On Cloud Run:**
+The desk tables stay; the old revision simply doesn't use them.
+
+**Schema removal (destructive, only if no real reviews exist):** dropping the tables deletes every
+review and snapshot. Export first and get explicit owner approval:
 
 ```bash
-# Revert to previous revision
-gcloud run deploy panelin-calc \
-  --region us-central1 \
-  --project chatbot-bmc-live \
-  --revision <previous-revision-id>
-
-# Or redeploy main without desk API changes
-git checkout main
-npm run pre-deploy
-gcloud run deploy panelin-calc --region us-central1 --project chatbot-bmc-live --source .
+doppler run --project bmc-backend --config prd -- sh -c '
+  psql "$DATABASE_URL" -c "\copy desk_reviews to /tmp/desk_reviews.csv csv header" &&
+  psql "$DATABASE_URL" -c "\copy matriz_snapshots to /tmp/matriz_snapshots.csv csv header"'
+# then, only with approval:
+# psql "$DATABASE_URL" -1 -c "drop table desk_reviews; drop table matriz_snapshots;"
 ```
 
-**Result:** Desk queue reverts to Sheets-only, all data safe, zero data loss
+## Post-migration
 
-### Rollback Option 2: Partial Revert (If Only App Issue)
-
-If Postgres migration is successful but Cloud Run deployment has a bug:
-
-```bash
-# Revert Cloud Run to previous revision (keep schema)
-gcloud run revisions list --service panelin-calc --region us-central1 \
-  --project chatbot-bmc-live --sort-by created_at --limit 5
-
-gcloud run deploy panelin-calc \
-  --revision <previous-working-revision> \
-  --region us-central1 \
-  --project chatbot-bmc-live
-```
-
-**Result:** API reverts, but schema stays (allows for hot-fix without re-migration)
-
----
-
-## Post-Migration Checklist
-
-- [ ] All 24h monitoring checks passed
-- [ ] Desk queue continues processing with new API
-- [ ] Zero orphaned FK references confirmed
-- [ ] Legacy Sheets fallback still accessible (verification complete)
-- [ ] Cloud Run revision tagged as stable (document revision ID)
-- [ ] Update docs/team/PROJECT-STATE.md with D6 completion
-- [ ] Update KNOWLEDGE.md with snapshot implementation details
-
----
-
-## Communication
-
-**Notify Stakeholders After Step 3:**
-
-```
-📢 Desk API now live on Postgres (Cloud Run `panelin-calc`)
-
-✅ Completed:
-- Schema migration (matriz_snapshots + desk_reviews)
-- New `/api/desk/*` routes deployed
-- Quote review snapshots now frozen at quote-creation time
-
-⏱️ Monitoring for 24h — expect zero impact on Desk workflow
-
-🔙 Rollback available if issues found
-
-Questions? Check docs/team/procedures/DESK-API-PROD-MIGRATION.md
-```
-
----
-
-## Related Documentation
-
-- [Desk API Design Doc](../../decisions/DESK-API-DESIGN.md)
-- [matrizSnapshot Implementation](../../../server/lib/matrizSnapshot.js)
-- [deskQueue Business Logic](../../../server/lib/deskQueue.js)
-- [001 Database Migration](../../../server/migrations/desk/001_desk.sql)
-
----
-
-## Version History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-10-15 | Matias | Initial runbook for production deployment |
+- [ ] `/api/desk/health` → `ok:true`
+- [ ] Smoke review created and discarded
+- [ ] 0 orphans, no 5xx on `/api/desk/*` after 24 h
+- [ ] PROJECT-STATE "Cambios recientes" updated
