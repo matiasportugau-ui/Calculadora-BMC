@@ -142,4 +142,14 @@ gha-creds-*.json
 
 # panelin-mcp worker local secrets/runtime state
 workers/panelin-mcp/.dev.vars
+
+# /design-sync — staged converter scripts + deps, generated build output,
+# machine-local verification state. The durable set (config.json, NOTES.md,
+# conventions.md, previews/) is committed; everything below is regenerated
+# by re-running the converter.
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
 workers/panelin-mcp/.wrangler/
