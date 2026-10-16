@@ -33,6 +33,7 @@ RUN apk add --no-cache \
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./package.json
 COPY server/ ./server/
+COPY src/lib/ ./src/lib/
 COPY src/utils/ ./src/utils/
 COPY src/data/ ./src/data/
 # Shared operator/storefront markdown KB (Panelin Front loads a customer-redacted copy).
