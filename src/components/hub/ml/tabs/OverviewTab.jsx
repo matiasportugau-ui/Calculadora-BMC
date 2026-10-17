@@ -38,14 +38,37 @@ export default function OverviewTab({ onNavigateTab }) {
   const playbooks = useMlPlaybooks();
 
   const anyError = me.error || listings.error || questions.error || orders.error;
+  const tokenExpiredError = [me.error, listings.error, questions.error, orders.error].find(
+    (err) => err?.type === 'token_expired',
+  );
   const authError = [me.error, listings.error, questions.error, orders.error].some(
-    (err) => err?.status === 401,
+    (err) => err?.status === 401 && err?.type !== 'token_expired',
   );
 
   if (anyError) {
     return (
       <div style={{ padding: '40px', color: 'var(--ac-error)', textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
-        {authError ? (
+        {tokenExpiredError ? (
+          <>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Token de Mercado Libre expirado</div>
+            <div style={{ fontSize: 13, color: 'var(--ac-text-2)', lineHeight: 1.45, marginBottom: 16 }}>
+              Tu conexión con Mercado Libre se perdió. Re-autoriza para sincronizar tus datos de vendedor.
+            </div>
+            <a href="/auth/ml/start?redirect=/hub/ml"
+               style={{
+                 display: 'inline-block',
+                 padding: '8px 16px',
+                 backgroundColor: 'var(--ac-accent)',
+                 color: 'white',
+                 borderRadius: '6px',
+                 textDecoration: 'none',
+                 fontSize: 13,
+                 fontWeight: 600,
+               }}>
+              Re-autorizar con Mercado Libre
+            </a>
+          </>
+        ) : authError ? (
           <>
             <div style={{ fontWeight: 600, marginBottom: 8 }}>Sesión expirada o sin permiso</div>
             <div style={{ fontSize: 13, color: 'var(--ac-text-2)', lineHeight: 1.45 }}>
