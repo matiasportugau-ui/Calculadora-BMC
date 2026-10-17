@@ -1,0 +1,33 @@
+{
+  "pkg": "calculadora-bmc-primitives",
+  "globalName": "BmcPrimitives",
+  "shape": "package",
+  "entry": ".design-sync/entry.jsx",
+  "cssEntry": ".design-sync/styles-entry.css",
+  "componentSrcMap": {
+    "Glass": "src/components/glass/Glass.jsx",
+    "GlassFilterSvg": "src/components/glass/GlassFilterSvg.jsx",
+    "AppearanceToggle": "src/components/glass/AppearanceToggle.jsx",
+    "Tooltip": "src/components/help/Tooltip.jsx",
+    "HelpButton": "src/components/help/HelpButton.jsx",
+    "Callout": "src/components/help/Callout.jsx",
+    "FirstTimeTip": "src/components/help/FirstTimeTip.jsx"
+  },
+  "provider": {
+    "component": "BmcAppearanceProvider",
+    "inner": { "component": "HelpProvider" }
+  },
+  "dtsPropsFor": {
+    "Glass": "as?: keyof JSX.IntrinsicElements; className?: string; refract?: boolean; interactive?: boolean; style?: React.CSSProperties; children?: React.ReactNode;",
+    "GlassFilterSvg": "displace?: number;",
+    "AppearanceToggle": "compact?: boolean;",
+    "Tooltip": "id: string; children: React.ReactElement; placement?: 'top' | 'bottom' | 'left' | 'right';",
+    "HelpButton": "id: string; label?: string;",
+    "Callout": "id: string; variant?: 'info' | 'warn' | 'success'; dismissible?: boolean;",
+    "FirstTimeTip": "id: string; placement?: 'top' | 'bottom' | 'left' | 'right';"
+  },
+  "readmeHeader": ".design-sync/conventions.md",
+  "overrides": {
+    "FirstTimeTip": { "cardMode": "single", "viewport": "480x420" }
+  }
+}
